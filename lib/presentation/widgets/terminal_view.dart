@@ -87,6 +87,22 @@ class TerminalTabsView extends StatelessWidget {
                             .withOpacity(0.5),
                       ),
                 ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      await provider.createLocalTerminal();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('创建终端失败: $e')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('创建本地终端'),
+                ),
               ],
             ),
           );
@@ -105,27 +121,95 @@ class TerminalTabsView extends StatelessWidget {
                   ),
                 ),
               ),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: sessions.length,
-                itemBuilder: (context, index) {
-                  final session = sessions[index];
-                  final isActive = session.id == activeSessionId;
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: sessions.length,
+                      itemBuilder: (context, index) {
+                        final session = sessions[index];
+                        final isActive = session.id == activeSessionId;
 
-                  return _TerminalTab(
-                    session: session,
-                    isActive: isActive,
-                    onTap: () => provider.switchToSession(session.id),
-                    onClose: () => provider.closeSession(session.id),
-                  );
-                },
+                        return _TerminalTab(
+                          session: session,
+                          isActive: isActive,
+                          onTap: () => provider.switchToSession(session.id),
+                          onClose: () => provider.closeSession(session.id),
+                        );
+                      },
+                    ),
+                  ),
+                  // 新建终端按钮
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        try {
+                          await provider.createLocalTerminal();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('创建终端失败: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Icon(
+                          Icons.add,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             // 终端内容
             Expanded(
               child: activeSessionId != null
                   ? TerminalViewWidget(sessionId: activeSessionId)
-                  : const Center(child: Text('请选择一个连接')),
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.terminal,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '没有活动的终端会话',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.5),
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () async {
+                              try {
+                                await provider.createLocalTerminal();
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('创建终端失败: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('创建本地终端'),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         );
@@ -150,9 +234,11 @@ class _TerminalTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isActive
@@ -170,23 +256,42 @@ class _TerminalTab extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              session.name,
-              style: TextStyle(
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Text(
+                session.name,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onClose,
-              child: Icon(
-                Icons.close,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  // 阻止事件冒泡，避免触发父级的 onTap
+                  onClose();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.transparent,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

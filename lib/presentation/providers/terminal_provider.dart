@@ -31,21 +31,16 @@ class TerminalProvider extends ChangeNotifier {
       } catch (e) {
         // 如果创建本地终端失败（例如 flutter_pty 未正确构建），
         // 则静默失败，不阻止应用启动
-        debugPrint('创建本地终端失败: $e');
-        // 可以选择不创建本地终端，或者显示错误提示
       }
     }
   }
 
   /// 创建本地终端会话
   Future<TerminalSession> createLocalTerminal() async {
-    debugPrint('[TerminalProvider] 创建本地终端会话');
-    
     final localService = LocalTerminalService();
     _services[_localTerminalId] = localService;
 
     // 先创建会话（这会调用 initialize，设置终端引用）
-    debugPrint('[TerminalProvider] 创建 TerminalSession');
     final session = _terminalService.createSession(
       id: _localTerminalId,
       name: '本地终端',
@@ -53,19 +48,14 @@ class TerminalProvider extends ChangeNotifier {
     );
 
     // 然后启动 PTY（此时终端引用已设置）
-    debugPrint('[TerminalProvider] 启动 PTY');
     try {
       await localService.start();
-      debugPrint('[TerminalProvider] PTY 启动成功');
-    } catch (e, stackTrace) {
-      debugPrint('[TerminalProvider] PTY 启动失败: $e');
-      debugPrint('[TerminalProvider] 堆栈跟踪: $stackTrace');
+    } catch (e) {
       rethrow;
     }
 
     _activeSessionId = _localTerminalId;
     notifyListeners();
-    debugPrint('[TerminalProvider] 本地终端会话创建完成');
 
     return session;
   }

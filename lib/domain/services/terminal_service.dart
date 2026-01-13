@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:xterm/xterm.dart';
 import 'terminal_input_service.dart';
 import 'local_terminal_service.dart';
@@ -23,54 +22,45 @@ class TerminalSession {
 
   /// 初始化终端会话
   Future<void> initialize() async {
-    debugPrint('[TerminalSession] 初始化终端会话: $id, $name');
-    
     // 如果输入服务是 LocalTerminalService，设置终端引用
     if (inputService is LocalTerminalService) {
-      debugPrint('[TerminalSession] 设置终端引用 (LocalTerminalService)');
       (inputService as LocalTerminalService).setTerminal(terminal);
-      debugPrint('[TerminalSession] 终端尺寸: ${terminal.viewWidth} x ${terminal.viewHeight}');
     }
 
     // 监听输出
     _outputSubscription = inputService.outputStream.listen((output) {
       terminal.write(output);
     }, onError: (error) {
-      debugPrint('[TerminalSession] 输出流错误: $error');
+      // 输出流错误
     }, onDone: () {
-      debugPrint('[TerminalSession] 输出流关闭');
+      // 输出流关闭
     });
 
     // 监听连接状态
     _stateSubscription = inputService.stateStream.listen((isConnected) {
-      debugPrint('[TerminalSession] 连接状态变化: $isConnected');
       if (isConnected) {
         terminal.write('\r\n[已连接]\r\n');
       } else {
         terminal.write('\r\n[已断开]\r\n');
       }
     }, onError: (error) {
-      debugPrint('[TerminalSession] 状态流错误: $error');
+      // 状态流错误
     }, onDone: () {
-      debugPrint('[TerminalSession] 状态流关闭');
+      // 状态流关闭
     });
 
     // 监听终端输入
     terminal.onOutput = (data) {
       // 当用户输入时，发送到输入服务
-      debugPrint('[TerminalSession] 终端输入: ${data.length} 字符');
       inputService.sendInput(data);
     };
 
     // 监听终端尺寸变化（仅对 LocalTerminalService 有效）
     terminal.onResize = (width, height, pixelWidth, pixelHeight) {
-      debugPrint('[TerminalSession] 终端尺寸变化: $width x $height (像素: $pixelWidth x $pixelHeight)');
       if (inputService is LocalTerminalService) {
         (inputService as LocalTerminalService).resize(height, width);
       }
     };
-    
-    debugPrint('[TerminalSession] 初始化完成');
   }
 
   /// 执行命令

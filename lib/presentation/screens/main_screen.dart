@@ -152,22 +152,35 @@ class _MainScreenState extends State<MainScreen> {
       terminalProvider.switchToSession(connection.id);
     } else {
       // 创建新会话
-      terminalProvider.createSession(connection);
-      final sshService = terminalProvider.getSshService(connection.id);
+      try {
+        await terminalProvider.createSession(connection);
+        final sshService = terminalProvider.getSshService(connection.id);
 
-      if (sshService != null) {
-        // 提示输入主密码（实际应用中应该从安全存储获取）
-        final masterPassword = await _showPasswordDialog();
-        if (masterPassword != null && mounted) {
-          try {
-            await sshService.connect(connection, masterPassword);
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('连接失败: $e')),
-              );
+        if (sshService != null) {
+          // 提示输入主密码（实际应用中应该从安全存储获取）
+          final masterPassword = await _showPasswordDialog();
+          if (masterPassword != null && mounted) {
+            try {
+              await sshService.connect(connection, masterPassword);
+            } catch (e) {
+              // 连接失败，关闭会话
+              terminalProvider.closeSession(connection.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('连接失败: $e')),
+                );
+              }
             }
+          } else {
+            // 用户取消输入密码，关闭会话
+            terminalProvider.closeSession(connection.id);
           }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('创建会话失败: $e')),
+          );
         }
       }
     }
