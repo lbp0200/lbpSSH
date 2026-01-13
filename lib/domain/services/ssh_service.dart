@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../utils/encryption.dart';
@@ -48,32 +48,20 @@ class SshService implements TerminalInputService {
       _updateState(SshConnectionState.connecting);
 
       final socket = await SSHSocket.connect(connection.host, connection.port);
-      _client = SSHClient(socket, username: connection.username);
-
-      // 根据认证方式连接
-      // TODO: 根据 dartssh2 2.13.0 的实际 API 实现认证
-      // 需要查看 dartssh2 的文档来确定正确的认证方法
-      // 可能的方法名：
-      // - authenticatePassword()
-      // - authenticatePublicKey()
-      // - authenticate() 配合不同的参数
-      // 根据认证方式连接
-      // TODO: 根据 dartssh2 2.13.0 的实际 API 实现认证
-      // 需要查看 dartssh2 的文档来确定正确的认证方法
+      
+      // 根据认证方式准备认证信息
+      String? password;
       switch (connection.authType) {
         case AuthType.password:
           if (connection.encryptedPassword == null) {
             throw Exception('密码未设置');
           }
-          // 临时实现：抛出异常提示需要实现
-          // 解密后的密码需要传递给 SSHClient 的认证方法
-          EncryptionUtil.decrypt(
+          // 解密密码
+          password = EncryptionUtil.decrypt(
             connection.encryptedPassword!,
             masterPassword,
           );
-          throw UnimplementedError(
-            '密码认证未实现，需要根据 dartssh2 API 实现',
-          );
+          break;
 
         case AuthType.key:
           if (connection.privateKeyPath == null) {
@@ -101,6 +89,16 @@ class SshService implements TerminalInputService {
             '密钥+密码认证未实现，需要根据 dartssh2 API 实现',
           );
       }
+      
+      // 创建 SSH 客户端
+      // dartssh2 2.13.0 使用 onPasswordRequest 回调进行密码认证
+      _client = SSHClient(
+        socket,
+        username: connection.username,
+        onPasswordRequest: connection.authType == AuthType.password
+            ? () => password!
+            : null,
+      );
 
       // TODO: 如果有跳板机，需要先连接到跳板机
       // 这需要先连接到跳板机，然后通过跳板机连接到目标主机
@@ -111,12 +109,32 @@ class SshService implements TerminalInputService {
 
       // 创建交互式会话
       _session = await _client!.shell();
-      _session!.stdout.listen((data) {
-        _outputController.add(String.fromCharCodes(data));
-      });
-      _session!.stderr.listen((data) {
-        _outputController.add(String.fromCharCodes(data));
-      });
+      // 使用 UTF-8 解码器正确处理多字节字符（如中文）
+      _session!.stdout
+          .cast<List<int>>()
+          .transform(const Utf8Decoder())
+          .listen((data) {
+        _outputController.add(data);
+      }, onError: (error) {
+        if (!_isDisposed && !_outputController.isClosed) {
+          _outputController.add('\r\n[输出流错误: $error]\r\n');
+        }
+      }, onDone: () {
+        // 输出流关闭
+      }, cancelOnError: false);
+      
+      _session!.stderr
+          .cast<List<int>>()
+          .transform(const Utf8Decoder())
+          .listen((data) {
+        _outputController.add(data);
+      }, onError: (error) {
+        if (!_isDisposed && !_outputController.isClosed) {
+          _outputController.add('\r\n[错误流错误: $error]\r\n');
+        }
+      }, onDone: () {
+        // 错误流关闭
+      }, cancelOnError: false);
 
       _updateState(SshConnectionState.connected);
     } catch (e) {
@@ -136,14 +154,19 @@ class SshService implements TerminalInputService {
     try {
       final session = await _client!.execute(command);
       final output = <String>[];
-      await for (final data in session.stdout) {
-        final text = String.fromCharCodes(data);
-        output.add(text);
-        _outputController.add(text);
+      await for (final data in session.stdout
+          .cast<List<int>>()
+          .transform(const Utf8Decoder())) {
+        output.add(data);
+        if (!_isDisposed && !_outputController.isClosed) {
+          _outputController.add(data);
+        }
       }
       return output.join();
     } catch (e) {
-      _outputController.add('命令执行错误: $e\n');
+      if (!_isDisposed && !_outputController.isClosed) {
+        _outputController.add('命令执行错误: $e\n');
+      }
       rethrow;
     }
   }
@@ -152,25 +175,36 @@ class SshService implements TerminalInputService {
   @override
   void sendInput(String input) {
     if (_session != null && _state == SshConnectionState.connected) {
-      _session!.stdin.add(Uint8List.fromList(input.codeUnits));
+      // 使用 UTF-8 编码确保多字节字符（如中文）正确传输
+      final bytes = const Utf8Encoder().convert(input);
+      _session!.stdin.add(bytes);
     }
   }
 
+  bool _isDisposed = false;
+
   /// 断开连接
   Future<void> disconnect() async {
+    if (_isDisposed) return;
+    
     try {
       _session?.close();
       _session = null;
       _client?.close();
       _client = null;
-      _updateState(SshConnectionState.disconnected);
+      if (!_isDisposed) {
+        _updateState(SshConnectionState.disconnected);
+      }
     } catch (e) {
-      _outputController.add('断开连接错误: $e\n');
+      if (!_isDisposed && !_outputController.isClosed) {
+        _outputController.add('断开连接错误: $e\n');
+      }
     }
   }
 
   /// 更新状态
   void _updateState(SshConnectionState newState) {
+    if (_isDisposed || _stateController.isClosed) return;
     _state = newState;
     _stateController.add(newState);
   }
@@ -178,8 +212,13 @@ class SshService implements TerminalInputService {
   /// 清理资源
   @override
   void dispose() {
+    _isDisposed = true;
     disconnect();
-    _stateController.close();
-    _outputController.close();
+    if (!_stateController.isClosed) {
+      _stateController.close();
+    }
+    if (!_outputController.isClosed) {
+      _outputController.close();
+    }
   }
 }
