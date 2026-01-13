@@ -18,6 +18,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   final _repoController = TextEditingController();
   final _branchController = TextEditingController();
   final _filePathController = TextEditingController();
+  final _gistIdController = TextEditingController();
+  final _gistFileNameController = TextEditingController();
   final _tokenController = TextEditingController();
   final _masterPasswordController = TextEditingController();
 
@@ -39,10 +41,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
     if (config != null) {
       _platform = config.platform;
-      _ownerController.text = config.repositoryOwner;
-      _repoController.text = config.repositoryName;
-      _branchController.text = config.branch;
-      _filePathController.text = config.filePath;
+      _ownerController.text = config.repositoryOwner ?? '';
+      _repoController.text = config.repositoryName ?? '';
+      _branchController.text = config.branch ?? 'main';
+      _filePathController.text = config.filePath ?? 'ssh_connections.json';
+      _gistIdController.text = config.gistId ?? '';
+      _gistFileNameController.text = config.gistFileName ?? 'ssh_connections.json';
       _autoSync = config.autoSync;
       _syncInterval = config.syncIntervalMinutes;
       // 不显示 token，只显示占位符
@@ -50,6 +54,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     } else {
       _branchController.text = 'main';
       _filePathController.text = 'ssh_connections.json';
+      _gistFileNameController.text = 'ssh_connections.json';
     }
   }
 
@@ -59,6 +64,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _repoController.dispose();
     _branchController.dispose();
     _filePathController.dispose();
+    _gistIdController.dispose();
+    _gistFileNameController.dispose();
     _tokenController.dispose();
     _masterPasswordController.dispose();
     super.dispose();
@@ -80,10 +87,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final config = SyncConfig(
       platform: _platform,
       accessToken: accessToken,
-      repositoryOwner: _ownerController.text,
-      repositoryName: _repoController.text,
-      branch: _branchController.text,
-      filePath: _filePathController.text,
+      repositoryOwner: _platform != SyncPlatform.gist ? _ownerController.text : null,
+      repositoryName: _platform != SyncPlatform.gist ? _repoController.text : null,
+      branch: _platform != SyncPlatform.gist ? _branchController.text : null,
+      filePath: _platform != SyncPlatform.gist ? _filePathController.text : null,
+      gistId: _platform == SyncPlatform.gist ? _gistIdController.text : null,
+      gistFileName: _platform == SyncPlatform.gist ? _gistFileNameController.text : null,
       autoSync: _autoSync,
       syncIntervalMinutes: _syncInterval,
     );
@@ -141,9 +150,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   }
 
   Future<void> _openOAuthUrl() async {
-    final url = _platform == SyncPlatform.github
-        ? 'https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=sshmanager://oauth/callback&scope=repo'
-        : 'https://gitee.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=sshmanager://oauth/callback&response_type=code';
+    String url;
+    if (_platform == SyncPlatform.gist) {
+      // Gist 需要 gist scope
+      url = 'https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=lbpssh://oauth/callback&scope=gist';
+    } else if (_platform == SyncPlatform.github) {
+      // GitHub Repository 需要 repo scope
+      url = 'https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=lbpssh://oauth/callback&scope=repo';
+    } else {
+      // Gitee
+      url = 'https://gitee.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=lbpssh://oauth/callback&response_type=code';
+    }
 
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -171,11 +188,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               items: const [
                 DropdownMenuItem(
                   value: SyncPlatform.github,
-                  child: Text('GitHub'),
+                  child: Text('GitHub Repository'),
                 ),
                 DropdownMenuItem(
                   value: SyncPlatform.gitee,
-                  child: Text('Gitee'),
+                  child: Text('Gitee Repository'),
+                ),
+                DropdownMenuItem(
+                  value: SyncPlatform.gist,
+                  child: Text('GitHub Gist'),
                 ),
               ],
               onChanged: (value) {
@@ -210,7 +231,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       onPressed: _openOAuthUrl,
                       icon: const Icon(Icons.open_in_browser),
                       label: Text(
-                        _platform == SyncPlatform.github
+                        _platform == SyncPlatform.gist || _platform == SyncPlatform.github
                             ? '在 GitHub 中授权'
                             : '在 Gitee 中授权',
                       ),
@@ -246,62 +267,102 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 仓库配置
-            TextFormField(
-              controller: _ownerController,
-              decoration: InputDecoration(
-                labelText: '仓库所有者',
-                hintText: _platform == SyncPlatform.github
-                    ? '例如：username'
-                    : '例如：username',
+            // 根据平台显示不同的配置字段
+            if (_platform == SyncPlatform.gist) ...[
+              // Gist 配置
+              TextFormField(
+                controller: _gistIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Gist ID 或 URL（可选）',
+                  hintText: '例如：abc123def456 或 https://gist.github.com/username/abc123def456',
+                  helperText: '留空将创建新 Gist，填写 Gist ID 或 URL 则同步现有 Gist。新程序可以从 Gist 同步配置。',
+                ),
+                onChanged: (value) {
+                  // 如果输入的是 URL，提取 Gist ID
+                  if (value.contains('gist.github.com')) {
+                    final uri = Uri.tryParse(value);
+                    if (uri != null) {
+                      final segments = uri.pathSegments;
+                      if (segments.isNotEmpty) {
+                        final gistId = segments.last;
+                        _gistIdController.text = gistId;
+                      }
+                    }
+                  }
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '请输入仓库所有者';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _repoController,
-              decoration: const InputDecoration(
-                labelText: '仓库名称',
-                hintText: '例如：ssh-configs',
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _gistFileNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Gist 文件名',
+                  hintText: 'ssh_connections.json',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入文件名';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '请输入仓库名称';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _branchController,
-                    decoration: const InputDecoration(
-                      labelText: '分支',
-                      hintText: 'main',
+            ] else ...[
+              // GitHub/Gitee 仓库配置
+              TextFormField(
+                controller: _ownerController,
+                decoration: InputDecoration(
+                  labelText: '仓库所有者',
+                  hintText: _platform == SyncPlatform.github
+                      ? '例如：username'
+                      : '例如：username',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入仓库所有者';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _repoController,
+                decoration: const InputDecoration(
+                  labelText: '仓库名称',
+                  hintText: '例如：ssh-configs',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入仓库名称';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _branchController,
+                      decoration: const InputDecoration(
+                        labelText: '分支',
+                        hintText: 'main',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 3,
-                  child: TextFormField(
-                    controller: _filePathController,
-                    decoration: const InputDecoration(
-                      labelText: '文件路径',
-                      hintText: 'ssh_connections.json',
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _filePathController,
+                      decoration: const InputDecoration(
+                        labelText: '文件路径',
+                        hintText: 'ssh_connections.json',
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
 
             // 主密码

@@ -1,4 +1,4 @@
-name: ssh_manager
+name: lbpSSH
 description: "跨平台 SSH 终端管理器，支持配置同步到 GitHub/Gitee"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -37,9 +37,7 @@ dependencies:
   # SSH 客户端
   dartssh2: ^2.13.0
   
-  # 数据存储
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  # 数据存储（已迁移到 JSON 文件）
   
   # 终端模拟器
   xterm: ^4.0.0
@@ -81,9 +79,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   
   # 代码生成
-  build_runner: ^2.4.7
-  json_serializable: ^6.7.1
-  hive_generator: ^2.0.1
+  build_runner: ^2.10.5
+  json_serializable: ^6.11.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

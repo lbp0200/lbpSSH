@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/connection_repository.dart';
 import 'domain/services/terminal_service.dart';
@@ -12,9 +11,6 @@ import 'presentation/screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 初始化 Hive
-  await Hive.initFlutter();
 
   // 初始化仓库
   final connectionRepository = ConnectionRepository();

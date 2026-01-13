@@ -9,7 +9,7 @@
 - ✅ 跳板机支持：通过跳板机连接到目标服务器
 - ✅ 终端模拟器：完整的交互式终端体验
 - ✅ 多标签页：同时管理多个 SSH 连接
-- ✅ 配置同步：支持同步到 GitHub 或 Gitee
+- ✅ 配置同步：支持同步到 GitHub Repository、Gitee Repository 或 GitHub Gist
 - ✅ 数据加密：敏感信息加密存储和传输
 - ✅ 分割视图：可调整的连接列表和终端区域
 
@@ -18,7 +18,7 @@
 - **Flutter** - 跨平台 UI 框架
 - **dartssh2** - SSH 客户端
 - **xterm** - 终端模拟器
-- **Hive** - 本地数据存储
+- **JSON 文件** - 本地数据存储（配置文件）
 - **Provider** - 状态管理
 - **Dio** - HTTP 客户端（用于同步）
 
@@ -79,17 +79,32 @@ flutter run -d macos
 
 ### 配置同步
 
+#### GitHub Gist 同步（推荐）
+
 1. 点击应用栏的"同步设置"按钮
-2. 选择同步平台（GitHub 或 Gitee）
-3. 完成 OAuth 认证
-4. 配置仓库信息：
-   - 仓库所有者
-   - 仓库名称
-   - 分支
-   - 文件路径
+2. 选择同步平台为 **GitHub Gist**
+3. 完成 OAuth 认证（需要 `gist` scope）
+4. 配置 Gist 信息：
+   - **Gist ID**（可选）：留空将创建新 Gist，填写现有 Gist ID 或 URL 则同步到该 Gist
+   - **Gist 文件名**：默认为 `ssh_connections.json`
 5. 设置主密码（用于加密敏感信息）
 6. 点击"保存配置"
-7. 使用"上传配置"或"下载配置"按钮进行同步
+7. 使用"上传配置"将本地配置上传到 Gist
+8. 在新设备上，配置相同的 Gist ID，使用"下载配置"从 Gist 同步配置
+
+#### GitHub/Gitee Repository 同步
+
+1. 选择同步平台为 **GitHub Repository** 或 **Gitee Repository**
+2. 完成 OAuth 认证
+3. 配置仓库信息：
+   - 仓库所有者
+   - 仓库名称
+   - 分支（默认：main）
+   - 文件路径（默认：ssh_connections.json）
+4. 设置主密码并保存配置
+5. 使用"上传配置"或"下载配置"按钮进行同步
+
+**注意**：配置文件存储在本地 JSON 文件中，位置为应用数据目录下的 `lbpSSH/ssh_connections.json`
 
 ## 项目结构
 

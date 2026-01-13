@@ -5,7 +5,6 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // 存储键名
-  static const String hiveBoxName = 'ssh_connections';
   static const String syncSettingsKey = 'sync_settings';
   static const String masterPasswordKey = 'master_password_hash';
 
@@ -15,16 +14,16 @@ class AppConstants {
 
   // GitHub OAuth
   static const String githubClientId = 'your_github_client_id';
-  static const String githubRedirectUri = 'sshmanager://oauth/callback';
+  static const String githubRedirectUri = 'lbpssh://oauth/callback';
 
   // Gitee OAuth
   static const String giteeClientId = 'your_gitee_client_id';
-  static const String giteeRedirectUri = 'sshmanager://oauth/callback';
+  static const String giteeRedirectUri = 'lbpssh://oauth/callback';
 
   // 默认值
   static const int defaultSshPort = 22;
   static const int defaultSyncIntervalMinutes = 5;
 
   // 文件路径
-  static const String configDirName = 'ssh_manager';
+  static const String configDirName = 'lbpSSH';
 }
