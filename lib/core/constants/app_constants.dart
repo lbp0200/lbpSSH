@@ -6,7 +6,6 @@ class AppConstants {
 
   // 存储键名
   static const String syncSettingsKey = 'sync_settings';
-  static const String masterPasswordKey = 'master_password_hash';
 
   // 同步配置
   static const String defaultSyncFileName = 'ssh_connections.json';

@@ -23,14 +23,14 @@ class SshConnection {
   /// 认证方式
   final AuthType authType;
 
-  /// 密码（加密存储）
-  final String? encryptedPassword;
+  /// 密码（明文存储）
+  final String? password;
 
   /// SSH 密钥路径
   final String? privateKeyPath;
 
-  /// 密钥密码（加密存储）
-  final String? encryptedKeyPassphrase;
+  /// 密钥密码（明文存储）
+  final String? keyPassphrase;
 
   /// 跳板机配置
   final JumpHostConfig? jumpHost;
@@ -54,9 +54,9 @@ class SshConnection {
     this.port = 22,
     required this.username,
     required this.authType,
-    this.encryptedPassword,
+    this.password,
     this.privateKeyPath,
-    this.encryptedKeyPassphrase,
+    this.keyPassphrase,
     this.jumpHost,
     this.notes,
     DateTime? createdAt,
@@ -80,9 +80,9 @@ class SshConnection {
     int? port,
     String? username,
     AuthType? authType,
-    String? encryptedPassword,
+    String? password,
     String? privateKeyPath,
-    String? encryptedKeyPassphrase,
+    String? keyPassphrase,
     JumpHostConfig? jumpHost,
     String? notes,
     DateTime? createdAt,
@@ -96,10 +96,9 @@ class SshConnection {
       port: port ?? this.port,
       username: username ?? this.username,
       authType: authType ?? this.authType,
-      encryptedPassword: encryptedPassword ?? this.encryptedPassword,
+      password: password ?? this.password,
       privateKeyPath: privateKeyPath ?? this.privateKeyPath,
-      encryptedKeyPassphrase:
-          encryptedKeyPassphrase ?? this.encryptedKeyPassphrase,
+      keyPassphrase: keyPassphrase ?? this.keyPassphrase,
       jumpHost: jumpHost ?? this.jumpHost,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
@@ -136,8 +135,8 @@ class JumpHostConfig {
   /// 跳板机认证方式
   final AuthType authType;
 
-  /// 跳板机密码（加密存储）
-  final String? encryptedPassword;
+  /// 跳板机密码（明文存储）
+  final String? password;
 
   /// 跳板机密钥路径
   final String? privateKeyPath;
@@ -147,7 +146,7 @@ class JumpHostConfig {
     this.port = 22,
     required this.username,
     required this.authType,
-    this.encryptedPassword,
+    this.password,
     this.privateKeyPath,
   });
 

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
 import '../../data/models/ssh_connection.dart';
-import '../../utils/encryption.dart';
 import 'terminal_input_service.dart';
 
 /// SSH 连接状态
@@ -40,10 +39,7 @@ class SshService implements TerminalInputService {
   SshConnectionState get state => _state;
 
   /// 连接到 SSH 服务器
-  Future<void> connect(
-    SshConnection connection,
-    String masterPassword,
-  ) async {
+  Future<void> connect(SshConnection connection) async {
     try {
       _updateState(SshConnectionState.connecting);
 
@@ -53,14 +49,10 @@ class SshService implements TerminalInputService {
       String? password;
       switch (connection.authType) {
         case AuthType.password:
-          if (connection.encryptedPassword == null) {
+          password = connection.password;
+          if (password == null || password.isEmpty) {
             throw Exception('密码未设置');
           }
-          // 解密密码
-          password = EncryptionUtil.decrypt(
-            connection.encryptedPassword!,
-            masterPassword,
-          );
           break;
 
         case AuthType.key:

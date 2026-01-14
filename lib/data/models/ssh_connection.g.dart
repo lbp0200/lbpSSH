@@ -1,27 +1,33 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// 这是一个占位符文件，实际应该通过运行 build_runner 生成
-// 运行: dart run build_runner build
 
 part of 'ssh_connection.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
 
 SshConnection _$SshConnectionFromJson(Map<String, dynamic> json) =>
     SshConnection(
       id: json['id'] as String,
       name: json['name'] as String,
       host: json['host'] as String,
-      port: json['port'] as int? ?? 22,
+      port: (json['port'] as num?)?.toInt() ?? 22,
       username: json['username'] as String,
-      authType: _$enumDecode(_$AuthTypeEnumMap, json['authType']),
-      encryptedPassword: json['encryptedPassword'] as String?,
+      authType: $enumDecode(_$AuthTypeEnumMap, json['authType']),
+      password: json['password'] as String?,
       privateKeyPath: json['privateKeyPath'] as String?,
-      encryptedKeyPassphrase: json['encryptedKeyPassphrase'] as String?,
+      keyPassphrase: json['keyPassphrase'] as String?,
       jumpHost: json['jumpHost'] == null
           ? null
           : JumpHostConfig.fromJson(json['jumpHost'] as Map<String, dynamic>),
       notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-      version: json['version'] as int? ?? 1,
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
+      version: (json['version'] as num?)?.toInt() ?? 1,
     );
 
 Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
@@ -32,41 +38,15 @@ Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
       'port': instance.port,
       'username': instance.username,
       'authType': _$AuthTypeEnumMap[instance.authType]!,
-      'encryptedPassword': instance.encryptedPassword,
+      'password': instance.password,
       'privateKeyPath': instance.privateKeyPath,
-      'encryptedKeyPassphrase': instance.encryptedKeyPassphrase,
-      'jumpHost': instance.jumpHost?.toJson(),
+      'keyPassphrase': instance.keyPassphrase,
+      'jumpHost': instance.jumpHost,
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
       'version': instance.version,
     };
-
-K _$enumDecode<K, V>(
-  Map<K, V> enumValues,
-  Object? source, {
-  K? unknownValue,
-}) {
-  if (source == null) {
-    throw ArgumentError(
-      'A value must be provided. Supported values: '
-      '${enumValues.values.join(', ')}',
-    );
-  }
-
-  return enumValues.entries.singleWhere(
-    (e) => e.value == source,
-    orElse: () {
-      if (unknownValue == null) {
-        throw ArgumentError(
-          '`$source` is not one of the supported values: '
-          '${enumValues.values.join(', ')}',
-        );
-      }
-      return MapEntry(unknownValue as K, enumValues[unknownValue] as V);
-    },
-  ).key;
-}
 
 const _$AuthTypeEnumMap = {
   AuthType.password: 'password',
@@ -77,10 +57,10 @@ const _$AuthTypeEnumMap = {
 JumpHostConfig _$JumpHostConfigFromJson(Map<String, dynamic> json) =>
     JumpHostConfig(
       host: json['host'] as String,
-      port: json['port'] as int? ?? 22,
+      port: (json['port'] as num?)?.toInt() ?? 22,
       username: json['username'] as String,
-      authType: _$enumDecode(_$AuthTypeEnumMap, json['authType']),
-      encryptedPassword: json['encryptedPassword'] as String?,
+      authType: $enumDecode(_$AuthTypeEnumMap, json['authType']),
+      password: json['password'] as String?,
       privateKeyPath: json['privateKeyPath'] as String?,
     );
 
@@ -90,6 +70,6 @@ Map<String, dynamic> _$JumpHostConfigToJson(JumpHostConfig instance) =>
       'port': instance.port,
       'username': instance.username,
       'authType': _$AuthTypeEnumMap[instance.authType]!,
-      'encryptedPassword': instance.encryptedPassword,
+      'password': instance.password,
       'privateKeyPath': instance.privateKeyPath,
     };

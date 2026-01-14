@@ -21,13 +21,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   final _gistIdController = TextEditingController();
   final _gistFileNameController = TextEditingController();
   final _tokenController = TextEditingController();
-  final _masterPasswordController = TextEditingController();
 
   SyncPlatform _platform = SyncPlatform.github;
   bool _autoSync = false;
   int _syncInterval = 5;
   bool _obscureToken = true;
-  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -67,7 +65,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _gistIdController.dispose();
     _gistFileNameController.dispose();
     _tokenController.dispose();
-    _masterPasswordController.dispose();
     super.dispose();
   }
 
@@ -99,11 +96,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
     try {
       await provider.saveConfig(config);
-
-      // 设置主密码
-      if (_masterPasswordController.text.isNotEmpty) {
-        provider.setMasterPassword(_masterPasswordController.text);
-      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -365,51 +357,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             ],
             const SizedBox(height: 24),
 
-            // 主密码
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '主密码',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '用于加密敏感信息。如果已设置过，留空则保持原密码。',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _masterPasswordController,
-                      decoration: InputDecoration(
-                        labelText: '主密码',
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      obscureText: _obscurePassword,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
             // 自动同步
             SwitchListTile(
               title: const Text('自动同步'),
@@ -512,15 +459,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       return;
     }
 
-    if (_masterPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入主密码')),
-      );
-      return;
-    }
-
-    provider.setMasterPassword(_masterPasswordController.text);
-
     try {
       await provider.uploadConfig();
       if (mounted) {
@@ -544,15 +482,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
       return;
     }
-
-    if (_masterPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入主密码')),
-      );
-      return;
-    }
-
-    provider.setMasterPassword(_masterPasswordController.text);
 
     try {
       await provider.downloadConfig();

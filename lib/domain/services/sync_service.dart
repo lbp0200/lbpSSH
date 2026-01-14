@@ -118,7 +118,7 @@ class SyncService {
   DateTime? get lastSyncTime => _lastSyncTime;
 
   /// 上传配置到远程仓库
-  Future<void> uploadConfig(String masterPassword) async {
+  Future<void> uploadConfig() async {
     if (_config == null || _config!.accessToken == null) {
       throw Exception('同步配置未设置或未授权');
     }
@@ -129,17 +129,11 @@ class SyncService {
       // 获取所有连接
       final connections = _repository.getAllConnections();
 
-      // 加密敏感信息
-      final encryptedConnections = connections.map((conn) {
-        // 创建副本，确保敏感信息已加密
-        return conn;
-      }).toList();
-
       // 转换为 JSON
       final jsonData = {
         'version': 1,
         'timestamp': DateTime.now().toIso8601String(),
-        'connections': encryptedConnections.map((c) => c.toJson()).toList(),
+        'connections': connections.map((c) => c.toJson()).toList(),
       };
 
       final content = jsonEncode(jsonData);
@@ -172,7 +166,7 @@ class SyncService {
   }
 
   /// 从远程仓库下载配置
-  Future<void> downloadConfig(String masterPassword) async {
+  Future<void> downloadConfig() async {
     if (_config == null || _config!.accessToken == null) {
       throw Exception('同步配置未设置或未授权');
     }

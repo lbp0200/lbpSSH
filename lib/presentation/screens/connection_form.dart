@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/models/ssh_connection.dart';
-import '../../utils/encryption.dart';
 import '../providers/connection_provider.dart';
 
 /// 连接配置表单界面
@@ -92,12 +91,6 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
       return;
     }
 
-    // 提示输入主密码（用于加密敏感信息）
-    final masterPassword = await _showMasterPasswordDialog();
-    if (masterPassword == null) {
-      return;
-    }
-
     final provider = Provider.of<ConnectionProvider>(context, listen: false);
 
     try {
@@ -109,8 +102,8 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
           port: int.tryParse(_jumpPortController.text) ?? 22,
           username: _jumpUsernameController.text,
           authType: _jumpAuthType,
-          encryptedPassword: _jumpPasswordController.text.isNotEmpty
-              ? _encryptPassword(_jumpPasswordController.text, masterPassword)
+          password: _jumpPasswordController.text.isNotEmpty
+              ? _jumpPasswordController.text
               : null,
         );
       }
@@ -123,16 +116,13 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         port: int.tryParse(_portController.text) ?? 22,
         username: _usernameController.text,
         authType: _authType,
-        encryptedPassword: _passwordController.text.isNotEmpty
-            ? _encryptPassword(_passwordController.text, masterPassword)
+        password: _passwordController.text.isNotEmpty
+            ? _passwordController.text
             : null,
         privateKeyPath:
             _keyPathController.text.isNotEmpty ? _keyPathController.text : null,
-        encryptedKeyPassphrase: _keyPassphraseController.text.isNotEmpty
-            ? _encryptPassword(
-                _keyPassphraseController.text,
-                masterPassword,
-              )
+        keyPassphrase: _keyPassphraseController.text.isNotEmpty
+            ? _keyPassphraseController.text
             : null,
         jumpHost: jumpHost,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
@@ -166,38 +156,6 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
     }
   }
 
-  String _encryptPassword(String password, String masterPassword) {
-    return EncryptionUtil.encrypt(password, masterPassword);
-  }
-
-
-  Future<String?> _showMasterPasswordDialog() async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('输入主密码'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: '主密码',
-            hintText: '用于加密敏感信息',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
