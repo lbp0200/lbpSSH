@@ -25,11 +25,13 @@ class EncryptionUtil {
 
   /// 加密数据
   static String encrypt(String plainText, String masterPassword) {
+    if (plainText.isEmpty) {
+      throw Exception('无法加密空字符串');
+    }
     final key = deriveKey(masterPassword);
     final iv = IV.fromLength(16);
     final encrypter = Encrypter(AES(key));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
-    // 将 IV 和加密数据组合：IV(16字节) + 加密数据
     final combined = <int>[...iv.bytes, ...encrypted.bytes];
     return base64Encode(combined);
   }
@@ -40,7 +42,9 @@ class EncryptionUtil {
       final key = deriveKey(masterPassword);
       final combined = base64Decode(encryptedText);
       final iv = IV(Uint8List.fromList(combined.take(16).toList()));
-      final encrypted = Encrypted(Uint8List.fromList(combined.skip(16).toList()));
+      final encrypted = Encrypted(
+        Uint8List.fromList(combined.skip(16).toList()),
+      );
       final encrypter = Encrypter(AES(key));
       return encrypter.decrypt(encrypted, iv: iv);
     } catch (e) {
