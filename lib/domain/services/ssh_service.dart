@@ -157,7 +157,7 @@ class SshService implements TerminalInputService {
       return output.join();
     } catch (e) {
       if (!_isDisposed && !_outputController.isClosed) {
-        _outputController.add('命令执行错误: $e\n');
+      _outputController.add('命令执行错误: $e\n');
       }
       rethrow;
     }
@@ -185,11 +185,11 @@ class SshService implements TerminalInputService {
       _client?.close();
       _client = null;
       if (!_isDisposed) {
-        _updateState(SshConnectionState.disconnected);
+      _updateState(SshConnectionState.disconnected);
       }
     } catch (e) {
       if (!_isDisposed && !_outputController.isClosed) {
-        _outputController.add('断开连接错误: $e\n');
+      _outputController.add('断开连接错误: $e\n');
       }
     }
   }
@@ -207,10 +207,10 @@ class SshService implements TerminalInputService {
     _isDisposed = true;
     disconnect();
     if (!_stateController.isClosed) {
-      _stateController.close();
+    _stateController.close();
     }
     if (!_outputController.isClosed) {
-      _outputController.close();
+    _outputController.close();
     }
   }
 }

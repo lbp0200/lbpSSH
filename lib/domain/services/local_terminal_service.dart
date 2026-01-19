@@ -46,7 +46,7 @@ class LocalTerminalService implements TerminalInputService {
         shell = Platform.environment['SHELL'] ?? 
                 (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
       }
-      
+
       // 获取终端尺寸（确保有效的最小值）
       // 如果终端还未初始化，使用默认值
       final columns = _terminal?.viewWidth ?? 80;
@@ -88,7 +88,6 @@ class LocalTerminalService implements TerminalInputService {
       });
 
       _stateController.add(true);
-      _outputController.add('[本地终端已启动]\r\n');
     } catch (e) {
       _stateController.add(false);
       _outputController.add('启动本地终端失败: $e\r\n');

@@ -81,9 +81,19 @@ dev_dependencies:
   # 代码生成
   build_runner: ^2.10.5
   json_serializable: ^6.11.3
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png" # 你的原图路径（必须是 1024x1024）# 只启用 Windows、macOS、Linux 三个桌面平台
+  windows:
+    generate: true
+    # icon_size: 256       # 可选，Windows 图标大小，范围 48~256，默认 48，建议 256 更清晰
+  macos:
+    generate: true
+  linux:
+    generate: true
 
 # The following section is specific to Flutter packages.
 flutter:

@@ -4,16 +4,18 @@ import '../../domain/services/terminal_service.dart';
 import '../../domain/services/ssh_service.dart';
 import '../../domain/services/local_terminal_service.dart';
 import '../../domain/services/terminal_input_service.dart';
+import '../../domain/services/app_config_service.dart';
 import '../../data/models/ssh_connection.dart';
 
 /// 终端会话状态管理
 class TerminalProvider extends ChangeNotifier {
   final TerminalService _terminalService;
+  final AppConfigService _appConfigService;
   final Map<String, TerminalInputService> _services = {};
   String? _activeSessionId;
   static const String _localTerminalId = 'local_terminal';
 
-  TerminalProvider(this._terminalService);
+  TerminalProvider(this._terminalService, this._appConfigService);
 
   List<TerminalSession> get sessions => _terminalService.getAllSessions();
   String? get activeSessionId => _activeSessionId;
@@ -40,11 +42,15 @@ class TerminalProvider extends ChangeNotifier {
     final localService = LocalTerminalService();
     _services[_localTerminalId] = localService;
 
+    // 获取终端配置（用于设置字体）
+    final terminalConfig = _appConfigService.terminal;
+
     // 先创建会话（这会调用 initialize，设置终端引用）
     final session = _terminalService.createSession(
       id: _localTerminalId,
       name: '本地终端',
       inputService: localService,
+      terminalConfig: terminalConfig,
     );
 
     // 然后启动 PTY（此时终端引用已设置）
@@ -65,10 +71,14 @@ class TerminalProvider extends ChangeNotifier {
     final sshService = SshService();
     _services[connection.id] = sshService;
 
+    // 获取终端配置（用于设置字体）
+    final terminalConfig = _appConfigService.terminal;
+
     final session = _terminalService.createSession(
       id: connection.id,
       name: connection.name,
       inputService: sshService,
+      terminalConfig: terminalConfig,
     );
 
     _activeSessionId = connection.id;

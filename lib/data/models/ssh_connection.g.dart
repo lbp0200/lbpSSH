@@ -41,7 +41,7 @@ Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
       'password': instance.password,
       'privateKeyPath': instance.privateKeyPath,
       'keyPassphrase': instance.keyPassphrase,
-      'jumpHost': instance.jumpHost?.toJson(),
+      'jumpHost': instance.jumpHost,
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),

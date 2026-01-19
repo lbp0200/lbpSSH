@@ -4,34 +4,36 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/connection_repository.dart';
 import 'domain/services/terminal_service.dart';
 import 'domain/services/sync_service.dart';
+import 'domain/services/app_config_service.dart';
 import 'presentation/providers/connection_provider.dart';
 import 'presentation/providers/terminal_provider.dart';
 import 'presentation/providers/sync_provider.dart';
+import 'presentation/providers/app_config_provider.dart';
 import 'presentation/screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 初始化仓库
   final connectionRepository = ConnectionRepository();
   await connectionRepository.init();
 
-  // 初始化服务
   final terminalService = TerminalService();
   final syncService = SyncService(connectionRepository);
+  final appConfigService = AppConfigService.getInstance();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => ConnectionProvider(connectionRepository)
-            ..loadConnections(),
+          create: (_) =>
+              ConnectionProvider(connectionRepository)..loadConnections(),
         ),
         ChangeNotifierProvider(
-          create: (_) => TerminalProvider(terminalService),
+          create: (_) => TerminalProvider(terminalService, appConfigService),
         ),
+        ChangeNotifierProvider(create: (_) => SyncProvider(syncService)),
         ChangeNotifierProvider(
-          create: (_) => SyncProvider(syncService),
+          create: (_) => AppConfigProvider(appConfigService),
         ),
       ],
       child: const MyApp(),

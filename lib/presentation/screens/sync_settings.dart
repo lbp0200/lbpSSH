@@ -299,61 +299,61 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               ),
             ] else ...[
               // GitHub/Gitee 仓库配置
-              TextFormField(
-                controller: _ownerController,
-                decoration: InputDecoration(
-                  labelText: '仓库所有者',
-                  hintText: _platform == SyncPlatform.github
-                      ? '例如：username'
-                      : '例如：username',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请输入仓库所有者';
-                  }
-                  return null;
-                },
+            TextFormField(
+              controller: _ownerController,
+              decoration: InputDecoration(
+                labelText: '仓库所有者',
+                hintText: _platform == SyncPlatform.github
+                    ? '例如：username'
+                    : '例如：username',
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _repoController,
-                decoration: const InputDecoration(
-                  labelText: '仓库名称',
-                  hintText: '例如：ssh-configs',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请输入仓库名称';
-                  }
-                  return null;
-                },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '请输入仓库所有者';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _repoController,
+              decoration: const InputDecoration(
+                labelText: '仓库名称',
+                hintText: '例如：ssh-configs',
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _branchController,
-                      decoration: const InputDecoration(
-                        labelText: '分支',
-                        hintText: 'main',
-                      ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '请输入仓库名称';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _branchController,
+                    decoration: const InputDecoration(
+                      labelText: '分支',
+                      hintText: 'main',
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: _filePathController,
-                      decoration: const InputDecoration(
-                        labelText: '文件路径',
-                        hintText: 'ssh_connections.json',
-                      ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    controller: _filePathController,
+                    decoration: const InputDecoration(
+                      labelText: '文件路径',
+                      hintText: 'ssh_connections.json',
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
             ],
             const SizedBox(height: 24),
 

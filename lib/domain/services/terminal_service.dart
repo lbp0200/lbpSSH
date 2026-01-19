@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:xterm/xterm.dart';
 import 'terminal_input_service.dart';
 import 'local_terminal_service.dart';
+import '../../data/models/terminal_config.dart';
 
 /// 终端会话
 class TerminalSession {
@@ -16,6 +17,7 @@ class TerminalSession {
     required this.id,
     required this.name,
     required this.inputService,
+    TerminalConfig? terminalConfig,
   }) : terminal = Terminal(
           maxLines: 10000,
         );
@@ -38,11 +40,7 @@ class TerminalSession {
 
     // 监听连接状态
     _stateSubscription = inputService.stateStream.listen((isConnected) {
-      if (isConnected) {
-        terminal.write('\r\n[已连接]\r\n');
-      } else {
-        terminal.write('\r\n[已断开]\r\n');
-      }
+      // 连接状态变化（已移除状态消息显示）
     }, onError: (error) {
       // 状态流错误
     }, onDone: () {
@@ -90,11 +88,13 @@ class TerminalService {
     required String id,
     required String name,
     required TerminalInputService inputService,
+    TerminalConfig? terminalConfig,
   }) {
     final session = TerminalSession(
       id: id,
       name: name,
       inputService: inputService,
+      terminalConfig: terminalConfig,
     );
     _sessions[id] = session;
     session.initialize();

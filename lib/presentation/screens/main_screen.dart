@@ -4,6 +4,7 @@ import '../../data/models/ssh_connection.dart';
 import '../providers/terminal_provider.dart';
 import '../widgets/connection_list.dart';
 import '../widgets/terminal_view.dart';
+import 'app_settings_screen.dart';
 
 /// 主界面
 class MainScreen extends StatefulWidget {
@@ -14,16 +15,17 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  double _splitPosition = 0.25; // 左侧面板宽度比例
+  double _splitPosition = 0.25;
   bool _isLeftPanelVisible = true;
 
   @override
   void initState() {
     super.initState();
-    // 初始化本地终端
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final terminalProvider =
-          Provider.of<TerminalProvider>(context, listen: false);
+      final terminalProvider = Provider.of<TerminalProvider>(
+        context,
+        listen: false,
+      );
       terminalProvider.initialize();
     });
   }
@@ -40,14 +42,12 @@ class _MainScreenState extends State<MainScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: Border(
-                  right: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                  ),
+                  right: BorderSide(color: Theme.of(context).dividerColor),
                 ),
               ),
               child: Column(
                 children: [
-                  // 面板标题和折叠按钮
+                  // 面板标题和操作按钮
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -59,13 +59,26 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Text(
-                          '连接列表',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: const Text(
+                            '连接列表',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.settings),
+                          iconSize: 20,
+                          tooltip: '设置',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const AppSettingsScreen(),
+                              ),
+                            );
+                          },
+                        ),
                         IconButton(
                           icon: const Icon(Icons.chevron_left),
                           iconSize: 20,
@@ -96,7 +109,8 @@ class _MainScreenState extends State<MainScreen> {
               child: GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    final newPosition = _splitPosition +
+                    final newPosition =
+                        _splitPosition +
                         (details.delta.dx / MediaQuery.of(context).size.width);
                     _splitPosition = newPosition.clamp(0.15, 0.5);
                   });
@@ -139,8 +153,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _handleConnectionTap(SshConnection connection) async {
-    final terminalProvider =
-        Provider.of<TerminalProvider>(context, listen: false);
+    final terminalProvider = Provider.of<TerminalProvider>(
+      context,
+      listen: false,
+    );
 
     // 检查是否已存在会话
     final existingSession = terminalProvider.sessions
@@ -163,20 +179,19 @@ class _MainScreenState extends State<MainScreen> {
             // 连接失败，关闭会话
             terminalProvider.closeSession(connection.id);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('连接失败: $e')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('连接失败: $e')));
             }
           }
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('创建会话失败: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('创建会话失败: $e')));
         }
       }
     }
   }
-
 }
