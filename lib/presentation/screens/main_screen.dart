@@ -51,8 +51,8 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   // 面板操作按钮
                   Container(
-                    height: 70,
-                    padding: const EdgeInsets.all(4),
+                    height: 75,
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -68,8 +68,8 @@ class _MainScreenState extends State<MainScreen> {
                           tooltip: '设置',
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
+                            minWidth: 30,
+                            minHeight: 30,
                           ),
                           onPressed: () {
                             Navigator.of(context).push(
@@ -85,22 +85,14 @@ class _MainScreenState extends State<MainScreen> {
                           tooltip: '编辑连接',
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
+                            minWidth: 30,
+                            minHeight: 30,
                           ),
                           onPressed: () {
                             _showConnectionListForEditing();
                           },
                         ),
                       ],
-                    ),
-                  ),
-                  // 紧凑型连接列表
-                  Expanded(
-                    child: CompactConnectionList(
-                      onConnectionTap: (connection) {
-                        _handleConnectionTap(connection);
-                      },
                     ),
                   ),
                 ],
@@ -196,14 +188,18 @@ class _MainScreenState extends State<MainScreen> {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const ConnectionFormScreen(connection: null),
+                    builder: (context) =>
+                        const ConnectionFormScreen(connection: null),
                   ),
                 );
               },
               icon: const Icon(Icons.add, size: 16),
               label: const Text('新建连接'),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
               ),
             ),
           ],
@@ -216,7 +212,8 @@ class _MainScreenState extends State<MainScreen> {
               Navigator.of(context).pop();
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => ConnectionFormScreen(connection: connection),
+                  builder: (context) =>
+                      ConnectionFormScreen(connection: connection),
                 ),
               );
             },

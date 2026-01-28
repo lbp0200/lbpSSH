@@ -99,8 +99,10 @@ class SshService implements TerminalInputService {
         throw UnimplementedError('跳板机功能未实现');
       }
 
-      // 创建交互式会话
-      _session = await _client!.shell();
+      // 创建交互式会话，自动发现用户的默认shell
+      _session = await _client!.shell(
+        environment: await _getShellEnvironment(),
+      );
       // 使用 UTF-8 解码器正确处理多字节字符（如中文）
       _session!.stdout
           .cast<List<int>>()
@@ -199,6 +201,100 @@ class SshService implements TerminalInputService {
     if (_isDisposed || _stateController.isClosed) return;
     _state = newState;
     _stateController.add(newState);
+  }
+
+  /// 自动发现用户的默认shell环境
+  Future<Map<String, String>> _getShellEnvironment() async {
+    final environment = <String, String>{};
+    
+    try {
+      // 尝试获取用户的默认shell
+      // 首先检查 $SHELL 环境变量
+      final session = await _client!.execute('echo \$SHELL');
+      String shellPath = '';
+      
+      await for (final data in session.stdout.cast<List<int>>()) {
+        shellPath += String.fromCharCodes(data);
+      }
+      shellPath = shellPath.trim();
+      
+      // 如果 \$SHELL 为空，尝试从 /etc/passwd 获取
+      if (shellPath.isEmpty) {
+        final passwdSession = await _client!.execute('grep "^\\\$(whoami):" /etc/passwd | cut -d: -f7');
+        await for (final data in passwdSession.stdout.cast<List<int>>()) {
+          shellPath += String.fromCharCodes(data);
+        }
+        shellPath = shellPath.trim();
+      }
+      
+      // 设置SHELL环境变量
+      if (shellPath.isNotEmpty) {
+        environment['SHELL'] = shellPath;
+      } else {
+        // 默认常见的shell，按优先级排序
+        final commonShells = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/zsh', '/usr/bin/bash'];
+        
+        for (final shell in commonShells) {
+          try {
+            final testSession = await _client!.execute('test -x "$shell" && echo "$shell"');
+            String result = '';
+            await for (final data in testSession.stdout.cast<List<int>>()) {
+              result += String.fromCharCodes(data);
+            }
+            if (result.trim().isNotEmpty) {
+              environment['SHELL'] = shell;
+              break;
+            }
+          } catch (e) {
+            // 忽略错误，继续尝试下一个shell
+            continue;
+          }
+        }
+      }
+      
+      // 设置其他常用的环境变量
+      environment['TERM'] = 'xterm-256color';
+      environment['LANG'] = 'en_US.UTF-8';
+      environment['LC_ALL'] = 'en_US.UTF-8';
+      
+      // 尝试获取用户的HOME目录
+      try {
+        final homeSession = await _client!.execute('echo \$HOME');
+        String homePath = '';
+        await for (final data in homeSession.stdout.cast<List<int>>()) {
+          homePath += String.fromCharCodes(data);
+        }
+        homePath = homePath.trim();
+        if (homePath.isNotEmpty) {
+          environment['HOME'] = homePath;
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+      
+      // 尝试获取PATH
+      try {
+        final pathSession = await _client!.execute('echo \$PATH');
+        String pathValue = '';
+        await for (final data in pathSession.stdout.cast<List<int>>()) {
+          pathValue += String.fromCharCodes(data);
+        }
+        pathValue = pathValue.trim();
+        if (pathValue.isNotEmpty) {
+          environment['PATH'] = pathValue;
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+      
+    } catch (e) {
+      // 如果检测失败，使用最小环境变量
+      environment['SHELL'] = '/bin/bash';
+      environment['TERM'] = 'xterm-256color';
+      environment['LANG'] = 'en_US.UTF-8';
+    }
+    
+    return environment;
   }
 
   /// 清理资源
