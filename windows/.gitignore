@@ -1,5 +1,6 @@
 flutter/ephemeral/
 
+
 # Visual Studio user-specific files.
 *.suo
 *.user
@@ -15,3 +16,17 @@ x86/
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
+
+# macOS垃圾文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?
+*/.DS_Store
+*/._*
+*/.Spotlight-V100
+*/.Trashes

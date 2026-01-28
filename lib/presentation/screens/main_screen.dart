@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/ssh_connection.dart';
 import '../providers/terminal_provider.dart';
+import '../widgets/compact_connection_list.dart';
 import '../widgets/connection_list.dart';
 import '../widgets/terminal_view.dart';
+import '../screens/connection_form.dart';
 import 'app_settings_screen.dart';
 
 /// 主界面
@@ -15,7 +17,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  double _splitPosition = 0.25;
+  static const double _compactPanelWidth = 80; // 紧凑型面板固定宽度
   bool _isLeftPanelVisible = true;
 
   @override
@@ -35,10 +37,10 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Row(
         children: [
-          // 左侧连接列表面板
+          // 左侧紧凑型连接Logo面板
           if (_isLeftPanelVisible)
             Container(
-              width: MediaQuery.of(context).size.width * _splitPosition,
+              width: _compactPanelWidth,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: Border(
@@ -47,9 +49,10 @@ class _MainScreenState extends State<MainScreen> {
               ),
               child: Column(
                 children: [
-                  // 面板标题和操作按钮
+                  // 面板操作按钮
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    height: 70,
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -57,20 +60,17 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Flexible(
-                          child: const Text(
-                            '连接列表',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.settings),
-                          iconSize: 20,
+                          iconSize: 18,
                           tooltip: '设置',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -80,20 +80,24 @@ class _MainScreenState extends State<MainScreen> {
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          iconSize: 20,
+                          icon: const Icon(Icons.edit),
+                          iconSize: 18,
+                          tooltip: '编辑连接',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                           onPressed: () {
-                            setState(() {
-                              _isLeftPanelVisible = false;
-                            });
+                            _showConnectionListForEditing();
                           },
                         ),
                       ],
                     ),
                   ),
-                  // 连接列表
+                  // 紧凑型连接列表
                   Expanded(
-                    child: ConnectionList(
+                    child: CompactConnectionList(
                       onConnectionTap: (connection) {
                         _handleConnectionTap(connection);
                       },
@@ -102,25 +106,9 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
-          // 分割线（可拖动调整大小）
+          // 分割线
           if (_isLeftPanelVisible)
-            MouseRegion(
-              cursor: SystemMouseCursors.resizeColumn,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    final newPosition =
-                        _splitPosition +
-                        (details.delta.dx / MediaQuery.of(context).size.width);
-                    _splitPosition = newPosition.clamp(0.15, 0.5);
-                  });
-                },
-                child: Container(
-                  width: 4,
-                  color: Theme.of(context).dividerColor,
-                ),
-              ),
-            ),
+            Container(width: 1, color: Theme.of(context).dividerColor),
           // 右侧终端区域
           Expanded(
             child: _isLeftPanelVisible
@@ -193,5 +181,54 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
     }
+  }
+
+  void _showConnectionListForEditing() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('管理连接'),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ConnectionFormScreen(connection: null),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('新建连接'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          height: 300,
+          child: ConnectionList(
+            onConnectionTap: (connection) {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ConnectionFormScreen(connection: connection),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
   }
 }
