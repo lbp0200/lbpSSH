@@ -8,10 +8,7 @@ import '../screens/connection_form.dart';
 class ConnectionList extends StatelessWidget {
   final Function(SshConnection)? onConnectionTap;
 
-  const ConnectionList({
-    super.key,
-    this.onConnectionTap,
-  });
+  const ConnectionList({super.key, this.onConnectionTap});
 
   @override
   Widget build(BuildContext context) {
@@ -40,17 +37,18 @@ class ConnectionList extends StatelessWidget {
                 Icon(
                   Icons.cloud_off,
                   size: 64,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '暂无连接配置',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.5),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
@@ -122,9 +120,9 @@ class ConnectionList extends StatelessWidget {
     if (confirmed == true) {
       await provider.deleteConnection(connection.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('连接已删除')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('连接已删除')));
       }
     }
   }
@@ -154,7 +152,9 @@ class _ConnectionListItem extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
         title: Text(connection.name),
-        subtitle: Text('${connection.username}@${connection.host}:${connection.port}'),
+        subtitle: Text(
+          '${connection.username}@${connection.host}:${connection.port}',
+        ),
         trailing: PopupMenuButton(
           itemBuilder: (context) => [
             const PopupMenuItem(

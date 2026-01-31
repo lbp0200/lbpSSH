@@ -53,20 +53,16 @@ class SyncStatus extends StatelessWidget {
             else
               Icon(icon, size: 16, color: color),
             const SizedBox(width: 4),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-              ),
-            ),
+            Text(text, style: TextStyle(fontSize: 12, color: color)),
             if (lastSyncTime != null) ...[
               const SizedBox(width: 8),
               Text(
                 _formatTime(lastSyncTime),
                 style: TextStyle(
                   fontSize: 10,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],

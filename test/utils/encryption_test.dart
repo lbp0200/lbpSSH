@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lbpSSH/utils/encryption.dart';
+import 'package:lbp_ssh/utils/encryption.dart';
 import 'dart:convert';
 
 void main() {

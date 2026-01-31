@@ -135,7 +135,7 @@ class TerminalTabsView extends StatelessWidget {
                   size: 64,
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.3),
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -143,7 +143,7 @@ class TerminalTabsView extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.5),
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -241,16 +241,15 @@ class TerminalTabsView extends StatelessWidget {
                             size: 64,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.3),
+                            ).colorScheme.onSurface.withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             '没有活动的终端会话',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.5),
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
                                 ),
                           ),
                           const SizedBox(height: 8),
@@ -305,7 +304,7 @@ class _TerminalTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive
                 ? Theme.of(context).colorScheme.surface
-                : Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
             border: Border(
               bottom: BorderSide(
                 color: isActive
@@ -348,7 +347,7 @@ class _TerminalTab extends StatelessWidget {
                       size: 16,
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ),

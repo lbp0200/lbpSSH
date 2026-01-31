@@ -112,7 +112,7 @@ class AppConfigService with ChangeNotifier {
   TerminalConfig _terminal = TerminalConfig.defaultConfig;
   DefaultTerminalConfig _defaultTerminal = DefaultTerminalConfig.defaultConfig;
   SyncConfig? _sync;
-  SyncStatusEnum _status = SyncStatusEnum.idle;
+  final SyncStatusEnum _status = SyncStatusEnum.idle;
   DateTime? _lastSyncTime;
 
   AppConfigService._internal() {

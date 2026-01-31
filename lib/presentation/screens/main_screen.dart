@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/ssh_connection.dart';
 import '../providers/terminal_provider.dart';
-import '../widgets/compact_connection_list.dart';
 import '../widgets/connection_list.dart';
 import '../widgets/terminal_view.dart';
 import '../screens/connection_form.dart';
 import 'app_settings_screen.dart';
+import 'import_export_settings.dart';
+import 'sync_settings.dart';
 
 /// 主界面
 class MainScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  static const double _compactPanelWidth = 80; // 紧凑型面板固定宽度
+  static const double _compactPanelWidth = 60; // 紧凑型面板固定宽度
   bool _isLeftPanelVisible = true;
 
   @override
@@ -48,19 +49,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 面板操作按钮
-                  Container(
-                    height: 75,
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Theme.of(context).dividerColor,
-                        ),
-                      ),
-                    ),
+                  // 面板操作按钮 - 上对齐，占满高度
+                  Padding(
+                    padding: const EdgeInsets.all(4),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.settings),
@@ -72,13 +67,10 @@ class _MainScreenState extends State<MainScreen> {
                             minHeight: 30,
                           ),
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const AppSettingsScreen(),
-                              ),
-                            );
+                            _showSettingsMenu(context);
                           },
                         ),
+                        const SizedBox(height: 8),
                         IconButton(
                           icon: const Icon(Icons.edit),
                           iconSize: 18,
@@ -128,6 +120,70 @@ class _MainScreenState extends State<MainScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSettingsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '设置',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('应用设置'),
+              subtitle: const Text('终端配置、自动同步等'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AppSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_upload),
+              title: const Text('导入导出'),
+              subtitle: const Text('本地配置文件管理'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ImportExportSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_sync),
+              title: const Text('云端同步'),
+              subtitle: const Text('GitHub Gist/GitHub/Gitee同步'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SyncSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,14 +264,9 @@ class _MainScreenState extends State<MainScreen> {
           width: 400,
           height: 300,
           child: ConnectionList(
-            onConnectionTap: (connection) {
+            onConnectionTap: (connection) async {
               Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ConnectionFormScreen(connection: connection),
-                ),
-              );
+              await _handleConnectionTap(connection);
             },
           ),
         ),

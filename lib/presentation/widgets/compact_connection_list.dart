@@ -8,17 +8,20 @@ import '../screens/connection_form.dart';
 class CompactConnectionList extends StatelessWidget {
   final Function(SshConnection)? onConnectionTap;
 
-  const CompactConnectionList({
-    super.key,
-    this.onConnectionTap,
-  });
+  const CompactConnectionList({super.key, this.onConnectionTap});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ConnectionProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
-          return const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
         }
 
         if (provider.error != null) {
@@ -41,7 +44,9 @@ class CompactConnectionList extends StatelessWidget {
                 Icon(
                   Icons.add_circle_outline,
                   size: 24,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 4),
                 IconButton(
@@ -113,9 +118,9 @@ class CompactConnectionList extends StatelessWidget {
     if (confirmed == true) {
       await provider.deleteConnection(connection.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('连接已删除')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('连接已删除')));
       }
     }
   }
@@ -140,7 +145,8 @@ class _CompactConnectionItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Tooltip(
-        message: '${connection.name}\n${connection.username}@${connection.host}:${connection.port}',
+        message:
+            '${connection.name}\n${connection.username}@${connection.host}:${connection.port}',
         child: PopupMenuButton(
           padding: EdgeInsets.zero,
           itemBuilder: (context) => [
@@ -198,7 +204,7 @@ class _CompactConnectionItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 color: Theme.of(context).colorScheme.surface,
                 border: Border.all(
-                  color: Theme.of(context).dividerColor.withOpacity(0.3),
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                 ),
               ),
               child: Icon(

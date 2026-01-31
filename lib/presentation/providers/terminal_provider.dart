@@ -19,10 +19,9 @@ class TerminalProvider extends ChangeNotifier {
 
   List<TerminalSession> get sessions => _terminalService.getAllSessions();
   String? get activeSessionId => _activeSessionId;
-  TerminalSession? get activeSession =>
-      _activeSessionId != null
-          ? _terminalService.getSession(_activeSessionId!)
-          : null;
+  TerminalSession? get activeSession => _activeSessionId != null
+      ? _terminalService.getSession(_activeSessionId!)
+      : null;
 
   /// 初始化（创建默认本地终端）
   Future<void> initialize() async {
@@ -31,7 +30,7 @@ class TerminalProvider extends ChangeNotifier {
       try {
         await createLocalTerminal();
       } catch (e) {
-        // 如果创建本地终端失败（例如 flutter_pty 未正确构建），
+        // 如果创建本地终端失败（例如 Process API 问题），
         // 则静默失败，不阻止应用启动
       }
     }
@@ -108,8 +107,9 @@ class TerminalProvider extends ChangeNotifier {
 
     if (_activeSessionId == sessionId) {
       final remainingSessions = sessions;
-      _activeSessionId =
-          remainingSessions.isNotEmpty ? remainingSessions.first.id : null;
+      _activeSessionId = remainingSessions.isNotEmpty
+          ? remainingSessions.first.id
+          : null;
     }
 
     notifyListeners();

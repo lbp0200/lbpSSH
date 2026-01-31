@@ -16,6 +16,7 @@ SshConnection _$SshConnectionFromJson(Map<String, dynamic> json) =>
       authType: $enumDecode(_$AuthTypeEnumMap, json['authType']),
       password: json['password'] as String?,
       privateKeyPath: json['privateKeyPath'] as String?,
+      privateKeyContent: json['privateKeyContent'] as String?,
       keyPassphrase: json['keyPassphrase'] as String?,
       jumpHost: json['jumpHost'] == null
           ? null
@@ -40,6 +41,7 @@ Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
       'authType': _$AuthTypeEnumMap[instance.authType]!,
       'password': instance.password,
       'privateKeyPath': instance.privateKeyPath,
+      'privateKeyContent': instance.privateKeyContent,
       'keyPassphrase': instance.keyPassphrase,
       'jumpHost': instance.jumpHost,
       'notes': instance.notes,

@@ -1,4 +1,4 @@
-name: lbpSSH
+name: lbp_ssh
 description: "跨平台 SSH 终端管理器，支持配置同步到 GitHub/Gitee"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -41,7 +41,7 @@ dependencies:
 
   # 终端模拟器
   xterm: ^4.0.0
-  flutter_pty: ^0.4.0
+  # flutter_pty: ^0.4.0+2
 
   # 路由
   go_router: ^17.0.1
@@ -72,6 +72,9 @@ dependencies:
 
   # UUID 生成
   uuid: ^4.3.3
+
+  # 文件选择器
+  file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:

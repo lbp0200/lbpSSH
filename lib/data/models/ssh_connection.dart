@@ -29,6 +29,9 @@ class SshConnection {
   /// SSH 密钥路径
   final String? privateKeyPath;
 
+  /// SSH 私钥内容（直接存储密钥内容）
+  final String? privateKeyContent;
+
   /// 密钥密码（明文存储）
   final String? keyPassphrase;
 
@@ -56,14 +59,15 @@ class SshConnection {
     required this.authType,
     this.password,
     this.privateKeyPath,
+    this.privateKeyContent,
     this.keyPassphrase,
     this.jumpHost,
     this.notes,
     DateTime? createdAt,
     DateTime? updatedAt,
     this.version = 1,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   /// 从 JSON 创建
   factory SshConnection.fromJson(Map<String, dynamic> json) =>
@@ -82,6 +86,7 @@ class SshConnection {
     AuthType? authType,
     String? password,
     String? privateKeyPath,
+    String? privateKeyContent,
     String? keyPassphrase,
     JumpHostConfig? jumpHost,
     String? notes,
@@ -98,6 +103,7 @@ class SshConnection {
       authType: authType ?? this.authType,
       password: password ?? this.password,
       privateKeyPath: privateKeyPath ?? this.privateKeyPath,
+      privateKeyContent: privateKeyContent ?? this.privateKeyContent,
       keyPassphrase: keyPassphrase ?? this.keyPassphrase,
       jumpHost: jumpHost ?? this.jumpHost,
       notes: notes ?? this.notes,
@@ -154,4 +160,23 @@ class JumpHostConfig {
       _$JumpHostConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$JumpHostConfigToJson(this);
+
+  /// 创建副本
+  JumpHostConfig copyWith({
+    String? host,
+    int? port,
+    String? username,
+    AuthType? authType,
+    String? password,
+    String? privateKeyPath,
+  }) {
+    return JumpHostConfig(
+      host: host ?? this.host,
+      port: port ?? this.port,
+      username: username ?? this.username,
+      authType: authType ?? this.authType,
+      password: password ?? this.password,
+      privateKeyPath: privateKeyPath ?? this.privateKeyPath,
+    );
+  }
 }

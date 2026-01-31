@@ -5,10 +5,12 @@ import 'data/repositories/connection_repository.dart';
 import 'domain/services/terminal_service.dart';
 import 'domain/services/sync_service.dart';
 import 'domain/services/app_config_service.dart';
+import 'domain/services/import_export_service.dart';
 import 'presentation/providers/connection_provider.dart';
 import 'presentation/providers/terminal_provider.dart';
 import 'presentation/providers/sync_provider.dart';
 import 'presentation/providers/app_config_provider.dart';
+import 'presentation/providers/import_export_provider.dart';
 import 'presentation/screens/main_screen.dart';
 
 void main() async {
@@ -20,6 +22,7 @@ void main() async {
   final terminalService = TerminalService();
   final syncService = SyncService(connectionRepository);
   final appConfigService = AppConfigService.getInstance();
+  final importExportService = ImportExportService(connectionRepository);
 
   runApp(
     MultiProvider(
@@ -34,6 +37,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SyncProvider(syncService)),
         ChangeNotifierProvider(
           create: (_) => AppConfigProvider(appConfigService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ImportExportProvider(importExportService),
         ),
       ],
       child: const MyApp(),
