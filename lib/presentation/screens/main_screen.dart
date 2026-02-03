@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/ssh_connection.dart';
+import '../providers/connection_provider.dart';
 import '../providers/terminal_provider.dart';
-import '../widgets/connection_list.dart';
 import '../widgets/terminal_view.dart';
 import '../screens/connection_form.dart';
 import 'app_settings_screen.dart';
@@ -18,9 +18,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  static const double _compactPanelWidth = 60; // 紧凑型面板固定宽度
-  bool _isLeftPanelVisible = true;
-
   @override
   void initState() {
     super.initState();
@@ -36,88 +33,74 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          // 左侧紧凑型连接Logo面板
-          if (_isLeftPanelVisible)
-            Container(
-              width: _compactPanelWidth,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                border: Border(
-                  right: BorderSide(color: Theme.of(context).dividerColor),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 面板操作按钮 - 上对齐，占满高度
-                  Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.settings),
-                          iconSize: 18,
-                          tooltip: '设置',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 30,
-                            minHeight: 30,
-                          ),
-                          onPressed: () {
-                            _showSettingsMenu(context);
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          iconSize: 18,
-                          tooltip: '编辑连接',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 30,
-                            minHeight: 30,
-                          ),
-                          onPressed: () {
-                            _showConnectionListForEditing();
-                          },
-                        ),
-                      ],
+          // 顶部栏：标签页左对齐，按钮右对齐
+          _buildTopBar(context),
+          const Expanded(child: TerminalTabsView()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          // 左侧空白占位（标签页区域）
+          const Expanded(child: SizedBox.shrink()),
+          // 右侧按钮：加号和设置
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 加号按钮 - 弹出连接列表
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _showConnectionListPopup(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          // 分割线
-          if (_isLeftPanelVisible)
-            Container(width: 1, color: Theme.of(context).dividerColor),
-          // 右侧终端区域
-          Expanded(
-            child: _isLeftPanelVisible
-                ? const TerminalTabsView()
-                : Column(
-                    children: [
-                      // 显示左侧面板按钮
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () {
-                                setState(() {
-                                  _isLeftPanelVisible = true;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Expanded(child: TerminalTabsView()),
-                    ],
+              // 设置按钮
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _showSettingsMenu(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Icon(
+                      Icons.settings,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -188,6 +171,145 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  void _showConnectionListPopup(BuildContext context) {
+    final terminalProvider = Provider.of<TerminalProvider>(
+      context,
+      listen: false,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('选择连接'),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const ConnectionFormScreen(connection: null),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('新建连接'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 本地连接（最上方）
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: ListTile(
+                  leading: Icon(
+                    Icons.computer,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  title: const Text('本地终端'),
+                  subtitle: const Text('打开本地终端'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    try {
+                      await terminalProvider.createLocalTerminal();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('创建终端失败: $e')));
+                      }
+                    }
+                  },
+                ),
+              ),
+              const Divider(),
+              // 已保存的连接列表
+              Expanded(
+                child: Consumer<ConnectionProvider>(
+                  builder: (context, provider, child) {
+                    if (provider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final connections = provider.connections;
+
+                    if (connections.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.cloud_off,
+                              size: 48,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.3),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '暂无连接配置',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: connections.length,
+                      itemBuilder: (context, index) {
+                        final connection = connections[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.vpn_key,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            title: Text(connection.name),
+                            subtitle: Text(
+                              '${connection.username}@${connection.host}:${connection.port}',
+                            ),
+                            onTap: () async {
+                              Navigator.of(context).pop();
+                              await _handleConnectionTap(connection);
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleConnectionTap(SshConnection connection) async {
     final terminalProvider = Provider.of<TerminalProvider>(
       context,
@@ -229,54 +351,5 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
     }
-  }
-
-  void _showConnectionListForEditing() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('管理连接'),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const ConnectionFormScreen(connection: null),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('新建连接'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 400,
-          height: 300,
-          child: ConnectionList(
-            onConnectionTap: (connection) async {
-              Navigator.of(context).pop();
-              await _handleConnectionTap(connection);
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
   }
 }
