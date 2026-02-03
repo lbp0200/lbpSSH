@@ -13,12 +13,7 @@ enum SyncPlatform {
 }
 
 /// 同步状态
-enum SyncStatusEnum {
-  idle,
-  syncing,
-  success,
-  error,
-}
+enum SyncStatusEnum { idle, syncing, success, error }
 
 /// 同步配置
 class SyncConfig {
@@ -47,34 +42,34 @@ class SyncConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'platform': platform.name,
-        'accessToken': accessToken,
-        'repositoryOwner': repositoryOwner,
-        'repositoryName': repositoryName,
-        'branch': branch,
-        'filePath': filePath,
-        'gistId': gistId,
-        'gistFileName': gistFileName,
-        'autoSync': autoSync,
-        'syncIntervalMinutes': syncIntervalMinutes,
-      };
+    'platform': platform.name,
+    'accessToken': accessToken,
+    'repositoryOwner': repositoryOwner,
+    'repositoryName': repositoryName,
+    'branch': branch,
+    'filePath': filePath,
+    'gistId': gistId,
+    'gistFileName': gistFileName,
+    'autoSync': autoSync,
+    'syncIntervalMinutes': syncIntervalMinutes,
+  };
 
   factory SyncConfig.fromJson(Map<String, dynamic> json) => SyncConfig(
-        platform: SyncPlatform.values.firstWhere(
-          (e) => e.name == json['platform'],
-          orElse: () => SyncPlatform.github,
-        ),
-        accessToken: json['accessToken'],
-        repositoryOwner: json['repositoryOwner'],
-        repositoryName: json['repositoryName'],
-        branch: json['branch'] ?? 'main',
-        filePath: json['filePath'],
-        gistId: json['gistId'],
-        gistFileName: json['gistFileName'],
-        autoSync: json['autoSync'] ?? false,
-        syncIntervalMinutes:
-            json['syncIntervalMinutes'] ?? AppConstants.defaultSyncIntervalMinutes,
-      );
+    platform: SyncPlatform.values.firstWhere(
+      (e) => e.name == json['platform'],
+      orElse: () => SyncPlatform.github,
+    ),
+    accessToken: json['accessToken'],
+    repositoryOwner: json['repositoryOwner'],
+    repositoryName: json['repositoryName'],
+    branch: json['branch'] ?? 'main',
+    filePath: json['filePath'],
+    gistId: json['gistId'],
+    gistFileName: json['gistFileName'],
+    autoSync: json['autoSync'] ?? false,
+    syncIntervalMinutes:
+        json['syncIntervalMinutes'] ?? AppConstants.defaultSyncIntervalMinutes,
+  );
 }
 
 /// 配置同步服务
@@ -123,7 +118,7 @@ class SyncService {
       throw Exception('同步配置未设置或未授权');
     }
 
-      _status = SyncStatusEnum.syncing;
+    _status = SyncStatusEnum.syncing;
 
     try {
       // 获取所有连接
@@ -171,7 +166,7 @@ class SyncService {
       throw Exception('同步配置未设置或未授权');
     }
 
-      _status = SyncStatusEnum.syncing;
+    _status = SyncStatusEnum.syncing;
 
     try {
       String contentBase64;
@@ -301,17 +296,16 @@ class SyncService {
   Future<void> _uploadToGist(String contentBase64) async {
     if (_config!.gistId == null) {
       // 创建新的 Gist
-      final fileName = _config!.gistFileName ?? AppConstants.defaultSyncFileName;
+      final fileName =
+          _config!.gistFileName ?? AppConstants.defaultSyncFileName;
       final url = 'https://api.github.com/gists';
-      
+
       final data = {
         'description': 'SSH Connections Config',
         'public': false,
         'files': {
-          fileName: {
-            'content': utf8.decode(base64Decode(contentBase64)),
-          }
-        }
+          fileName: {'content': utf8.decode(base64Decode(contentBase64))},
+        },
       };
 
       final response = await _dio.post(
@@ -337,9 +331,10 @@ class SyncService {
       await saveConfig(newConfig);
     } else {
       // 更新现有的 Gist
-      final fileName = _config!.gistFileName ?? AppConstants.defaultSyncFileName;
+      final fileName =
+          _config!.gistFileName ?? AppConstants.defaultSyncFileName;
       final url = 'https://api.github.com/gists/${_config!.gistId}';
-      
+
       // 先获取现有 Gist 以获取文件 SHA
       final getResponse = await _dio.get(
         url,
@@ -364,8 +359,8 @@ class SyncService {
           fileName: {
             'content': utf8.decode(base64Decode(contentBase64)),
             if (fileSha != null) 'sha': fileSha,
-          }
-        }
+          },
+        },
       };
 
       await _dio.patch(
@@ -430,11 +425,13 @@ class SyncService {
             localConn.updatedAt.isAfter(remoteConn.updatedAt) &&
             remoteConn.updatedAt.isAfter(localConn.createdAt)) {
           // 有冲突
-          conflicts.add(SyncConflict(
-            connectionId: localConn.id,
-            localConnection: localConn,
-            remoteConnection: remoteConn,
-          ));
+          conflicts.add(
+            SyncConflict(
+              connectionId: localConn.id,
+              localConnection: localConn,
+              remoteConnection: remoteConn,
+            ),
+          );
         }
       }
     }

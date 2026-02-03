@@ -41,7 +41,7 @@ dependencies:
 
   # 终端模拟器
   xterm: ^4.0.0
-  # flutter_pty: ^0.4.0+2
+  flutter_pty: ^0.4.0+2
 
   # 路由
   go_router: ^17.0.1

@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_pty/flutter_pty.dart';
 import 'package:xterm/xterm.dart';
 import 'terminal_input_service.dart';
 
-/// 本地终端服务 - 简化版实现
+/// 本地终端服务 - 使用 PTY 实现
 class LocalTerminalService implements TerminalInputService {
-  Process? _process;
+  Pty? _pty;
   Terminal? _terminal;
   final _outputController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
   bool _isShuttingDown = false;
+
+  // 性能优化：输出缓冲和批处理
+  final _outputBuffer = StringBuffer();
+  Timer? _outputTimer;
 
   /// 输出流
   @override
@@ -21,16 +26,28 @@ class LocalTerminalService implements TerminalInputService {
   Stream<bool> get stateStream => _stateController.stream;
 
   /// 是否已连接
-  bool get isConnected => _process != null && !_isShuttingDown;
+  bool get isConnected => _pty != null && !_isShuttingDown;
 
   /// 设置终端（用于获取终端尺寸）
   void setTerminal(Terminal terminal) {
     _terminal = terminal;
   }
 
+  /// 性能优化：批量输出处理
+  void _scheduleOutputFlush() {
+    _outputTimer?.cancel();
+    _outputTimer = Timer(const Duration(milliseconds: 10), () {
+      final output = _outputBuffer.toString();
+      _outputBuffer.clear();
+      if (output.isNotEmpty) {
+        _outputController.add(output);
+      }
+    });
+  }
+
   /// 启动本地终端
   Future<void> start() async {
-    if (_process != null || _isShuttingDown) {
+    if (_pty != null || _isShuttingDown) {
       return;
     }
 
@@ -59,43 +76,37 @@ class LocalTerminalService implements TerminalInputService {
       final finalColumns = (columns > 0 ? columns : 80).clamp(1, 1000);
       final finalRows = (rows > 0 ? rows : 24).clamp(1, 1000);
 
-      // 使用 Dart 的 Process API 启动进程
       final workingDirectory =
           Platform.environment['HOME'] ??
           Platform.environment['USERPROFILE'] ??
           Directory.current.path;
 
-      _process = await Process.start(
+      // 使用 PTY 启动进程
+      final pty = Pty.start(
         shell,
-        arguments,
+        arguments: arguments,
         workingDirectory: workingDirectory,
-        environment: Map.from(Platform.environment),
-        includeParentEnvironment: true,
+        environment: Platform.environment,
+        columns: finalColumns,
+        rows: finalRows,
       );
+      _pty = pty;
 
-      // 设置终端尺寸（通过环境变量或直接向进程发送信号）
-      try {
-        // 发送窗口大小调整命令到进程
-        // 这通常通过向进程的stdout发送特定的控制序列来实现
-        final resizeCommand = Platform.isWindows
-            ? ''
-            : '\x1b[8;$finalRows;${finalColumns}t';
-
-        if (resizeCommand.isNotEmpty) {
-          _process!.stdin.write(resizeCommand);
-          await _process!.stdin.flush();
-        }
-      } catch (e) {
-        // 终端尺寸设置失败，继续运行
-      }
-
-      // 监听进程输出
-      _process!.stdout
-          .transform(const Utf8Decoder())
+      // 监听 PTY 输出
+      _pty!.output
+          .cast<List<int>>()
+          .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
             (data) {
               if (!_isShuttingDown) {
-                _outputController.add(data);
+                // 性能优化：批量处理输出
+                final formattedData = data
+                    .replaceAll('\r\n', '\n')
+                    .replaceAll('\r', '\n');
+                _outputBuffer.write(formattedData);
+
+                // 使用定时器批量发送输出，减少频繁的UI更新
+                _scheduleOutputFlush();
               }
             },
             onError: (error) {
@@ -105,32 +116,25 @@ class LocalTerminalService implements TerminalInputService {
             },
             onDone: () {
               if (!_isShuttingDown) {
-                _process = null;
+                _pty = null;
                 _stateController.add(false);
                 _outputController.add('\r\n[进程已正常退出]\r\n');
               }
             },
           );
 
-      // 监听stderr
-      _process!.stderr.transform(const Utf8Decoder()).listen((data) {
-        if (!_isShuttingDown) {
-          _outputController.add('\r\n[错误输出: $data]');
-        }
-      });
-
       // 监听进程退出
-      _process!.exitCode
+      _pty!.exitCode
           .then((code) {
             if (!_isShuttingDown) {
-              _process = null;
+              _pty = null;
               _stateController.add(false);
               _outputController.add('\r\n[进程已退出，退出码: $code]\r\n');
             }
           })
           .catchError((error) {
             if (!_isShuttingDown) {
-              _process = null;
+              _pty = null;
               _stateController.add(false);
               _outputController.add('\r\n[进程异常退出: $error]\r\n');
             }
@@ -138,6 +142,8 @@ class LocalTerminalService implements TerminalInputService {
 
       _stateController.add(true);
       _outputController.add('本地终端已启动 (Shell: $shell)\r\n');
+      _outputController.add('终端尺寸: $finalColumns x $finalRows\r\n');
+      _outputController.add('当前目录: $workingDirectory\r\n');
     } catch (e) {
       _stateController.add(false);
       _outputController.add('启动本地终端失败: $e\r\n');
@@ -145,13 +151,14 @@ class LocalTerminalService implements TerminalInputService {
     }
   }
 
-  /// 发送输入
+  /// 发送输入到 PTY
   @override
   void sendInput(String input) {
-    if (_process != null && !_isShuttingDown) {
+    if (_pty != null && !_isShuttingDown) {
       try {
-        _process!.stdin.write(input);
-        _process!.stdin.flush();
+        // 将字符串转换为 UTF-8 字节并发送到 PTY
+        final bytes = const Utf8Encoder().convert(input);
+        _pty!.write(bytes);
       } catch (e) {
         _outputController.add('\r\n[发送输入失败: $e]\r\n');
       }
@@ -161,11 +168,10 @@ class LocalTerminalService implements TerminalInputService {
   /// 执行命令（非交互式）
   @override
   Future<String> executeCommand(String command) async {
-    if (_process == null || _isShuttingDown) {
+    if (_pty == null || _isShuttingDown) {
       throw Exception('本地终端未启动');
     }
 
-    // 发送命令并等待结果
     final buffer = StringBuffer();
     final subscription = _outputController.stream.listen((data) {
       buffer.write(data);
@@ -175,7 +181,6 @@ class LocalTerminalService implements TerminalInputService {
       sendInput(command);
       sendInput('\n');
 
-      // 等待命令执行完成（简化实现）
       await Future.delayed(const Duration(seconds: 2));
 
       await subscription.cancel();
@@ -188,18 +193,11 @@ class LocalTerminalService implements TerminalInputService {
 
   /// 调整终端尺寸
   void resize(int rows, int columns) {
-    if (_process != null && !_isShuttingDown) {
+    if (_pty != null && !_isShuttingDown) {
       try {
-        // 发送终端尺寸调整命令
-        final resizeCommand = Platform.isWindows
-            ? ''
-            : '\x1b[8;$rows;${columns}t';
-
-        if (resizeCommand.isNotEmpty) {
-          sendInput(resizeCommand);
-        }
+        _pty!.resize(columns, rows);
       } catch (e) {
-        // 调整终端尺寸失败
+        // 调整终端尺寸失败，静默处理
       }
     }
   }
@@ -208,21 +206,20 @@ class LocalTerminalService implements TerminalInputService {
   Future<void> stop() async {
     _isShuttingDown = true;
 
-    if (_process != null) {
+    if (_pty != null) {
       try {
-        // 优雅地发送退出命令
-        sendInput('exit\n');
+        // 发送 Ctrl+D (EOF) 信号
+        sendInput('\x04');
         await Future.delayed(const Duration(milliseconds: 500));
 
-        // 如果进程仍在运行，强制终止
-        if (_process != null) {
-          _process!.kill();
-          await _process!.exitCode;
+        if (_pty != null) {
+          _pty!.kill();
+          await _pty!.exitCode;
         }
       } catch (e) {
         // 停止进程时出错，忽略
       } finally {
-        _process = null;
+        _pty = null;
         _stateController.add(false);
         _outputController.add('\r\n[本地终端已停止]\r\n');
       }
@@ -232,6 +229,12 @@ class LocalTerminalService implements TerminalInputService {
   /// 清理资源
   @override
   void dispose() {
+    // 清理定时器
+    _outputTimer?.cancel();
+
+    // 清理输出缓冲
+    _outputBuffer.clear();
+
     stop();
     _outputController.close();
     _stateController.close();

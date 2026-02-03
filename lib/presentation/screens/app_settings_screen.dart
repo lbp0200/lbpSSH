@@ -276,15 +276,25 @@ class _TerminalDisplaySettingsState extends State<TerminalDisplaySettings> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
-                    final provider = Provider.of<AppConfigProvider>(
+                    final scaffoldMessenger = ScaffoldMessenger.maybeOf(
                       context,
-                      listen: false,
                     );
-                    await provider.saveTerminalConfig(_config);
-                    if (mounted) {
-                      ScaffoldMessenger.of(
+                    if (scaffoldMessenger == null) return;
+
+                    try {
+                      final provider = Provider.of<AppConfigProvider>(
                         context,
-                      ).showSnackBar(const SnackBar(content: Text('设置已保存')));
+                        listen: false,
+                      );
+                      await provider.saveTerminalConfig(_config);
+
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(content: Text('设置已保存')),
+                      );
+                    } catch (e) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(content: Text('保存失败: $e')),
+                      );
                     }
                   },
                   child: const Text('保存设置'),
@@ -493,15 +503,25 @@ class _DefaultTerminalSettingsState extends State<DefaultTerminalSettings> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
-                    final provider = Provider.of<AppConfigProvider>(
+                    final scaffoldMessenger = ScaffoldMessenger.maybeOf(
                       context,
-                      listen: false,
                     );
-                    await provider.saveDefaultTerminalConfig(_config);
-                    if (mounted) {
-                      ScaffoldMessenger.of(
+                    if (scaffoldMessenger == null) return;
+
+                    try {
+                      final provider = Provider.of<AppConfigProvider>(
                         context,
-                      ).showSnackBar(const SnackBar(content: Text('设置已保存')));
+                        listen: false,
+                      );
+                      await provider.saveDefaultTerminalConfig(_config);
+
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(content: Text('设置已保存')),
+                      );
+                    } catch (e) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(content: Text('保存失败: $e')),
+                      );
                     }
                   },
                   child: const Text('保存设置'),

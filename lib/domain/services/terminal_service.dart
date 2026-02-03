@@ -10,6 +10,7 @@ class TerminalSession {
   final String name;
   final TerminalInputService inputService;
   final Terminal terminal;
+  final TerminalController controller;
   StreamSubscription<String>? _outputSubscription;
   StreamSubscription<bool>? _stateSubscription;
 
@@ -18,9 +19,22 @@ class TerminalSession {
     required this.name,
     required this.inputService,
     TerminalConfig? terminalConfig,
-  }) : terminal = Terminal(
-          maxLines: 10000,
-        );
+  }) : terminal = Terminal(maxLines: 10000),
+       controller = TerminalController();
+
+  /// 获取用户友好的错误信息
+  String _getFriendlyErrorMessage(dynamic error) {
+    final errorStr = error.toString();
+    if (errorStr.contains('Connection')) {
+      return '连接中断，请检查网络';
+    } else if (errorStr.contains('Authentication')) {
+      return '认证失败，请检查密码或密钥';
+    } else if (errorStr.contains('Timeout')) {
+      return '连接超时，请稍后重试';
+    } else {
+      return '未知错误';
+    }
+  }
 
   /// 初始化终端会话
   Future<void> initialize() async {
@@ -30,27 +44,44 @@ class TerminalSession {
     }
 
     // 监听输出
-    _outputSubscription = inputService.outputStream.listen((output) {
-      terminal.write(output);
-    }, onError: (error) {
-      // 输出流错误
-    }, onDone: () {
-      // 输出流关闭
-    });
+    _outputSubscription = inputService.outputStream.listen(
+      (output) {
+        terminal.write(output);
+      },
+      onError: (error) {
+        // 输出流错误
+      },
+      onDone: () {
+        // 输出流关闭
+      },
+    );
 
     // 监听连接状态
-    _stateSubscription = inputService.stateStream.listen((isConnected) {
-      // 连接状态变化（已移除状态消息显示）
-    }, onError: (error) {
-      // 状态流错误
-    }, onDone: () {
-      // 状态流关闭
-    });
+    _stateSubscription = inputService.stateStream.listen(
+      (isConnected) {
+        // 连接状态变化（已移除状态消息显示）
+      },
+      onError: (error) {
+        // 状态流错误
+      },
+      onDone: () {
+        // 状态流关闭
+      },
+    );
 
     // 监听终端输入
     terminal.onOutput = (data) {
       // 当用户输入时，发送到输入服务
-      inputService.sendInput(data);
+      try {
+        inputService.sendInput(data);
+      } catch (e) {
+        // 性能优化：使用更友好的错误信息
+        final errorMessage = _getFriendlyErrorMessage(e);
+        terminal.write('\r\n[输入发送失败: $errorMessage]\r\n');
+
+        // 记录详细的错误信息用于调试
+        print('[TerminalSession] Input failed: $e');
+      }
     };
 
     // 监听终端尺寸变化（仅对 LocalTerminalService 有效）
@@ -76,6 +107,7 @@ class TerminalSession {
     _outputSubscription?.cancel();
     _stateSubscription?.cancel();
     inputService.dispose();
+    controller.dispose();
   }
 }
 

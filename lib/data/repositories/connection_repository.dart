@@ -18,7 +18,7 @@ class ConnectionRepository {
       await configDir.create(recursive: true);
     }
     _configFile = File('${configDir.path}/$_fileName');
-    
+
     // 如果文件不存在，尝试从 Hive 迁移数据
     if (!await _configFile!.exists()) {
       final migrated = await _migrateFromHive();
@@ -27,7 +27,7 @@ class ConnectionRepository {
         await _configFile!.writeAsString('[]');
       }
     }
-    
+
     // 加载缓存
     await _loadCache();
   }
@@ -38,7 +38,7 @@ class ConnectionRepository {
       // 检查是否存在 Hive 数据目录
       final dir = await getApplicationSupportDirectory();
       final hiveDir = Directory('${dir.path}/hive');
-      
+
       if (!await hiveDir.exists()) {
         return false; // 没有 Hive 数据
       }
@@ -46,7 +46,7 @@ class ConnectionRepository {
       // 尝试读取 Hive Box 文件（Hive 使用二进制格式，这里简化处理）
       // 注意：由于已经移除了 Hive 依赖，这里只做文件存在性检查
       // 实际迁移需要在有 Hive 依赖的情况下进行，或者用户手动导出导入
-      
+
       // 如果检测到 Hive 目录但 JSON 文件不存在，说明可能需要迁移
       // 但由于已移除 Hive 依赖，这里返回 false，让用户通过同步功能从 Gist 恢复
       return false;
@@ -63,7 +63,9 @@ class ConnectionRepository {
       final List<dynamic> jsonList = jsonDecode(content);
       _connectionsCache = {
         for (var json in jsonList)
-          (json['id'] as String): SshConnection.fromJson(json as Map<String, dynamic>)
+          (json['id'] as String): SshConnection.fromJson(
+            json as Map<String, dynamic>,
+          ),
       };
     } catch (e) {
       // 如果文件格式错误，重置为空
@@ -125,4 +127,3 @@ class ConnectionRepository {
     // JSON文件不需要关闭操作
   }
 }
-

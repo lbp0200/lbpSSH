@@ -96,11 +96,10 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         // 检查文件是否存在且可读
         final file = File(filePath);
         if (!await file.exists()) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('文件不存在或无法访问')));
-          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('文件不存在或无法访问')));
           return;
         }
 
@@ -109,27 +108,25 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         try {
           fileContent = await file.readAsString();
         } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('读取文件失败: $e')));
-          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('读取文件失败: $e')));
           return;
         }
 
         // 验证私钥格式
         if (!_isValidPrivateKey(fileContent)) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '选择的文件不是有效的私钥格式。\n'
-                  '请确保选择的是标准的SSH私钥文件，\n'
-                  '例如 ~/.ssh/id_rsa、~/.ssh/id_ed25519 等',
-                ),
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '选择的文件不是有效的私钥格式。\n'
+                '请确保选择的是标准的SSH私钥文件，\n'
+                '例如 ~/.ssh/id_rsa、~/.ssh/id_ed25519 等',
               ),
-            );
-          }
+            ),
+          );
           return;
         }
 
@@ -138,18 +135,16 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
           _privateKeyContent = fileContent;
         });
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('私钥文件已加载: ${filePath.split('/').last}')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('私钥文件已加载: ${filePath.split('/').last}')),
+        );
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('选择文件失败: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择文件失败: $e')));
     }
   }
 
@@ -249,20 +244,16 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         await provider.addConnection(connection);
       }
 
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.connection != null ? '连接已更新' : '连接已添加'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.connection != null ? '连接已更新' : '连接已添加')),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
     }
   }
 
