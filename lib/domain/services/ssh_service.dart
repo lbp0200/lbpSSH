@@ -230,8 +230,6 @@ class SshService implements TerminalInputService {
         _jumpClient = null;
       }
 
-      _localPort = null;
-
       if (!_isDisposed) {
         _updateState(SshConnectionState.disconnected);
       }
@@ -492,7 +490,6 @@ class SshService implements TerminalInputService {
 
     // 保存跳板机相关资源以便关闭连接时清理
     _jumpClient = jumpClient;
-    _localPort = localPort;
   }
 
   /// 清理资源
