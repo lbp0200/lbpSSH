@@ -216,7 +216,7 @@ class SyncService {
       'message': 'Update SSH connections config',
       'content': contentBase64,
       'branch': _config!.branch,
-      if (fileSha != null) 'sha': fileSha,
+      if (fileSha != null) 'sha': fileSha!,
     };
 
     await _dio.put(
@@ -277,7 +277,7 @@ class SyncService {
       'message': 'Update SSH connections config',
       'content': contentBase64,
       'branch': _config!.branch,
-      if (fileSha != null) 'sha': fileSha,
+      if (fileSha != null) 'sha': fileSha!,
     };
 
     await _dio.put(url, data: data);
@@ -358,7 +358,7 @@ class SyncService {
         'files': {
           fileName: {
             'content': utf8.decode(base64Decode(contentBase64)),
-            if (fileSha != null) 'sha': fileSha,
+            if (fileSha != null) 'sha': fileSha!,
           },
         },
       };

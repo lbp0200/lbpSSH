@@ -78,9 +78,6 @@ class TerminalSession {
         // 性能优化：使用更友好的错误信息
         final errorMessage = _getFriendlyErrorMessage(e);
         terminal.write('\r\n[输入发送失败: $errorMessage]\r\n');
-
-        // 记录详细的错误信息用于调试
-        print('[TerminalSession] Input failed: $e');
       }
     };
 

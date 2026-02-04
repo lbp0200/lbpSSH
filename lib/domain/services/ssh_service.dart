@@ -17,7 +17,6 @@ class SshService implements TerminalInputService {
 
   // 跳板机相关
   SSHClient? _jumpClient;
-  int? _localPort;
 
   // 性能优化：输出缓冲和批处理
   final _outputBuffer = StringBuffer();
