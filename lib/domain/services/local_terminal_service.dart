@@ -12,6 +12,7 @@ class LocalTerminalService implements TerminalInputService {
   final _outputController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
   bool _isShuttingDown = false;
+  String _shellPath = '';
 
   // 性能优化：输出缓冲和批处理
   final _outputBuffer = StringBuffer();
@@ -33,6 +34,21 @@ class LocalTerminalService implements TerminalInputService {
     _terminal = terminal;
   }
 
+  /// 设置 shell 路径
+  void setShellPath(String path) {
+    _shellPath = path.trim();
+  }
+
+  /// 获取默认 shell 路径
+  static String getDefaultShellPath() {
+    if (Platform.isWindows) {
+      return 'cmd.exe';
+    }
+    // Unix-like 系统
+    return Platform.environment['SHELL'] ??
+        (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
+  }
+
   /// 性能优化：批量输出处理
   void _scheduleOutputFlush() {
     _outputTimer?.cancel();
@@ -52,20 +68,22 @@ class LocalTerminalService implements TerminalInputService {
     }
 
     try {
-      // 根据平台选择 shell
+      // 根据配置选择 shell
       String shell;
       List<String> arguments;
 
       if (Platform.isWindows) {
-        shell = 'cmd.exe';
+        shell = _shellPath.isNotEmpty ? _shellPath : 'cmd.exe';
         arguments = [];
       } else {
         // Unix-like 系统（macOS, Linux）
-        // 使用系统配置的默认 shell（从环境变量 SHELL 获取）
-        // 如果没有设置，回退到 /bin/zsh（macOS 默认）或 /bin/bash
-        shell =
-            Platform.environment['SHELL'] ??
-            (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
+        if (_shellPath.isNotEmpty) {
+          shell = _shellPath;
+        } else {
+          // 使用系统配置的默认 shell（从环境变量 SHELL 获取）
+          shell = Platform.environment['SHELL'] ??
+              (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
+        }
         arguments = ['-l']; // 登录shell
       }
 

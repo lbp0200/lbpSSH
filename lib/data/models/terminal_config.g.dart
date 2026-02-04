@@ -20,6 +20,7 @@ TerminalConfig _$TerminalConfigFromJson(Map<String, dynamic> json) =>
           (json['cursorBlinkInterval'] as num?)?.toDouble() ?? 500,
       padding: (json['padding'] as num?)?.toInt() ?? 8,
       devicePixelRatio: (json['devicePixelRatio'] as num?)?.toDouble() ?? 1.0,
+      shellPath: json['shellPath'] as String? ?? '',
     );
 
 Map<String, dynamic> _$TerminalConfigToJson(TerminalConfig instance) =>
@@ -35,4 +36,5 @@ Map<String, dynamic> _$TerminalConfigToJson(TerminalConfig instance) =>
       'cursorBlinkInterval': instance.cursorBlinkInterval,
       'padding': instance.padding,
       'devicePixelRatio': instance.devicePixelRatio,
+      'shellPath': instance.shellPath,
     };

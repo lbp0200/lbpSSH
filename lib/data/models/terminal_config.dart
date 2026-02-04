@@ -15,6 +15,7 @@ class TerminalConfig {
   final double cursorBlinkInterval;
   final int padding;
   final double devicePixelRatio;
+  final String shellPath;
 
   TerminalConfig({
     this.fontFamily = 'JetBrainsMono',
@@ -28,6 +29,7 @@ class TerminalConfig {
     this.cursorBlinkInterval = 500,
     this.padding = 8,
     this.devicePixelRatio = 1.0,
+    this.shellPath = '',
   });
 
   factory TerminalConfig.fromJson(Map<String, dynamic> json) =>
@@ -47,6 +49,7 @@ class TerminalConfig {
     double? cursorBlinkInterval,
     int? padding,
     double? devicePixelRatio,
+    String? shellPath,
   }) {
     return TerminalConfig(
       fontFamily: fontFamily ?? this.fontFamily,
@@ -60,6 +63,7 @@ class TerminalConfig {
       cursorBlinkInterval: cursorBlinkInterval ?? this.cursorBlinkInterval,
       padding: padding ?? this.padding,
       devicePixelRatio: devicePixelRatio ?? this.devicePixelRatio,
+      shellPath: shellPath ?? this.shellPath,
     );
   }
 

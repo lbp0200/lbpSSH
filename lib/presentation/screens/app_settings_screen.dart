@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
-import '../../data/models/default_terminal_config.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/connection_provider.dart';
 import 'connection_form.dart';
+import 'import_export_settings.dart';
 import 'sync_settings.dart';
 
 class AppSettingsScreen extends StatefulWidget {
@@ -19,7 +19,7 @@ class AppSettingsScreen extends StatefulWidget {
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
   int _selectedIndex = 0;
 
-  final List<String> _tabs = ['终端设置', '连接管理', '同步设置'];
+  final List<String> _tabs = ['终端设置', '连接管理', '导入导出', '同步设置'];
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +49,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 const TerminalSettingsPage(),
                 const ConnectionManagementPage(),
+                const ImportExportSettingsScreen(),
                 const SyncSettingsScreen(),
               ],
             ),
@@ -64,6 +65,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         return Icons.terminal;
       case '连接管理':
         return Icons.settings;
+      case '导入导出':
+        return Icons.file_upload;
       case '同步设置':
         return Icons.cloud_sync;
       default:
@@ -81,7 +84,6 @@ class TerminalSettingsPage extends StatefulWidget {
 
 class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
   late TerminalConfig _config;
-  late DefaultTerminalConfig _defaultConfig;
   final _fontSizeController = TextEditingController();
   final _fontWeightController = TextEditingController();
   final _letterSpacingController = TextEditingController();
@@ -98,7 +100,6 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
   void _loadConfig() {
     final provider = Provider.of<AppConfigProvider>(context, listen: false);
     _config = provider.terminalConfig;
-    _defaultConfig = provider.defaultTerminalConfig;
     _fontSizeController.text = _config.fontSize.toInt().toString();
     _fontWeightController.text = _config.fontWeight.toString();
     _letterSpacingController.text = _config.letterSpacing.toString();
@@ -130,16 +131,7 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _fontFamilyController,
-            decoration: const InputDecoration(
-              labelText: '字体家族',
-              hintText: 'JetBrainsMono',
-            ),
-            onChanged: (value) {
-              _config = _config.copyWith(fontFamily: value);
-            },
-          ),
+          _buildFontFamilySelector(),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -327,187 +319,168 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
           ),
           const SizedBox(height: 16),
           _buildDefaultTerminalSettings(),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              OutlinedButton(
-                onPressed: () {
-                  _defaultConfig = DefaultTerminalConfig.defaultConfig;
-                  setState(() {});
-                },
-                child: const Text('重置'),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final scaffoldMessenger = ScaffoldMessenger.maybeOf(
-                      context,
-                    );
-                    if (scaffoldMessenger == null) return;
-
-                    try {
-                      final provider = Provider.of<AppConfigProvider>(
-                        context,
-                        listen: false,
-                      );
-                      await provider.saveDefaultTerminalConfig(_defaultConfig);
-
-                      scaffoldMessenger.showSnackBar(
-                        const SnackBar(content: Text('默认终端已保存')),
-                      );
-                    } catch (e) {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(content: Text('保存失败: $e')),
-                      );
-                    }
-                  },
-                  child: const Text('保存默认终端'),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
   Widget _buildDefaultTerminalSettings() {
+    // 常用 Shell 列表
+    final commonShells = [
+      {'name': 'zsh', 'path': '/bin/zsh'},
+      {'name': 'bash', 'path': '/bin/bash'},
+      {'name': 'fish', 'path': '/usr/local/bin/fish'},
+      {'name': 'PowerShell', 'path': '/usr/local/bin/pwsh'},
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('macOS 默认终端', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<TerminalType>(
-          initialValue: _defaultConfig.execMac,
-          decoration: const InputDecoration(labelText: '终端类型'),
-          items: const [
-            DropdownMenuItem(value: TerminalType.iterm2, child: Text('iTerm2')),
-            DropdownMenuItem(
-              value: TerminalType.terminal,
-              child: Text('Terminal (系统终端)'),
-            ),
-            DropdownMenuItem(
-              value: TerminalType.alacritty,
-              child: Text('Alacritty'),
-            ),
-            DropdownMenuItem(value: TerminalType.kitty, child: Text('Kitty')),
-            DropdownMenuItem(
-              value: TerminalType.wezterm,
-              child: Text('WezTerm'),
-            ),
-            DropdownMenuItem(value: TerminalType.custom, child: Text('自定义')),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _defaultConfig = _defaultConfig.copyWith(execMac: value);
-            });
-          },
-        ),
-        if (_defaultConfig.execMac == TerminalType.custom) ...[
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: _defaultConfig.execMacCustom,
-            decoration: const InputDecoration(
-              labelText: '自定义命令',
-              hintText: '例如：open -a /Applications/MyTerminal.app',
-            ),
-            onChanged: (value) {
-              setState(() {
-                _defaultConfig = _defaultConfig.copyWith(execMacCustom: value);
-              });
-            },
-          ),
-        ],
-        const SizedBox(height: 16),
         const Text(
-          'Windows 默认终端',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          '本地终端 Shell',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<TerminalType>(
-          initialValue: _defaultConfig.execWindows,
-          decoration: const InputDecoration(labelText: '终端类型'),
-          items: const [
-            DropdownMenuItem(
-              value: TerminalType.windowsTerminal,
-              child: Text('Windows Terminal'),
-            ),
-            DropdownMenuItem(
-              value: TerminalType.powershell,
-              child: Text('PowerShell'),
-            ),
-            DropdownMenuItem(value: TerminalType.cmd, child: Text('CMD')),
-            DropdownMenuItem(value: TerminalType.custom, child: Text('自定义')),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _defaultConfig = _defaultConfig.copyWith(execWindows: value);
-            });
-          },
-        ),
-        if (_defaultConfig.execWindows == TerminalType.custom) ...[
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: _defaultConfig.execWindowsCustom,
-            decoration: const InputDecoration(
-              labelText: '自定义命令',
-              hintText: '例如：C:\\Path\\To\\Terminal.exe',
-            ),
-            onChanged: (value) {
-              setState(() {
-                _defaultConfig = _defaultConfig.copyWith(
-                  execWindowsCustom: value,
-                );
-              });
-            },
+        Text(
+          '选择或输入本地终端使用的 Shell 路径',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
-        ],
+        ),
         const SizedBox(height: 16),
-        const Text('Linux 默认终端', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<TerminalType>(
-          initialValue: _defaultConfig.execLinux,
-          decoration: const InputDecoration(labelText: '终端类型'),
-          items: const [
+        DropdownButtonFormField<String>(
+          initialValue: commonShells.any((s) => s['path'] == _config.shellPath)
+              ? _config.shellPath
+              : null,
+          decoration: const InputDecoration(
+            labelText: 'Shell',
+            hintText: '选择常用 Shell 或输入自定义路径',
+          ),
+          items: [
+            // 自动检测选项
             DropdownMenuItem(
-              value: TerminalType.terminal,
-              child: Text('系统默认终端'),
+              value: '',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('自动检测 (系统默认)'),
+                ],
+              ),
             ),
-            DropdownMenuItem(
-              value: TerminalType.alacritty,
-              child: Text('Alacritty'),
+            const DropdownMenuItem(
+              value: '__divider__',
+              enabled: false,
+              child: Divider(),
             ),
-            DropdownMenuItem(value: TerminalType.kitty, child: Text('Kitty')),
-            DropdownMenuItem(
-              value: TerminalType.wezterm,
-              child: Text('WezTerm'),
-            ),
-            DropdownMenuItem(value: TerminalType.custom, child: Text('自定义')),
+            // 常用 Shell
+            ...commonShells.map((shell) {
+              return DropdownMenuItem(
+                value: shell['path'],
+                child: Text('${shell['name']} (${shell['path']})'),
+              );
+            }),
           ],
           onChanged: (value) {
+            if (value != null && value != '__divider__') {
+              setState(() {
+                _config = _config.copyWith(shellPath: value);
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: _config.shellPath,
+          decoration: const InputDecoration(
+            labelText: '自定义 Shell 路径',
+            hintText: '例如：/usr/bin/zsh',
+          ),
+          onChanged: (value) {
             setState(() {
-              _defaultConfig = _defaultConfig.copyWith(execLinux: value);
+              _config = _config.copyWith(shellPath: value);
             });
           },
         ),
-        if (_defaultConfig.execLinux == TerminalType.custom) ...[
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: _defaultConfig.execLinuxCustom,
-            decoration: const InputDecoration(
-              labelText: '自定义命令',
-              hintText: '例如：gnome-terminal',
-            ),
-            onChanged: (value) {
-              setState(() {
-                _defaultConfig = _defaultConfig.copyWith(
-                  execLinuxCustom: value,
-                );
-              });
-            },
+        const SizedBox(height: 8),
+        Text(
+          '提示：空值将自动使用系统默认 Shell (从 \$SHELL 环境变量获取)',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFontFamilySelector() {
+    final popularFonts = [
+      'JetBrains Mono',
+      'Fira Code',
+      'Source Code Pro',
+      'Ubuntu Mono',
+      'Hack',
+      'Iosevka',
+      'Consolas',
+      'Monaco',
+      'Menlo',
+      'DejaVu Sans Mono',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: popularFonts.contains(_config.fontFamily)
+              ? _config.fontFamily
+              : null,
+          decoration: const InputDecoration(
+            labelText: '字体家族',
+            hintText: '选择或输入字体',
+          ),
+          items: [
+            ...popularFonts.map((font) {
+              return DropdownMenuItem(
+                value: font,
+                child: Text(font),
+              );
+            }),
+            const DropdownMenuItem(
+              value: '__custom__',
+              enabled: false,
+              child: Divider(),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null && value != '__custom__') {
+              _fontFamilyController.text = value;
+              _config = _config.copyWith(fontFamily: value);
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _fontFamilyController,
+          decoration: const InputDecoration(
+            hintText: '输入自定义字体名称',
+          ),
+          onChanged: (value) {
+            _config = _config.copyWith(fontFamily: value);
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '提示：确保系统已安装所选字体',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
       ],
     );
   }

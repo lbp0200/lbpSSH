@@ -65,20 +65,41 @@ class CompactConnectionList extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          itemCount: connections.length,
-          itemBuilder: (context, index) {
-            final connection = connections[index];
-            return _CompactConnectionItem(
-              connection: connection,
-              onTap: () {
-                onConnectionTap?.call(connection);
-              },
-              onEdit: () => _showConnectionForm(context, connection),
-              onDelete: () => _deleteConnection(context, provider, connection),
-            );
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            IconButton(
+              onPressed: () => _showConnectionForm(context, null),
+              icon: const Icon(Icons.add_circle_outline),
+              iconSize: 22,
+              tooltip: '新建连接',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 36,
+                minHeight: 36,
+              ),
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                itemCount: connections.length,
+                itemBuilder: (context, index) {
+                  final connection = connections[index];
+                  return _CompactConnectionItem(
+                    connection: connection,
+                    onTap: () {
+                      onConnectionTap?.call(connection);
+                    },
+                    onEdit: () => _showConnectionForm(context, connection),
+                    onDelete: () => _deleteConnection(context, provider, connection),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );

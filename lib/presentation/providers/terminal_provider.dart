@@ -6,6 +6,7 @@ import '../../domain/services/local_terminal_service.dart';
 import '../../domain/services/terminal_input_service.dart';
 import '../../domain/services/app_config_service.dart';
 import '../../data/models/ssh_connection.dart';
+import 'package:uuid/uuid.dart';
 
 /// 终端会话状态管理
 class TerminalProvider extends ChangeNotifier {
@@ -13,7 +14,7 @@ class TerminalProvider extends ChangeNotifier {
   final AppConfigService _appConfigService;
   final Map<String, TerminalInputService> _services = {};
   String? _activeSessionId;
-  static const String _localTerminalId = 'local_terminal';
+  final _uuid = const Uuid();
 
   TerminalProvider(this._terminalService, this._appConfigService);
 
@@ -25,28 +26,34 @@ class TerminalProvider extends ChangeNotifier {
 
   /// 初始化（创建默认本地终端）
   Future<void> initialize() async {
-    // 如果还没有本地终端，则创建
-    if (!_services.containsKey(_localTerminalId)) {
-      try {
-        await createLocalTerminal();
-      } catch (e) {
-        // 如果创建本地终端失败（例如 Process API 问题），
-        // 则静默失败，不阻止应用启动
-      }
+    // 启动时创建一个本地终端
+    try {
+      await createLocalTerminal();
+    } catch (e) {
+      // 如果创建本地终端失败（例如 Process API 问题），则静默失败
     }
   }
 
   /// 创建本地终端会话
   Future<TerminalSession> createLocalTerminal() async {
-    final localService = LocalTerminalService();
-    _services[_localTerminalId] = localService;
+    // 生成唯一的会话 id
+    final sessionId = _uuid.v4();
 
-    // 获取终端配置（用于设置字体）
+    final localService = LocalTerminalService();
+
+    // 获取终端配置（用于设置字体和 shell）
     final terminalConfig = _appConfigService.terminal;
+
+    // 设置 shell 路径
+    if (terminalConfig.shellPath.isNotEmpty) {
+      localService.setShellPath(terminalConfig.shellPath);
+    }
+
+    _services[sessionId] = localService;
 
     // 先创建会话（这会调用 initialize，设置终端引用）
     final session = _terminalService.createSession(
-      id: _localTerminalId,
+      id: sessionId,
       name: '本地终端',
       inputService: localService,
       terminalConfig: terminalConfig,
@@ -59,7 +66,7 @@ class TerminalProvider extends ChangeNotifier {
       rethrow;
     }
 
-    _activeSessionId = _localTerminalId;
+    _activeSessionId = sessionId;
     notifyListeners();
 
     return session;
@@ -96,11 +103,6 @@ class TerminalProvider extends ChangeNotifier {
 
   /// 关闭会话
   void closeSession(String sessionId) {
-    // 不允许关闭本地终端
-    if (sessionId == _localTerminalId) {
-      return;
-    }
-
     _terminalService.closeSession(sessionId);
     _services[sessionId]?.dispose();
     _services.remove(sessionId);

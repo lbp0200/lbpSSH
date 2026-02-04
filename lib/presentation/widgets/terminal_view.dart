@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
+import '../../data/models/ssh_connection.dart';
 import '../../domain/services/terminal_service.dart';
 import '../providers/terminal_provider.dart';
 import '../providers/app_config_provider.dart';
+import '../providers/connection_provider.dart';
+import '../screens/app_settings_screen.dart';
 
 /// 终端视图组件
 class TerminalViewWidget extends StatefulWidget {
@@ -129,12 +132,98 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
 class TerminalTabsView extends StatelessWidget {
   const TerminalTabsView({super.key});
 
+  Future<void> _createLocalTerminal(BuildContext context) async {
+    final terminalProvider = Provider.of<TerminalProvider>(
+      context,
+      listen: false,
+    );
+    try {
+      await terminalProvider.createLocalTerminal();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('创建终端失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleConnectionTap(
+    BuildContext context,
+    SshConnection connection,
+  ) async {
+    final terminalProvider = Provider.of<TerminalProvider>(
+      context,
+      listen: false,
+    );
+
+    final existingSession =
+        terminalProvider.sessions.where((s) => s.id == connection.id).firstOrNull;
+
+    if (existingSession != null) {
+      terminalProvider.switchToSession(connection.id);
+    } else {
+      try {
+        await terminalProvider.createSession(connection);
+        final sshService = terminalProvider.getSshService(connection.id);
+
+        if (sshService != null) {
+          try {
+            await sshService.connect(connection);
+          } catch (e) {
+            terminalProvider.closeSession(connection.id);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('连接失败: $e')),
+              );
+            }
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('创建会话失败: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  List<PopupMenuItem<String>> _buildConnectionItems(
+    BuildContext context,
+    List<SshConnection> connections,
+  ) {
+    return connections.map((connection) {
+      return PopupMenuItem(
+        value: connection.id,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.vpn_key,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                connection.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<TerminalProvider>(
-      builder: (context, provider, child) {
-        final sessions = provider.sessions;
-        final activeSessionId = provider.activeSessionId;
+    return Consumer2<TerminalProvider, ConnectionProvider>(
+      builder: (context, terminalProvider, connProvider, child) {
+        final sessions = terminalProvider.sessions;
+        final activeSessionId = terminalProvider.activeSessionId;
+        final connections = connProvider.connections;
 
         if (sessions.isEmpty) {
           return Center(
@@ -161,7 +250,7 @@ class TerminalTabsView extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () async {
                     try {
-                      await provider.createLocalTerminal();
+                      await terminalProvider.createLocalTerminal();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(
@@ -191,6 +280,32 @@ class TerminalTabsView extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  // 设置按钮
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AppSettingsScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Icon(
+                          Icons.settings,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 标签列表
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
@@ -202,39 +317,77 @@ class TerminalTabsView extends StatelessWidget {
                         return _TerminalTab(
                           session: session,
                           isActive: isActive,
-                          onTap: () => provider.switchToSession(session.id),
-                          onClose: () => provider.closeSession(session.id),
+                          onTap: () => terminalProvider.switchToSession(session.id),
+                          onClose: () => terminalProvider.closeSession(session.id),
                         );
                       },
                     ),
                   ),
-                  // 新建终端按钮
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        try {
-                          await provider.createLocalTerminal();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('创建终端失败: $e')),
-                            );
-                          }
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.primary,
+                  // 下拉菜单按钮
+                  PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     ),
+                    itemBuilder: (context) {
+                      final items = <PopupMenuEntry<String>>[
+                        PopupMenuItem(
+                          value: 'local_terminal',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.computer,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text('本地终端'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                      ];
+                      if (connections.isEmpty) {
+                        items.add(PopupMenuItem(
+                          value: 'no_connections',
+                          enabled: false,
+                          child: Text(
+                            '暂无保存的连接',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ));
+                      } else {
+                        items.addAll(_buildConnectionItems(context, connections));
+                      }
+                      return items;
+                    },
+                    onSelected: (value) async {
+                      if (value == 'no_connections') {
+                        return;
+                      }
+                      if (value == 'local_terminal') {
+                        await _createLocalTerminal(context);
+                        return;
+                      }
+                      final connection = connections.firstWhere((c) => c.id == value);
+                      await _handleConnectionTap(context, connection);
+                    },
                   ),
                 ],
               ),
@@ -243,45 +396,7 @@ class TerminalTabsView extends StatelessWidget {
             Expanded(
               child: activeSessionId != null
                   ? TerminalViewWidget(sessionId: activeSessionId)
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.terminal,
-                            size: 64,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '没有活动的终端会话',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.5),
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () async {
-                              try {
-                                await provider.createLocalTerminal();
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('创建终端失败: $e')),
-                                  );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.add),
-                            label: const Text('创建本地终端'),
-                          ),
-                        ],
-                      ),
-                    ),
+                  : const SizedBox.shrink(),
             ),
           ],
         );
