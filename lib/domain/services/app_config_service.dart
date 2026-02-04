@@ -274,7 +274,7 @@ class AppConfigService with ChangeNotifier {
         'access_token': _sync!.accessToken,
         'description': 'SSH Connections Config',
         'files': {
-          fileName: {'content': content, if (fileSha != null) 'sha': fileSha!},
+          fileName: {'content': content, if (fileSha != null) 'sha': fileSha},
         },
       };
 
