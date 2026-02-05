@@ -91,6 +91,45 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
   final _paddingController = TextEditingController();
   final _fontFamilyController = TextEditingController();
 
+  // 预设字体大小
+  final List<int> _presetFontSizes = [10, 12, 14, 16, 18, 20, 24, 28, 32];
+
+  // 扩展常用字体列表（跨平台支持）
+  final List<String> _popularFonts = [
+    // 等宽编程字体
+    'JetBrains Mono',
+    'Fira Code',
+    'Source Code Pro',
+    'Ubuntu Mono',
+    'Hack',
+    'Iosevka',
+    'Consolas',
+    'Monaco',
+    'Menlo',
+    'DejaVu Sans Mono',
+    'Cascadia Code',
+    'Cousine',
+    'Droid Sans Mono',
+    'Inconsolata',
+    'Lato Mono',
+    'Office Code Pro',
+    'Open Sans Mono',
+    'Oxygen Mono',
+    'PT Mono',
+    'Roboto Mono',
+    'SF Mono',
+    'Terminus',
+    'Ubuntu',
+    'Victor Mono',
+    // 系统通用字体
+    'Arial',
+    'Helvetica',
+    'Verdana',
+    'Courier New',
+    'Georgia',
+    'Times New Roman',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -106,6 +145,13 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
     _lineHeightController.text = _config.lineHeight.toString();
     _paddingController.text = _config.padding.toString();
     _fontFamilyController.text = _config.fontFamily;
+  }
+
+  void _onFontSizeChanged(double value) {
+    setState(() {
+      _config = _config.copyWith(fontSize: value);
+      _fontSizeController.text = value.toInt().toString();
+    });
   }
 
   @override
@@ -136,20 +182,48 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: _fontSizeController,
-                  decoration: const InputDecoration(
-                    labelText: '字体大小',
-                    suffixText: 'px',
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (value) {
-                    final fontSize = int.tryParse(value);
-                    if (fontSize != null && fontSize > 0) {
-                      _config = _config.copyWith(fontSize: fontSize.toDouble());
-                    }
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('字体大小'),
+                        Text(
+                          '${_config.fontSize.toInt()}px',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _config.fontSize,
+                      min: 8,
+                      max: 32,
+                      divisions: 24,
+                      onChanged: _onFontSizeChanged,
+                    ),
+                    // 预设按钮
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _presetFontSizes.map((size) {
+                          final isSelected = _config.fontSize.toInt() == size;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              selected: isSelected,
+                              label: Text('${size}px'),
+                              onSelected: (_) => _onFontSizeChanged(size.toDouble()),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 16),
@@ -228,6 +302,9 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
               }
             },
           ),
+          const SizedBox(height: 24),
+          // 实时预览区域
+          _buildTerminalPreview(),
           const SizedBox(height: 24),
           const Text(
             '颜色设置',
@@ -418,25 +495,119 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
     );
   }
 
-  Widget _buildFontFamilySelector() {
-    final popularFonts = [
-      'JetBrains Mono',
-      'Fira Code',
-      'Source Code Pro',
-      'Ubuntu Mono',
-      'Hack',
-      'Iosevka',
-      'Consolas',
-      'Monaco',
-      'Menlo',
-      'DejaVu Sans Mono',
-    ];
+  Color _parseColor(String colorHex) {
+    try {
+      return Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+    } catch (e) {
+      return Colors.white;
+    }
+  }
+
+  Widget _buildTerminalPreview() {
+    final bgColor = _parseColor(_config.backgroundColor);
+    final fgColor = _parseColor(_config.foregroundColor);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '终端预览',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              '提示：使用下方按钮或滑块调整字体大小',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 200,
+          padding: EdgeInsets.all(_config.padding.toDouble()),
+          decoration: BoxDecoration(
+            color: bgColor,
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 模拟终端内容
+                _buildPreviewLine('user@hostname:~\$', fgColor),
+                _buildPreviewLine('user@hostname:~\$ ls -la', fgColor),
+                _buildPreviewLine('total 24', fgColor.withValues(alpha: 0.7)),
+                _buildPreviewLine('drwxr-xr-x  5 user  group  160 Jan 15 10:30 .', fgColor.withValues(alpha: 0.7)),
+                _buildPreviewLine('drwxr-xr-x  3 root  root   100 Jan 15 10:30 ..', fgColor.withValues(alpha: 0.7)),
+                _buildPreviewLine('-rw-r--r--  1 user  group  220 Jan 15 10:30 .bashrc', fgColor.withValues(alpha: 0.7)),
+                _buildPreviewLine('-rw-r--r--  1 user  group  655 Jan 15 10:30 config.json', fgColor.withValues(alpha: 0.7)),
+                _buildPreviewLine('user@hostname:~\$ _', fgColor, showCursor: true),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: () => _onFontSizeChanged(_config.fontSize - 2),
+              icon: const Icon(Icons.text_decrease, size: 18),
+              label: const Text('缩小'),
+            ),
+            const SizedBox(width: 16),
+            FilledButton.tonal(
+              onPressed: () => _onFontSizeChanged(14),
+              child: const Text('默认 (14px)'),
+            ),
+            const SizedBox(width: 16),
+            FilledButton.tonalIcon(
+              onPressed: () => _onFontSizeChanged(_config.fontSize + 2),
+              icon: const Icon(Icons.text_increase, size: 18),
+              label: const Text('放大'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewLine(String text, Color color, {bool showCursor = false}) {
+    return Row(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: _config.fontFamily.isNotEmpty ? _config.fontFamily : null,
+            fontSize: _config.fontSize,
+            height: _config.lineHeight,
+            color: color,
+            letterSpacing: _config.letterSpacing,
+          ),
+        ),
+        if (showCursor)
+          Container(
+            width: _config.fontSize * 0.6,
+            height: _config.fontSize,
+            color: _parseColor(_config.cursorColor),
+            margin: const EdgeInsets.only(left: 2),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFontFamilySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         DropdownButtonFormField<String>(
-          initialValue: popularFonts.contains(_config.fontFamily)
+          value: _popularFonts.contains(_config.fontFamily)
               ? _config.fontFamily
               : null,
           decoration: const InputDecoration(
@@ -444,41 +615,114 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
             hintText: '选择或输入字体',
           ),
           items: [
-            ...popularFonts.map((font) {
+            // 编程字体分类
+            const DropdownMenuItem(
+              value: 'programming_header',
+              enabled: false,
+              child: Text(
+                ' - 编程等宽字体 -',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+              ),
+            ),
+            ..._popularFonts.take(10).map((font) {
+              return DropdownMenuItem(
+                value: font,
+                child: Text(
+                  font,
+                  style: TextStyle(fontFamily: font),
+                ),
+              );
+            }),
+            const DropdownMenuItem(
+              value: 'divider_item',
+              enabled: false,
+              child: Divider(),
+            ),
+            // 系统字体
+            const DropdownMenuItem(
+              value: 'system_header',
+              enabled: false,
+              child: Text(
+                ' - 系统字体 -',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+              ),
+            ),
+            ..._popularFonts.skip(10).map((font) {
               return DropdownMenuItem(
                 value: font,
                 child: Text(font),
               );
             }),
-            const DropdownMenuItem(
-              value: '__custom__',
-              enabled: false,
-              child: Divider(),
-            ),
           ],
           onChanged: (value) {
-            if (value != null && value != '__custom__') {
+            if (value != null && value != 'programming_header' && value != 'system_header' && value != 'divider_item') {
               _fontFamilyController.text = value;
               _config = _config.copyWith(fontFamily: value);
             }
           },
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _fontFamilyController,
-          decoration: const InputDecoration(
-            hintText: '输入自定义字体名称',
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _fontFamilyController,
+                decoration: const InputDecoration(
+                  hintText: '输入自定义字体名称',
+                ),
+                onChanged: (value) {
+                  _config = _config.copyWith(fontFamily: value);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // 字体预览
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8),
+            color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
           ),
-          onChanged: (value) {
-            _config = _config.copyWith(fontFamily: value);
-          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '字体预览',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'The quick brown fox jumps over the lazy dog.',
+                style: TextStyle(
+                  fontFamily: _config.fontFamily.isNotEmpty ? _config.fontFamily : null,
+                  fontSize: _config.fontSize,
+                  fontWeight: FontWeight.values[_config.fontWeight ~/ 100],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1234567890 !@#\$%^&*()',
+                style: TextStyle(
+                  fontFamily: _config.fontFamily.isNotEmpty ? _config.fontFamily : null,
+                  fontSize: _config.fontSize,
+                  fontWeight: FontWeight.values[_config.fontWeight ~/ 100],
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         Text(
-          '提示：确保系统已安装所选字体',
+          '提示：确保系统已安装所选字体。推荐使用等宽编程字体以获得最佳终端体验。',
           style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
       ],

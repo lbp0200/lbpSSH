@@ -38,11 +38,6 @@ class TerminalSession {
 
   /// 初始化终端会话
   Future<void> initialize() async {
-    // 如果输入服务是 LocalTerminalService，设置终端引用
-    if (inputService is LocalTerminalService) {
-      (inputService as LocalTerminalService).setTerminal(terminal);
-    }
-
     // 监听输出
     _outputSubscription = inputService.outputStream.listen(
       (output) {

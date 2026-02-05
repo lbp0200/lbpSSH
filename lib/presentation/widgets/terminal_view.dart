@@ -66,58 +66,51 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            return FocusScope(
-              node: FocusScopeNode(canRequestFocus: true),
-              child: Focus(
-                focusNode: _focusNode,
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  child: TerminalView(
-                    session.terminal,
-                    key: ValueKey(
-                      'terminal_${config.fontSize}_${config.fontFamily}',
-                    ),
-                    controller: session.controller,
-                    autofocus: true,
-                    backgroundOpacity: 1.0,
-                    textStyle: TerminalStyle(
-                      fontSize: config.fontSize,
-                      fontFamily: config.fontFamily,
-                      height: config.lineHeight,
-                    ),
-                    theme: TerminalTheme(
-                      foreground: parseColor(config.foregroundColor),
-                      background: parseColor(config.backgroundColor),
-                      cursor: parseColor(config.cursorColor),
-                      selection: parseColor(
-                        config.foregroundColor,
-                      ).withValues(alpha: 0.3),
-                      black: parseColor('#000000'),
-                      red: parseColor('#CD3131'),
-                      green: parseColor('#0DBC79'),
-                      yellow: parseColor('#E5E510'),
-                      blue: parseColor('#2472C8'),
-                      magenta: parseColor('#BC3FBC'),
-                      cyan: parseColor('#11A8CD'),
-                      white: parseColor('#E5E5E5'),
-                      brightBlack: parseColor('#666666'),
-                      brightRed: parseColor('#F14C4C'),
-                      brightGreen: parseColor('#23D18B'),
-                      brightYellow: parseColor('#F5F543'),
-                      brightBlue: parseColor('#3B8EEA'),
-                      brightMagenta: parseColor('#D670D6'),
-                      brightCyan: parseColor('#29B8DB'),
-                      brightWhite: parseColor('#E5E5E5'),
-                      searchHitBackground: parseColor(
-                        '#FFFF00',
-                      ).withValues(alpha: 0.3),
-                      searchHitBackgroundCurrent: parseColor(
-                        '#FFFF00',
-                      ).withValues(alpha: 0.5),
-                      searchHitForeground: parseColor('#000000'),
-                    ),
-                  ),
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: TerminalView(
+                session.terminal,
+                key: ValueKey(
+                  'terminal_${config.fontSize}_${config.fontFamily}',
+                ),
+                controller: session.controller,
+                autofocus: true,
+                textStyle: TerminalStyle(
+                  fontSize: config.fontSize,
+                  fontFamily: config.fontFamily.isEmpty ? 'Menlo' : config.fontFamily,
+                  height: config.lineHeight,
+                ),
+                theme: TerminalTheme(
+                  foreground: parseColor(config.foregroundColor),
+                  background: parseColor(config.backgroundColor),
+                  cursor: parseColor(config.cursorColor),
+                  selection: parseColor(
+                    config.foregroundColor,
+                  ).withValues(alpha: 0.3),
+                  black: parseColor('#000000'),
+                  red: parseColor('#CD3131'),
+                  green: parseColor('#0DBC79'),
+                  yellow: parseColor('#E5E510'),
+                  blue: parseColor('#2472C8'),
+                  magenta: parseColor('#BC3FBC'),
+                  cyan: parseColor('#11A8CD'),
+                  white: parseColor('#E5E5E5'),
+                  brightBlack: parseColor('#666666'),
+                  brightRed: parseColor('#F14C4C'),
+                  brightGreen: parseColor('#23D18B'),
+                  brightYellow: parseColor('#F5F543'),
+                  brightBlue: parseColor('#3B8EEA'),
+                  brightMagenta: parseColor('#D670D6'),
+                  brightCyan: parseColor('#29B8DB'),
+                  brightWhite: parseColor('#E5E5E5'),
+                  searchHitBackground: parseColor(
+                    '#FFFF00',
+                  ).withValues(alpha: 0.3),
+                  searchHitBackgroundCurrent: parseColor(
+                    '#FFFF00',
+                  ).withValues(alpha: 0.5),
+                  searchHitForeground: parseColor('#000000'),
                 ),
               ),
             );
@@ -127,6 +120,7 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
     );
   }
 }
+
 
 /// 终端标签页视图
 class TerminalTabsView extends StatelessWidget {

@@ -18,11 +18,11 @@ class TerminalConfig {
   final String shellPath;
 
   TerminalConfig({
-    this.fontFamily = 'JetBrainsMono',
-    this.fontSize = 14.0,
+    this.fontFamily = 'Menlo',
+    this.fontSize = 13.0,
     this.fontWeight = 400,
     this.letterSpacing = 0.0,
-    this.lineHeight = 1.2,
+    this.lineHeight = 1.0,
     this.backgroundColor = '#1E1E1E',
     this.foregroundColor = '#FFFFFF',
     this.cursorColor = '#FFFFFF',

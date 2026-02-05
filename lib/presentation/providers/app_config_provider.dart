@@ -20,6 +20,12 @@ class AppConfigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateFontSize(double size) {
+    final newConfig = _configService.terminal.copyWith(fontSize: size);
+    _configService.saveTerminalConfig(newConfig);
+    notifyListeners();
+  }
+
   Future<void> saveDefaultTerminalConfig(DefaultTerminalConfig config) async {
     await _configService.saveDefaultTerminalConfig(config);
     notifyListeners();

@@ -2,21 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:xterm/xterm.dart';
 import 'terminal_input_service.dart';
 
 /// 本地终端服务 - 使用 PTY 实现
 class LocalTerminalService implements TerminalInputService {
   Pty? _pty;
-  Terminal? _terminal;
   final _outputController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
   bool _isShuttingDown = false;
   String _shellPath = '';
-
-  // 性能优化：输出缓冲和批处理
-  final _outputBuffer = StringBuffer();
-  Timer? _outputTimer;
 
   /// 输出流
   @override
@@ -28,11 +22,6 @@ class LocalTerminalService implements TerminalInputService {
 
   /// 是否已连接
   bool get isConnected => _pty != null && !_isShuttingDown;
-
-  /// 设置终端（用于获取终端尺寸）
-  void setTerminal(Terminal terminal) {
-    _terminal = terminal;
-  }
 
   /// 设置 shell 路径
   void setShellPath(String path) {
@@ -47,18 +36,6 @@ class LocalTerminalService implements TerminalInputService {
     // Unix-like 系统
     return Platform.environment['SHELL'] ??
         (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
-  }
-
-  /// 性能优化：批量输出处理
-  void _scheduleOutputFlush() {
-    _outputTimer?.cancel();
-    _outputTimer = Timer(const Duration(milliseconds: 10), () {
-      final output = _outputBuffer.toString();
-      _outputBuffer.clear();
-      if (output.isNotEmpty) {
-        _outputController.add(output);
-      }
-    });
   }
 
   /// 启动本地终端
@@ -87,12 +64,9 @@ class LocalTerminalService implements TerminalInputService {
         arguments = ['-l']; // 登录shell
       }
 
-      // 获取终端尺寸（确保有效的最小值）
-      // 如果终端还未初始化，使用默认值
-      final columns = _terminal?.viewWidth ?? 80;
-      final rows = _terminal?.viewHeight ?? 24;
-      final finalColumns = (columns > 0 ? columns : 80).clamp(1, 1000);
-      final finalRows = (rows > 0 ? rows : 24).clamp(1, 1000);
+      // 使用默认终端尺寸
+      const finalColumns = 80;
+      const finalRows = 24;
 
       final workingDirectory =
           Platform.environment['HOME'] ??
@@ -117,14 +91,8 @@ class LocalTerminalService implements TerminalInputService {
           .listen(
             (data) {
               if (!_isShuttingDown) {
-                // 性能优化：批量处理输出
-                final formattedData = data
-                    .replaceAll('\r\n', '\n')
-                    .replaceAll('\r', '\n');
-                _outputBuffer.write(formattedData);
-
-                // 使用定时器批量发送输出，减少频繁的UI更新
-                _scheduleOutputFlush();
+                // 直接输出，不做缓冲处理
+                _outputController.add(data);
               }
             },
             onError: (error) {
@@ -159,9 +127,7 @@ class LocalTerminalService implements TerminalInputService {
           });
 
       _stateController.add(true);
-      _outputController.add('本地终端已启动 (Shell: $shell)\r\n');
-      _outputController.add('终端尺寸: $finalColumns x $finalRows\r\n');
-      _outputController.add('当前目录: $workingDirectory\r\n');
+      // 不输出启动信息，保持简洁
     } catch (e) {
       _stateController.add(false);
       _outputController.add('启动本地终端失败: $e\r\n');
@@ -247,12 +213,6 @@ class LocalTerminalService implements TerminalInputService {
   /// 清理资源
   @override
   void dispose() {
-    // 清理定时器
-    _outputTimer?.cancel();
-
-    // 清理输出缓冲
-    _outputBuffer.clear();
-
     stop();
     _outputController.close();
     _stateController.close();

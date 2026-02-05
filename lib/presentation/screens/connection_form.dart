@@ -76,17 +76,7 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
   Future<void> _pickPrivateKeyFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: [
-          'pem',
-          'key',
-          'ppk',
-          'txt',
-          'rsa',
-          'ed25519',
-          'dsa',
-          'ecdsa',
-        ],
+        type: FileType.any,
         allowMultiple: false,
       );
 
@@ -146,6 +136,52 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('选择文件失败: $e')));
     }
+  }
+
+  // 从路径加载私钥文件
+  Future<void> _loadPrivateKeyFromPath(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('文件不存在或无法访问')),
+      );
+      return;
+    }
+
+    String fileContent;
+    try {
+      fileContent = await file.readAsString();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('读取文件失败: $e')),
+      );
+      return;
+    }
+
+    if (!_isValidPrivateKey(fileContent)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '文件不是有效的私钥格式。\n'
+            '请确保选择的是标准的SSH私钥文件',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _keyPathController.text = filePath;
+      _privateKeyContent = fileContent;
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('私钥文件已加载: ${filePath.split('/').last}')),
+    );
   }
 
   // 验证私钥格式
@@ -420,6 +456,29 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
                         icon: const Icon(Icons.folder_open),
                         label: const Text('选择文件'),
                       ),
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: '由于 macOS 沙箱限制，无法选择 ~/.ssh 目录中的文件，请手动输入路径',
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            // 提示用户手动输入路径
+                            final path = await showDialog<String>(
+                              context: context,
+                              builder: (context) => _ManualPathDialog(
+                                initialPath: _keyPathController.text,
+                              ),
+                            );
+                            if (path != null && mounted) {
+                              setState(() {
+                                _keyPathController.text = path;
+                              });
+                              await _loadPrivateKeyFromPath(path);
+                            }
+                          },
+                          icon: const Icon(Icons.edit),
+                          label: const Text('输入路径'),
+                        ),
+                      ),
                     ],
                   ),
                   if (_privateKeyContent != null) ...[
@@ -551,6 +610,76 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 手动输入路径对话框
+class _ManualPathDialog extends StatefulWidget {
+  final String initialPath;
+
+  const _ManualPathDialog({this.initialPath = ''});
+
+  @override
+  State<_ManualPathDialog> createState() => _ManualPathDialogState();
+}
+
+class _ManualPathDialogState extends State<_ManualPathDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialPath);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('输入私钥文件路径'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _controller,
+            decoration: const InputDecoration(
+              labelText: '文件路径',
+              hintText: '例如: /Users/lbp/.ssh/id_rsa',
+              prefixIcon: Icon(Icons.edit),
+            ),
+            autofocus: true,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '提示：由于 macOS 沙箱限制，无法直接选择 ~/.ssh 目录中的文件，请手动输入完整路径。',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final path = _controller.text.trim();
+            if (path.isNotEmpty) {
+              Navigator.of(context).pop(path);
+            }
+          },
+          child: const Text('确定'),
+        ),
+      ],
     );
   }
 }
