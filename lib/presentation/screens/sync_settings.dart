@@ -65,17 +65,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
     // 如果 token 是占位符，保持原有 token
     String? accessToken = _tokenController.text;
-    if (accessToken == '***') {
+    if (accessToken == '***' || accessToken == '...') {
       accessToken = provider.config?.accessToken;
     }
 
     final config = SyncConfig(
       platform: _platform,
       accessToken: accessToken,
-      repositoryOwner: null,
-      repositoryName: null,
-      branch: null,
-      filePath: null,
       gistId: _gistIdController.text,
       gistFileName: _gistFileNameController.text,
       autoSync: _autoSync,
@@ -121,6 +117,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         ).showSnackBar(const SnackBar(content: Text('连接测试成功')));
       }
     } catch (e) {
+      // 打印详细错误到控制台
+      print('Gitee Gist 连接失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -147,6 +145,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   value: SyncPlatform.gist,
                   child: Text('GitHub Gist'),
                 ),
+                DropdownMenuItem(
+                  value: SyncPlatform.giteeGist,
+                  child: Text('Gitee Gist'),
+                ),
               ],
               onChanged: (value) {
                 setState(() {
@@ -156,33 +158,42 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // OAuth 认证
+            // Token 认证
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'GitHub Token',
-                      style: TextStyle(
+                    Text(
+                      _platform == SyncPlatform.giteeGist
+                          ? 'Gitee Token'
+                          : 'GitHub Token',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '请输入 GitHub Personal Access Token，'
-                      '需要在 GitHub Settings → Developer settings → Personal access tokens 中创建，'
-                      '并勾选 gist 权限。',
-                      style: TextStyle(fontSize: 12),
+                    Text(
+                      _platform == SyncPlatform.giteeGist
+                          ? '请输入 Gitee Personal Access Token，'
+                              '需要在 Gitee 设置 → 安全设置 → 个人访问令牌 中创建。'
+                          : '请输入 GitHub Personal Access Token，'
+                              '需要在 GitHub Settings → Developer settings → Personal access tokens 中创建，'
+                              '并勾选 gist 权限。',
+                      style: const TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _tokenController,
                       decoration: InputDecoration(
-                        labelText: 'GitHub Token',
-                        hintText: 'ghp_xxxxxxxxxxxxxxxxxxxx',
+                        labelText: _platform == SyncPlatform.giteeGist
+                            ? 'Gitee Token'
+                            : 'GitHub Token',
+                        hintText: _platform == SyncPlatform.giteeGist
+                            ? 'xxxxxxxxxxxxxxxxxxxx'
+                            : 'ghp_xxxxxxxxxxxxxxxxxxxx',
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureToken
@@ -198,8 +209,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       ),
                       obscureText: _obscureToken,
                       validator: (value) {
-                        if (value == null || value.isEmpty || value == '***') {
-                          return '请输入 GitHub Token';
+                        if (value == null || value.isEmpty) {
+                          return '请输入 Token';
+                        }
+                        // *** 表示保留原 token，不验证
+                        if (value == '***' || value == '...') {
+                          return null;
                         }
                         return null;
                       },
@@ -207,8 +222,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     const SizedBox(height: 8),
                     TextButton.icon(
                       onPressed: () async {
-                        final url = Uri.parse(
-                            'https://github.com/settings/tokens/new?scopes=gist');
+                        final url = _platform == SyncPlatform.giteeGist
+                            ? Uri.parse(
+                                'https://gitee.com/profile/personal_access_tokens')
+                            : Uri.parse(
+                                'https://github.com/settings/tokens/new?scopes=gist');
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url);
                         }
@@ -225,16 +243,27 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             // Gist 配置
             TextFormField(
               controller: _gistIdController,
-              decoration: const InputDecoration(
-                labelText: 'Gist ID 或 URL（可选）',
-                hintText:
-                    '例如：abc123def456 或 https://gist.github.com/username/abc123def456',
-                helperText:
-                    '留空将创建新 Gist，填写 Gist ID 或 URL 则同步现有 Gist。',
+              decoration: InputDecoration(
+                labelText: _platform == SyncPlatform.giteeGist
+                    ? 'Gitee Gist ID 或 URL'
+                    : 'GitHub Gist ID 或 URL',
+                hintText: _platform == SyncPlatform.giteeGist
+                    ? '例如：mluri6dyosvgzthfb43jw39'
+                    : '例如：abc123def456',
+                helperText: '留空点击上传将创建新 Gist，有值则同步现有 Gist。',
               ),
               onChanged: (value) {
                 // 如果输入的是 URL，提取 Gist ID
                 if (value.contains('gist.github.com')) {
+                  final uri = Uri.tryParse(value);
+                  if (uri != null) {
+                    final segments = uri.pathSegments;
+                    if (segments.isNotEmpty) {
+                      final gistId = segments.last;
+                      _gistIdController.text = gistId;
+                    }
+                  }
+                } else if (value.contains('gitee.com/gist')) {
                   final uri = Uri.tryParse(value);
                   if (uri != null) {
                     final segments = uri.pathSegments;

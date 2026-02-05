@@ -14,7 +14,6 @@ class SyncProvider extends ChangeNotifier {
   /// 保存同步配置
   Future<void> saveConfig(SyncConfig config) async {
     await _syncService.saveConfig(config);
-    notifyListeners();
   }
 
   /// 上传配置

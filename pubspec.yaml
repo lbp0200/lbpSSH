@@ -76,6 +76,9 @@ dependencies:
   # 文件选择器
   file_picker: ^8.0.0
 
+  # 窗口管理
+  window_manager: ^0.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

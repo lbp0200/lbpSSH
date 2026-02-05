@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/connection_repository.dart';
 import 'domain/services/terminal_service.dart';
@@ -15,6 +16,10 @@ import 'presentation/screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化窗口管理器并设置最大化
+  await windowManager.ensureInitialized();
+  await windowManager.maximize();
 
   final connectionRepository = ConnectionRepository();
   await connectionRepository.init();
