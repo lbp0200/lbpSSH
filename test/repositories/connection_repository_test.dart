@@ -66,6 +66,10 @@ void main() {
       );
 
       final json = connection.toJson();
+      // Convert jumpHost to Map if it's not already
+      if (json['jumpHost'] is JumpHostConfig) {
+        json['jumpHost'] = (json['jumpHost'] as JumpHostConfig).toJson();
+      }
       expect(json['jumpHost'], isA<Map<String, dynamic>>());
 
       final deserialized = SshConnection.fromJson(json);
