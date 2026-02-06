@@ -60,14 +60,14 @@ jobs:
       - name: Build Linux
         run: |
           flutter build linux --release
-          cd build/linux/x64/release/bundle
-          zip -r lbpSSH-linux-x64.zip lbpSSH
+          cd build/linux/x64/release
+          zip -r lbpSSH-linux-x64.zip bundle
 
       - name: Upload Linux build
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: build/linux/x64/release/bundle/lbpSSH-linux-x64.zip
+          path: build/linux/x64/release/lbpSSH-linux-x64.zip
 
   build-windows:
     runs-on: windows-latest
@@ -92,13 +92,13 @@ jobs:
       - name: Build Windows
         run: |
           flutter build windows --release
-          Compress-Archive -Path build/windows/x64/release/runner\ -DestinationPath build/windows/x64/release/runner/lbpSSH-windows-x64.zip
+          Compress-Archive -Path build/windows/x64/runner\ -DestinationPath build/windows/x64/lbpSSH-windows-x64.zip
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/x64/release/runner/lbpSSH-windows-x64.zip
+          path: build/windows/x64/lbpSSH-windows-x64.zip
 
   build-macos:
     runs-on: macos-latest
@@ -123,14 +123,14 @@ jobs:
       - name: Build macOS
         run: |
           flutter build macos --release --no-tree-shake-icons
-          cd build/macos/release/
+          cd build/macos/Build/Products/Release
           zip -r lbpSSH-macos-universal.zip lbpSSH.app
 
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: build/macos/release/lbpSSH-macos-universal.zip
+          path: build/macos/Build/Products/Release/lbpSSH-macos-universal.zip
 
   release:
     runs-on: ubuntu-latest
