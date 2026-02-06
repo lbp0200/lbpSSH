@@ -11,9 +11,6 @@ class AppConfigProvider extends ChangeNotifier {
   TerminalConfig get terminalConfig => _configService.terminal;
   DefaultTerminalConfig get defaultTerminalConfig =>
       _configService.defaultTerminal;
-  SyncConfig? get syncConfig => _configService.sync;
-  SyncStatusEnum get syncStatus => _configService.status;
-  DateTime? get lastSyncTime => _configService.lastSyncTime;
 
   Future<void> saveTerminalConfig(TerminalConfig config) async {
     await _configService.saveTerminalConfig(config);
@@ -31,11 +28,6 @@ class AppConfigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveSyncConfig(SyncConfig config) async {
-    await _configService.saveSyncConfig(config);
-    notifyListeners();
-  }
-
   Future<void> resetToDefaults() async {
     await _configService.resetToDefaults();
     notifyListeners();
@@ -48,15 +40,5 @@ class AppConfigProvider extends ChangeNotifier {
   Future<void> importConfig(String jsonString) async {
     await _configService.importConfig(jsonString);
     notifyListeners();
-  }
-
-  Future<void> exportToFile(String filePath) async {
-    await _configService.exportToFile(filePath);
-  }
-
-  Future<String> importFromFile(String filePath) async {
-    final content = await _configService.importFromFile(filePath);
-    notifyListeners();
-    return content;
   }
 }

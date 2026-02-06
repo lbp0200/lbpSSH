@@ -117,8 +117,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         ).showSnackBar(const SnackBar(content: Text('连接测试成功')));
       }
     } catch (e) {
-      // 打印详细错误到控制台
-      print('Gitee Gist 连接失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

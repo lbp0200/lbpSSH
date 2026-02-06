@@ -44,29 +44,14 @@ class _ImportExportSettingsScreenState
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // 统计信息卡片
               _buildStatsCard(),
-
               const SizedBox(height: 24),
-
-              // 导出功能
               _buildExportSection(provider),
-
               const SizedBox(height: 24),
-
-              // 导入功能
               _buildImportSection(provider),
-
               const SizedBox(height: 24),
-
-              // 导入预览
               if (_showImportPreview && _importedConnections.isNotEmpty)
                 _buildImportPreview(),
-
-              const SizedBox(height: 24),
-
-              // 同步功能提示
-              _buildSyncHint(),
             ],
           );
         },
@@ -296,8 +281,6 @@ class _ImportExportSettingsScreenState
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-
-            // 连接列表预览
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -320,10 +303,7 @@ class _ImportExportSettingsScreenState
                 );
               },
             ),
-
             const SizedBox(height: 16),
-
-            // 导入选项
             Row(
               children: [
                 Expanded(
@@ -347,46 +327,6 @@ class _ImportExportSettingsScreenState
     );
   }
 
-  Widget _buildSyncHint() {
-    return Card(
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.sync, color: Colors.blue.shade700),
-                const SizedBox(width: 8),
-                Text(
-                  '云端同步',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text('除了本地导入导出，您还可以配置云端同步功能，将配置安全地同步到 GitHub Gist 或其他云端存储。'),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/sync-settings');
-                },
-                child: const Text('前往同步设置'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   IconData _getAuthTypeIcon(AuthType authType) {
     switch (authType) {
       case AuthType.password:
@@ -402,7 +342,6 @@ class _ImportExportSettingsScreenState
     try {
       final file = await provider.exportToLocalFile();
       if (file != null && mounted) {
-        // 显示导出摘要
         final summary = provider.generateExportSummary();
         showDialog(
           context: context,

@@ -320,9 +320,6 @@ class SyncService with ChangeNotifier {
         ),
       );
 
-      print('Gitee 上传响应类型: ${response.data.runtimeType}');
-      print('Gitee 上传响应: ${response.data}');
-
       // 检查响应格式
       if (response.data is! Map<String, dynamic>) {
         throw Exception('Gitee API 响应格式错误: ${response.data.runtimeType}');
@@ -351,8 +348,6 @@ class SyncService with ChangeNotifier {
       final getUrl =
           'https://gitee.com/api/v5/gists/$gistId?access_token=$token';
       final getResponse = await _dio.get(getUrl);
-
-      print('Gitee GET 响应类型: ${getResponse.data.runtimeType}');
 
       if (getResponse.data is! Map<String, dynamic>) {
         throw Exception('Gist ID 无效或 Token 权限不足');
@@ -398,11 +393,7 @@ class SyncService with ChangeNotifier {
     final url =
         'https://gitee.com/api/v5/gists/${_config!.gistId}?access_token=$token';
 
-    print('Gitee Gist 请求 URL: $url');
-
     final response = await _dio.get(url);
-
-    print('Gitee Gist 响应类型: ${response.data.runtimeType}');
 
     // 如果返回的是 List，说明 Token 无效或 gistId 错误
     if (response.data is List) {
