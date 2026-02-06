@@ -34,6 +34,7 @@ class AppConfig {
 
 class AppConfigService with ChangeNotifier {
   static AppConfigService? _instance;
+  static bool _initialized = false;
   TerminalConfig _terminal = TerminalConfig.defaultConfig;
   DefaultTerminalConfig _defaultTerminal = DefaultTerminalConfig.defaultConfig;
 
@@ -41,6 +42,10 @@ class AppConfigService with ChangeNotifier {
 
   factory AppConfigService.getInstance() {
     _instance ??= AppConfigService._internal();
+    if (!_initialized) {
+      _loadFromPrefs();
+      _initialized = true;
+    }
     return _instance!;
   }
 
@@ -57,6 +62,21 @@ class AppConfigService with ChangeNotifier {
     _defaultTerminal = config;
     await _saveToPrefs();
     notifyListeners();
+  }
+
+  static Future<void> _loadFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final configJson = prefs.getString(AppConstants.appConfigKey);
+    if (configJson != null) {
+      try {
+        final json = jsonDecode(configJson) as Map<String, dynamic>;
+        final config = AppConfig.fromJson(json);
+        _instance!._terminal = config.terminal;
+        _instance!._defaultTerminal = config.defaultTerminal;
+      } catch (e) {
+        // Use defaults if parsing fails
+      }
+    }
   }
 
   Future<void> _saveToPrefs() async {
