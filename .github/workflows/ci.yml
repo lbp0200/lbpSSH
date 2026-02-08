@@ -188,18 +188,18 @@ jobs:
         if: env.HOMEBREW_TAP_REPO != ''
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          # Install coreutils for sha256sum (ubuntu doesn't have it by default)
+          # Install coreutils for sha256sum
           sudo apt-get update
           sudo apt-get install -y coreutils
 
           # Clone tap repo
-          git clone "https://${{ secrets.HOMEBREW_TAP_REPO }}.git" /tmp/homebrew-tap
+          git clone "https://github.com/${{ secrets.HOMEBREW_TAP_REPO }}.git" /tmp/homebrew-tap
           cd /tmp/homebrew-tap
 
           # Calculate sha256 for macOS zip
           SHA256=$(sha256sum "../releases/lbpSSH-macos-universal.zip" | cut -d' ' -f1)
-          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
 
           # Update cask file
           sed -i "s/version \".*\"/version \"$VERSION\"/" Casks/lbpssh.rb
@@ -210,7 +210,7 @@ jobs:
           git config user.email "actions@github.com"
           git add Casks/lbpssh.rb
           git commit -m "Update lbpssh to $VERSION"
-          git push
+          git push "https://$HOMEBREW_TOKEN@github.com/${{ secrets.HOMEBREW_TAP_REPO }}.git"
 
   release-draft:
     runs-on: ubuntu-latest
