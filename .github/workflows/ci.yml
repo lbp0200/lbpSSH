@@ -189,12 +189,17 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
+          # Install coreutils for sha256sum (ubuntu doesn't have it by default)
+          sudo apt-get update
+          sudo apt-get install -y coreutils
+
           # Clone tap repo
           git clone "https://${{ secrets.HOMEBREW_TAP_REPO }}.git" /tmp/homebrew-tap
           cd /tmp/homebrew-tap
 
           # Calculate sha256 for macOS zip
           SHA256=$(sha256sum "../releases/lbpSSH-macos-universal.zip" | cut -d' ' -f1)
+          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
 
           # Update cask file
           sed -i "s/version \".*\"/version \"$VERSION\"/" Casks/lbpssh.rb
