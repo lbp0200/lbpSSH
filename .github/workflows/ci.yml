@@ -185,7 +185,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Tap
-        if: env.HOMEBREW_TAP_REPO != ''
+        if: ${{ secrets.HOMEBREW_TAP_REPO != '' }}
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
           HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
