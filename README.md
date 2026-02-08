@@ -68,6 +68,44 @@ lbpSSH 结合了以上工具的优点，提供免费、跨平台、配置同步�
 
 ---
 
+## 下载安装 | Download & Install
+
+### macOS
+
+#### Homebrew (推荐 | Recommended)
+
+```bash
+# 添加 Homebrew Tap
+brew tap lbp0200/lbpssh-tap
+
+# 安装 lbpSSH
+brew install --cask lbpssh
+```
+
+#### 手动下载 | Manual Download
+
+从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-macos-universal.zip`，解压后拖动 `lbpSSH.app` 到 Applications 文件夹。
+
+---
+
+### Windows
+
+从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-windows-x64.zip`，解压后运行 `lbpSSH.exe`。
+
+---
+
+### Linux
+
+从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-linux-x64.zip`，解压后运行：
+
+```bash
+cd bundle
+chmod +x lbpSSH
+./lbpSSH
+```
+
+---
+
 ## 快速开始 | Quick Start
 
 ### 前置要求 | Requirements
