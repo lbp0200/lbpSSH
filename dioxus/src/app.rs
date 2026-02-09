@@ -201,6 +201,28 @@ pub fn App() -> Element {
                             active_tab_id.set(tabs_vec.last().map(|t| t.id.clone()));
                         }
                     },
+                    on_connect: move |id: String| {
+                        let session_manager = get_session_manager();
+                        let is_connected = session_manager.is_connected(&id);
+                        if is_connected {
+                            session_manager.disconnect(&id);
+                        } else {
+                            // 选择连接并打开标签页
+                            let conn = connections.read().iter().find(|c| c.id == id).cloned();
+                            let conn_name = conn.as_ref().map(|c| c.name.clone()).unwrap_or_default();
+                            let tab = TabInfo {
+                                id: id.clone(),
+                                name: conn_name,
+                                connection: conn,
+                            };
+                            let mut tabs_vec = tabs.read().clone();
+                            if !tabs_vec.iter().any(|t| t.id == id) {
+                                tabs_vec.push(tab);
+                            }
+                            tabs.set(tabs_vec);
+                            active_tab_id.set(Some(id));
+                        }
+                    },
                 }
                 // 终端区域
                 div {

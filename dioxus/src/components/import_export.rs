@@ -44,6 +44,8 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                 socks5_proxy: None,
                 jump_host: None,
                 notes: None,
+                group: Some("Samples".to_string()),
+                color: Some("#007ACC".to_string()),
                 created_at: now,
                 updated_at: now,
                 version: 1,

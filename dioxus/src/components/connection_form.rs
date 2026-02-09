@@ -302,6 +302,8 @@ pub fn ConnectionForm(
                                 socks5_proxy: None,
                                 ssh_config_host: None,
                                 notes: if !notes.read().is_empty() { Some(notes.read().clone()) } else { None },
+                                group: editing_conn.as_ref().and_then(|c| c.group.clone()),
+                                color: editing_conn.as_ref().and_then(|c| c.color.clone()),
                                 created_at: editing_conn.as_ref().map(|c| c.created_at).unwrap_or_else(chrono::Utc::now),
                                 updated_at: chrono::Utc::now(),
                                 version: editing_conn.as_ref().map(|c| c.version).unwrap_or(1) + 1,
