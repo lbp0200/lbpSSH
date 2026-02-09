@@ -1,9 +1,143 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import '../../data/models/ssh_connection.dart';
+import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
+
+/// SOCKS5 代理 Socket 实现（实现 SSHSocket 接口）
+class _Socks5ProxySocket implements SSHSocket {
+  final Socket _socket;
+
+  _Socks5ProxySocket(this._socket);
+
+  @override
+  Stream<Uint8List> get stream => _socket.cast<Uint8List>();
+
+  @override
+  StreamSink<List<int>> get sink => _socket;
+
+  @override
+  Future<void> close() async {
+    await _socket.close();
+  }
+
+  @override
+  Future<void> get done => _socket.done;
+
+  @override
+  void destroy() {
+    _socket.destroy();
+  }
+
+  @override
+  String toString() {
+    final address = '${_socket.remoteAddress.host}:${_socket.remotePort}';
+    return '_Socks5ProxySocket($address)';
+  }
+}
+
+/// 连接到 SOCKS5 代理并返回 SSHSocket
+Future<SSHSocket> connectViaSocks5Proxy(
+  String proxyHost,
+  int proxyPort,
+  String targetHost,
+  int targetPort, {
+  String? username,
+  String? password,
+}) async {
+  // 连接到 SOCKS5 代理服务器
+  final socket = await Socket.connect(proxyHost, proxyPort);
+
+  // SOCKS5 握手
+  // 1. 发送认证方法列表
+  final authMethods = <int>[];
+  if (username != null && password != null) {
+    authMethods.add(0x02); // 用户名密码认证
+  }
+  authMethods.add(0x00); // 无认证
+
+  final handshake = <int>[
+    0x05, // SOCKS 版本
+    authMethods.length,
+    ...authMethods,
+  ];
+  socket.add(handshake);
+
+  // 读取服务器选择的认证方法
+  final handshakeResponse = await socket.first;
+  if (handshakeResponse[0] != 0x05) {
+    socket.destroy();
+    throw Exception('SOCKS5 握手失败：无效的协议版本');
+  }
+
+  // 如果需要用户名密码认证
+  if (handshakeResponse[1] == 0x02) {
+    if (username == null || password == null) {
+      socket.destroy();
+      throw Exception('SOCKS5 代理需要用户名密码认证');
+    }
+
+    // 发送用户名密码认证
+    final authRequest = <int>[
+      0x01, // 子协议版本
+      username.length,
+      ...utf8.encode(username),
+      password.length,
+      ...utf8.encode(password),
+    ];
+    socket.add(authRequest);
+
+    // 读取认证结果
+    final authResponse = await socket.first;
+    if (authResponse[1] != 0x00) {
+      socket.destroy();
+      throw Exception('SOCKS5 用户名密码认证失败');
+    }
+  } else if (handshakeResponse[1] != 0x00) {
+    socket.destroy();
+    throw Exception('SOCKS5 代理不支持所选的认证方式');
+  }
+
+  // 发送连接请求
+  final connectRequest = <int>[
+    0x05, // SOCKS 版本
+    0x01, // CONNECT 命令
+    0x00, // 保留字段
+    0x03, // 地址类型：域名
+    targetHost.length,
+    ...utf8.encode(targetHost),
+    (targetPort >> 8) & 0xFF, // 端口高字节
+    targetPort & 0xFF, // 端口低字节
+  ];
+  socket.add(connectRequest);
+
+  // 读取连接响应
+  final connectResponse = await socket.first;
+  if (connectResponse[0] != 0x05) {
+    socket.destroy();
+    throw Exception('SOCKS5 连接失败：无效的协议版本');
+  }
+
+  if (connectResponse[1] != 0x00) {
+    final errorCodes = {
+      0x01: 'SOCKS5 错误：一般性失败',
+      0x02: 'SOCKS5 错误：连接被拒绝',
+      0x03: 'SOCKS5 错误：网络不可达',
+      0x04: 'SOCKS5 错误：主机不可达',
+      0x05: 'SOCKS5 错误：连接被拒绝',
+      0x06: 'SOCKS5 错误：TTL 过期',
+      0x07: 'SOCKS5 错误：不支持的命令',
+      0x08: 'SOCKS5 错误：不支持的地址类型',
+    };
+    socket.destroy();
+    throw Exception(errorCodes[connectResponse[1]] ?? 'SOCKS5 错误：未知错误 (${connectResponse[1]})');
+  }
+
+  return _Socks5ProxySocket(socket);
+}
 
 /// SSH 连接状态
 enum SshConnectionState { disconnected, connecting, connected, error }
@@ -21,6 +155,9 @@ class SshService implements TerminalInputService {
   // 性能优化：输出缓冲和批处理
   final _outputBuffer = StringBuffer();
   Timer? _outputTimer;
+
+  // 是否已显示过 Last login 信息
+  bool _hasShownLastLogin = false;
 
   /// 输出流
   @override
@@ -45,8 +182,33 @@ class SshService implements TerminalInputService {
   void _scheduleOutputFlush() {
     _outputTimer?.cancel();
     _outputTimer = Timer(const Duration(milliseconds: 10), () {
-      final output = _outputBuffer.toString();
+      var output = _outputBuffer.toString();
       _outputBuffer.clear();
+
+      // 过滤重复的 Last login 行
+      if (!_hasShownLastLogin && output.contains('Last login:')) {
+        _hasShownLastLogin = true;
+        // 保留第一行（Last login），删除后续的
+        final lines = output.split('\n');
+        final lastLoginLines = <String>[];
+        final otherLines = <String>[];
+        bool foundLastLogin = false;
+
+        for (final line in lines) {
+          if (line.startsWith('Last login:')) {
+            if (!foundLastLogin) {
+              lastLoginLines.add(line);
+              foundLastLogin = true;
+            }
+            // 跳过重复的 Last login 行
+          } else {
+            otherLines.add(line);
+          }
+        }
+
+        output = [...lastLoginLines, ...otherLines].join('\n');
+      }
+
       if (output.isNotEmpty) {
         _outputController.add(output);
       }
@@ -58,7 +220,21 @@ class SshService implements TerminalInputService {
     try {
       _updateState(SshConnectionState.connecting);
 
-      final socket = await SSHSocket.connect(connection.host, connection.port);
+      // 通过 SOCKS5 代理连接（如果配置了）
+      SSHSocket socket;
+      if (connection.socks5Proxy != null) {
+        final proxy = connection.socks5Proxy!;
+        socket = await connectViaSocks5Proxy(
+          proxy.host,
+          proxy.port,
+          connection.host,
+          connection.port,
+          username: proxy.username,
+          password: proxy.password,
+        );
+      } else {
+        socket = await SSHSocket.connect(connection.host, connection.port);
+      }
 
       // 根据认证方式准备认证信息
       String? password;
@@ -101,31 +277,109 @@ class SshService implements TerminalInputService {
             throw Exception('私钥或密码错误: $e');
           }
           break;
+
+        case AuthType.sshConfig:
+          // 从 SSH config 文件获取认证信息
+          final configHost = connection.sshConfigHost;
+          if (configHost == null || configHost.isEmpty) {
+            throw Exception('SSH Config 主机名未设置');
+          }
+
+          final configEntry = SshConfigService.findHostEntry(configHost);
+          if (configEntry == null) {
+            throw Exception('未在 ~/.ssh/config 中找到主机 "$configHost" 的配置');
+          }
+
+          // 使用配置中的主机和端口
+          final targetHost = configEntry.getConnectHost();
+          final targetPort = configEntry.port ?? connection.port;
+
+          // 重新创建 socket（如果使用了不同的 host/port）
+          if (connection.socks5Proxy != null) {
+            final proxy = connection.socks5Proxy!;
+            socket = await connectViaSocks5Proxy(
+              proxy.host,
+              proxy.port,
+              targetHost,
+              targetPort,
+              username: proxy.username,
+              password: proxy.password,
+            );
+          } else {
+            socket = await SSHSocket.connect(targetHost, targetPort);
+          }
+
+          // 处理身份文件
+          if (configEntry.identityFiles != null &&
+              configEntry.identityFiles!.isNotEmpty) {
+            for (final identityFile in configEntry.identityFiles!) {
+              try {
+                final keyFile = File(identityFile.replaceFirst('~', Platform.environment['HOME'] ?? ''));
+                if (await keyFile.exists()) {
+                  final keyContent = await keyFile.readAsString();
+                  try {
+                    identities = SSHKeyPair.fromPem(keyContent);
+                    break;
+                  } catch (_) {
+                    // 尝试下一个身份文件
+                    continue;
+                  }
+                }
+              } catch (_) {
+                continue;
+              }
+            }
+          }
+
+          // 如果没有找到有效的身份文件，使用密钥认证
+          if (identities == null) {
+            if (connection.privateKeyContent != null &&
+                connection.privateKeyContent!.isNotEmpty) {
+              try {
+                identities = SSHKeyPair.fromPem(connection.privateKeyContent!);
+              } catch (e) {
+                throw Exception('私钥格式错误: $e');
+              }
+            } else if (connection.authType == AuthType.sshConfig) {
+              throw Exception('SSH Config 中未配置有效的身份文件，且未在连接中指定私钥');
+            }
+          }
+          break;
       }
 
-      // 创建 SSH 客户端
-      // dartssh2 2.13.0 使用 onPasswordRequest 回调进行密码认证，identities 参数处理私钥认证
-      _client = SSHClient(
-        socket,
-        username: connection.username,
-        onPasswordRequest: connection.authType == AuthType.password
-            ? () => password!
-            : null,
-        identities: identities, // 私钥认证时使用
-      );
-
-      // 处理跳板机连接
+      // 处理跳板机连接（跳板机模式下会自己创建 _client）
       if (connection.jumpHost != null) {
         await _connectViaJumpHost(connection);
       } else {
-        // 直接连接到目标服务器
-        await _connectDirectly(connection, password, identities);
+        // 直接连接到目标服务器，创建 SSH 客户端
+        _client = SSHClient(
+          socket,
+          username: connection.username,
+          onPasswordRequest: connection.authType == AuthType.password
+              ? () => password!
+              : null,
+          identities: identities,
+        );
       }
 
-      // 创建交互式会话，自动发现用户的默认shell
-      _session = await _client!.shell(
-        environment: await _getShellEnvironment(),
-      );
+      // 创建交互式会话
+      SSHSession? session;
+      try {
+        // 第一次尝试：带环境变量
+        session = await _client!.shell(
+          environment: await _getShellEnvironment(),
+        );
+      } catch (e) {
+        // 第二次尝试：简化的 pty 配置
+        try {
+          session = await _client!.shell(
+            pty: const SSHPtyConfig(type: 'xterm', width: 80, height: 24),
+          );
+        } catch (e2) {
+          throw Exception('建立会话失败: $e2');
+        }
+      }
+      _session = session;
       // 使用 UTF-8 解码器正确处理多字节字符（如中文）
       _session!.stdout
           .cast<List<int>>()
@@ -350,25 +604,6 @@ class SshService implements TerminalInputService {
     return environment;
   }
 
-  /// 直接连接到目标服务器
-  Future<void> _connectDirectly(
-    SshConnection connection,
-    String? password,
-    List<SSHKeyPair>? identities,
-  ) async {
-    final socket = await SSHSocket.connect(connection.host, connection.port);
-
-    // 创建 SSH 客户端
-    _client = SSHClient(
-      socket,
-      username: connection.username,
-      onPasswordRequest: connection.authType == AuthType.password
-          ? () => password!
-          : null,
-      identities: identities,
-    );
-  }
-
   /// 通过跳板机连接到目标服务器
   Future<void> _connectViaJumpHost(SshConnection connection) async {
     final jumpHost = connection.jumpHost!;
@@ -419,6 +654,8 @@ class SshService implements TerminalInputService {
           throw Exception('跳板机私钥或密码错误: $e');
         }
         break;
+      default:
+        throw Exception('跳板机不支持 SSH Config 认证方式');
     }
 
     // 创建跳板机SSH客户端

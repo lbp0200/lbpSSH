@@ -58,6 +58,9 @@ dependencies:
   # 加密
   encrypt: ^5.0.3
 
+  # 路径处理
+  path: ^1.9.0
+
   # URL 启动器
   url_launcher: ^6.2.4
 

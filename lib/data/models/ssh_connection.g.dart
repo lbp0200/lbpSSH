@@ -21,6 +21,12 @@ SshConnection _$SshConnectionFromJson(Map<String, dynamic> json) =>
       jumpHost: json['jumpHost'] == null
           ? null
           : JumpHostConfig.fromJson(json['jumpHost'] as Map<String, dynamic>),
+      socks5Proxy: json['socks5Proxy'] == null
+          ? null
+          : Socks5ProxyConfig.fromJson(
+              json['socks5Proxy'] as Map<String, dynamic>,
+            ),
+      sshConfigHost: json['sshConfigHost'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] == null
           ? null
@@ -44,6 +50,8 @@ Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
       'privateKeyContent': instance.privateKeyContent,
       'keyPassphrase': instance.keyPassphrase,
       'jumpHost': instance.jumpHost,
+      'socks5Proxy': instance.socks5Proxy,
+      'sshConfigHost': instance.sshConfigHost,
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
@@ -54,6 +62,7 @@ const _$AuthTypeEnumMap = {
   AuthType.password: 'password',
   AuthType.key: 'key',
   AuthType.keyWithPassword: 'keyWithPassword',
+  AuthType.sshConfig: 'sshConfig',
 };
 
 JumpHostConfig _$JumpHostConfigFromJson(Map<String, dynamic> json) =>
@@ -74,4 +83,20 @@ Map<String, dynamic> _$JumpHostConfigToJson(JumpHostConfig instance) =>
       'authType': _$AuthTypeEnumMap[instance.authType]!,
       'password': instance.password,
       'privateKeyPath': instance.privateKeyPath,
+    };
+
+Socks5ProxyConfig _$Socks5ProxyConfigFromJson(Map<String, dynamic> json) =>
+    Socks5ProxyConfig(
+      host: json['host'] as String,
+      port: (json['port'] as num?)?.toInt() ?? 1080,
+      username: json['username'] as String?,
+      password: json['password'] as String?,
+    );
+
+Map<String, dynamic> _$Socks5ProxyConfigToJson(Socks5ProxyConfig instance) =>
+    <String, dynamic>{
+      'host': instance.host,
+      'port': instance.port,
+      'username': instance.username,
+      'password': instance.password,
     };

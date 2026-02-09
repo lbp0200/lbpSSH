@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../data/models/ssh_connection.dart';
+import '../../domain/services/ssh_config_service.dart';
 import '../providers/connection_provider.dart';
 
 /// 连接配置表单界面
@@ -42,15 +43,32 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
   final _jumpPasswordController = TextEditingController();
   AuthType _jumpAuthType = AuthType.password;
 
+  // SOCKS5 代理配置
+  bool _useSocks5Proxy = false;
+  final _socks5HostController = TextEditingController();
+  final _socks5PortController = TextEditingController();
+  final _socks5UsernameController = TextEditingController();
+  final _socks5PasswordController = TextEditingController();
+
+  // SSH Config 主机选择
+  List<SshConfigEntry> _sshConfigEntries = [];
+  String? _selectedSshConfigHost;
+
   @override
   void initState() {
     super.initState();
+    // 加载 SSH config 文件中的主机列表
+    _loadSshConfigEntries();
     if (widget.connection != null) {
       _loadConnection(widget.connection!);
     } else {
       _portController.text = '22';
       _jumpPortController.text = '22';
     }
+  }
+
+  void _loadSshConfigEntries() {
+    _sshConfigEntries = SshConfigService.readConfigFile();
   }
 
   void _loadConnection(SshConnection connection) {
@@ -69,6 +87,20 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
       _jumpPortController.text = connection.jumpHost!.port.toString();
       _jumpUsernameController.text = connection.jumpHost!.username;
       _jumpAuthType = connection.jumpHost!.authType;
+    }
+
+    // 加载 SOCKS5 代理配置
+    if (connection.socks5Proxy != null) {
+      _useSocks5Proxy = true;
+      _socks5HostController.text = connection.socks5Proxy!.host;
+      _socks5PortController.text = connection.socks5Proxy!.port.toString();
+      _socks5UsernameController.text = connection.socks5Proxy!.username ?? '';
+      _socks5PasswordController.text = connection.socks5Proxy!.password ?? '';
+    }
+
+    // 加载 SSH Config 设置
+    if (connection.sshConfigHost != null) {
+      _selectedSshConfigHost = connection.sshConfigHost;
     }
   }
 
@@ -249,6 +281,21 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         );
       }
 
+      // 创建 SOCKS5 代理配置
+      Socks5ProxyConfig? socks5Proxy;
+      if (_useSocks5Proxy) {
+        socks5Proxy = Socks5ProxyConfig(
+          host: _socks5HostController.text,
+          port: int.tryParse(_socks5PortController.text) ?? 1080,
+          username: _socks5UsernameController.text.isNotEmpty
+              ? _socks5UsernameController.text
+              : null,
+          password: _socks5PasswordController.text.isNotEmpty
+              ? _socks5PasswordController.text
+              : null,
+        );
+      }
+
       // 创建连接配置
       final connection = SshConnection(
         id: widget.connection?.id ?? const Uuid().v4(),
@@ -268,6 +315,8 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
             ? _keyPassphraseController.text
             : null,
         jumpHost: jumpHost,
+        socks5Proxy: socks5Proxy,
+        sshConfigHost: _authType == AuthType.sshConfig ? _selectedSshConfigHost : null,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         createdAt: widget.connection?.createdAt,
         updatedAt: DateTime.now(),
@@ -375,12 +424,30 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
             DropdownButtonFormField<AuthType>(
               initialValue: _authType,
               decoration: const InputDecoration(labelText: '认证方式'),
-              items: const [
-                DropdownMenuItem(value: AuthType.password, child: Text('密码认证')),
-                DropdownMenuItem(value: AuthType.key, child: Text('密钥认证')),
-                DropdownMenuItem(
+              items: [
+                const DropdownMenuItem(value: AuthType.password, child: Text('密码认证')),
+                const DropdownMenuItem(value: AuthType.key, child: Text('密钥认证')),
+                const DropdownMenuItem(
                   value: AuthType.keyWithPassword,
                   child: Text('密钥+密码认证'),
+                ),
+                DropdownMenuItem(
+                  value: AuthType.sshConfig,
+                  child: Row(
+                    children: [
+                      const Text('SSH Config'),
+                      const SizedBox(width: 8),
+                      if (_sshConfigEntries.isEmpty)
+                        Tooltip(
+                          message: '未找到 ~/.ssh/config 文件',
+                          child: Icon(
+                            Icons.info_outline,
+                            color: Colors.grey.shade400,
+                            size: 16,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ],
               onChanged: (value) {
@@ -519,6 +586,101 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
               ),
             ],
 
+            // SSH Config 主机选择（如果是 sshConfig 认证）
+            if (_authType == AuthType.sshConfig) ...[
+              const SizedBox(height: 16),
+              if (_sshConfigEntries.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange.shade700),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '未找到 ~/.ssh/config 文件。请确保文件存在且包含主机配置。',
+                          style: TextStyle(color: Colors.orange.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (_sshConfigEntries.isNotEmpty) ...[
+                DropdownButtonFormField<String?>(
+                  value: _selectedSshConfigHost,
+                  decoration: const InputDecoration(
+                    labelText: '选择 SSH Config 主机',
+                    hintText: '从 ~/.ssh/config 中选择',
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('-- 选择主机 --'),
+                    ),
+                    ..._sshConfigEntries.map(
+                      (entry) => DropdownMenuItem<String?>(
+                        value: entry.hostName,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(entry.hostName),
+                            if (entry.actualHost != null || entry.user != null)
+                              Text(
+                                '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSshConfigHost = value;
+                      // 自动填充主机信息
+                      if (value != null) {
+                        final entry = _sshConfigEntries
+                            .firstWhere((e) => e.hostName == value);
+                        _hostController.text = entry.getConnectHost();
+                        if (entry.port != null) {
+                          _portController.text = entry.port.toString();
+                        }
+                        if (entry.user != null) {
+                          _usernameController.text = entry.user!;
+                        }
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '将使用 ~/.ssh/config 中定义的主机配置（主机名、端口、用户、身份文件等）。',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _loadSshConfigEntries();
+                  setState(() {});
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('刷新列表'),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // 跳板机配置
@@ -583,6 +745,99 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
                   obscureText: true,
                 ),
               ],
+            ],
+
+            const SizedBox(height: 24),
+
+            // SOCKS5 代理配置
+            CheckboxListTile(
+              title: const Text('使用 SOCKS5 代理'),
+              value: _useSocks5Proxy,
+              onChanged: (value) {
+                setState(() {
+                  _useSocks5Proxy = value ?? false;
+                });
+              },
+            ),
+
+            if (_useSocks5Proxy) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _socks5HostController,
+                      decoration: const InputDecoration(
+                        labelText: '代理主机',
+                        hintText: '例如：127.0.0.1',
+                      ),
+                      validator: (value) {
+                        if (_useSocks5Proxy &&
+                            (value == null || value.isEmpty)) {
+                          return '请输入代理主机';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _socks5PortController,
+                      decoration: const InputDecoration(
+                        labelText: '端口',
+                        hintText: '默认 1080',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (_useSocks5Proxy &&
+                            (value == null || value.isEmpty)) {
+                          return '请输入端口';
+                        }
+                        final port = int.tryParse(value ?? '');
+                        if (port == null || port < 1 || port > 65535) {
+                          return '端口号无效';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _socks5UsernameController,
+                      decoration: const InputDecoration(
+                        labelText: '用户名',
+                        hintText: '可选',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _socks5PasswordController,
+                      decoration: const InputDecoration(
+                        labelText: '密码',
+                        hintText: '可选',
+                      ),
+                      obscureText: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '提示：用户名和密码为可选配置，如果代理服务器不需要认证请留空。',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
             ],
 
             const SizedBox(height: 24),

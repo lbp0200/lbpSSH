@@ -335,6 +335,8 @@ class _ImportExportSettingsScreenState
         return Icons.key;
       case AuthType.keyWithPassword:
         return Icons.vpn_key;
+      case AuthType.sshConfig:
+        return Icons.settings;
     }
   }
 

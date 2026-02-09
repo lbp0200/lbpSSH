@@ -259,6 +259,9 @@ class ImportExportService {
         case AuthType.keyWithPassword:
           keyWithPasswordCount++;
           break;
+        case AuthType.sshConfig:
+          // SSH Config 认证不计入密码或密钥统计
+          break;
       }
 
       if (conn.jumpHost != null) {
