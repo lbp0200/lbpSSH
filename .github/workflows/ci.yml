@@ -151,6 +151,22 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log "$PREV_TAG..HEAD" --oneline --pretty="* %s")
+          else
+            CHANGELOG=$(git log -10 --oneline --pretty="* %s")
+          fi
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "## Changes" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Download Linux build
         uses: actions/download-artifact@v4
         with:
@@ -178,9 +194,7 @@ jobs:
           prerelease: false
           files: |
             releases/**/*
-          body: |
-            ## Changes
-            See [CHANGELOG.md](./CHANGELOG.md) for details.
+          body: ${{ steps.changelog.outputs.BODY }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -203,12 +217,13 @@ jobs:
           git clone "https://github.com/$HOMEBREW_TAP_REPO.git" /tmp/homebrew-tap
           cd /tmp/homebrew-tap
 
-          # Calculate sha256 for macOS zip
-          SHA256=$(sha256sum "../releases/lbpSSH-macos-universal.zip" | cut -d' ' -f1)
+          # Calculate sha256 for macOS zip (use absolute path)
+          SHA256=$(sha256sum "$GITHUB_WORKSPACE/releases/lbpSSH-macos-universal.zip" | cut -d' ' -f1)
 
-          # Update cask file
-          sed -i "s/version \".*\"/version \"$VERSION\"/" Casks/lbpssh.rb
-          sed -i "s/sha256 :no_check/sha256 \"$SHA256\"/" Casks/lbpssh.rb
+          # Update cask file (handles both :no_check and existing sha256 values)
+          perl -i -pe 's/version ".*?"/version "'"$VERSION"'"/' Casks/lbpssh.rb
+          perl -i -pe 's/sha256 ".*?"/sha256 "'"$SHA256"'"/' Casks/lbpssh.rb
+          perl -i -pe 's/sha256 :no_check/sha256 "'"$SHA256"'"/' Casks/lbpssh.rb
 
           # Commit and push
           git config user.name "GitHub Actions"
