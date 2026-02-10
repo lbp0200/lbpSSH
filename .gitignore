@@ -22,5 +22,5 @@ Thumbs.db
 # Logs
 *.log
 
-# dioxus desktop
- dioxus/target/
+# Claude Code
+.claude/
