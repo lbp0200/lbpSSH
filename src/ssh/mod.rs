@@ -1,6 +1,8 @@
 mod session;
+#[allow(dead_code)]
 pub use session::{SshSession, SshError};
 
+#[allow(dead_code)]
 pub mod local_terminal;
 
 pub mod session_manager {
@@ -24,18 +26,21 @@ pub mod session_manager {
     }
 
     impl SessionManager {
+        #[allow(dead_code)]
         /// 设置活动会话
         pub fn set_active_session(&self, id: &str) {
             let mut guard = self.active_session.lock().unwrap();
             *guard = Some(id.to_string());
         }
 
+        #[allow(dead_code)]
         /// 获取活动会话 ID
         pub fn get_active_session(&self) -> Option<String> {
             let guard = self.active_session.lock().unwrap();
             guard.clone()
         }
 
+        #[allow(dead_code)]
         /// 连接到 SSH 服务器
         pub async fn connect(&self, connection: &crate::models::connection::SshConnection) -> Result<(), SshError> {
             let mut session = SshSession::new();

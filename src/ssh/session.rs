@@ -8,6 +8,7 @@ use ssh2::{Session, Channel};
 use crate::models::connection::{AuthType, SshConnection};
 
 /// SSH 连接状态
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SshSessionState {
     Disconnected,
@@ -37,6 +38,7 @@ pub enum SshError {
     #[error("SOCKS5 代理错误: {0}")]
     Socks5Error(String),
 
+    #[allow(dead_code)]
     #[error("跳板机错误: {0}")]
     JumpHostError(String),
 }
@@ -172,6 +174,7 @@ impl SshSession {
         }
     }
 
+    #[allow(dead_code)]
     pub fn state(&self) -> SshSessionState {
         match self.state.load(Ordering::SeqCst) {
             0 => SshSessionState::Disconnected,
@@ -383,6 +386,7 @@ impl Drop for SshSession {
     }
 }
 
+#[allow(dead_code)]
 struct SshConfigEntry {
     host_name: String,
     actual_host: Option<String>,

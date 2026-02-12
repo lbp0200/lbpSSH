@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use dioxus_desktop::{Config, WindowBuilder};
 use dioxus_desktop::launch::launch;
+use dioxus_desktop::LogicalSize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::RwLock;
@@ -10,6 +11,9 @@ mod models;
 mod components;
 mod ssh;
 mod utils;
+
+#[cfg(test)]
+mod tests;
 
 use app::App;
 use models::config::ConfigModel;
@@ -45,11 +49,28 @@ fn main() {
     let config = Arc::new(RwLock::new(ConfigModel::load().unwrap_or_default()));
 
     // Initialize global config
-    init_config(config);
+    init_config(config.clone());
 
     // Read CSS file
     let css = std::fs::read_to_string("src/components/terminal.css")
         .unwrap_or_else(|_| String::new());
+
+    // Get window config
+    let window_config = {
+        let config_guard = config.read().unwrap_or_else(|_| {
+            panic!("Failed to lock config for reading");
+        });
+        config_guard.window.clone()
+    };
+
+    // Create window builder with saved settings
+    let window_builder = WindowBuilder::default()
+        .with_title("lbpSSH")
+        .with_inner_size(LogicalSize::new(
+            window_config.width as f64,
+            window_config.height as f64,
+        ))
+        .with_maximized(window_config.maximized);
 
     launch(
         || {
@@ -63,11 +84,7 @@ fn main() {
         vec![
             Box::new(
                 Config::default()
-                    .with_window(
-                        WindowBuilder::default()
-                            .with_title("lbpSSH")
-                            .with_inner_size(dioxus_desktop::LogicalSize::new(900.0, 600.0)),
-                    )
+                    .with_window(window_builder)
                     .with_custom_head(format!(r#"<style>{}</style>"#, css)),
             ) as Box<dyn std::any::Any>
         ],

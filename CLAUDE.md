@@ -42,10 +42,17 @@ Comments, documentation, and identifiers are in **Chinese**. Maintain this conve
 
 ## Testing
 
-No tests currently exist. Use standard `#[test]` attribute when adding tests:
+38 unit tests exist covering models, utils, and import/export functionality:
+- `models/config.rs`: WindowConfig, TerminalConfig, SyncConfig tests
+- `models/connection.rs`: AuthType, JumpHostConfig, SshConnection tests
+- `utils/import_export.rs`: ExportData, ImportExportService tests
+- `utils/sync.rs`: SyncConfig, SyncService, SyncData tests
+- `utils/window_manager.rs`: WindowConfig tests
+
 ```bash
-cargo test              # Run all tests
-cargo test test_name    # Run specific test
+cargo test              # Run all tests (including UI snapshot tests)
+cargo test models       # Run model tests only
+cargo test utils        # Run utility tests only
 ```
 
 ## Platform-Specific Dependencies

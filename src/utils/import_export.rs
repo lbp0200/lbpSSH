@@ -465,7 +465,7 @@ impl ImportExportService {
                     if let Some(key_path) = &conn.private_key_path {
                         content.push_str(&format!("    IdentityFile {}\n", key_path));
                     }
-                    if let Some(passphrase) = &conn.key_passphrase {
+                    if let Some(_passphrase) = &conn.key_passphrase {
                         content.push_str("    IdentitiesOnly yes\n");
                     }
                 }

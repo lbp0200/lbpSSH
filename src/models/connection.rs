@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use std::fmt;
 
 /// 认证方式
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -8,6 +9,17 @@ pub enum AuthType {
     Key,
     KeyWithPassword,
     SshConfig,
+}
+
+impl fmt::Display for AuthType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthType::Password => write!(f, "Password"),
+            AuthType::Key => write!(f, "Key"),
+            AuthType::KeyWithPassword => write!(f, "KeyWithPassword"),
+            AuthType::SshConfig => write!(f, "SshConfig"),
+        }
+    }
 }
 
 /// 跳板机配置

@@ -5,6 +5,24 @@ use confy;
 const APP_NAME: &str = "lbpssh";
 const CONFIG_FILENAME: &str = "config";
 
+/// 窗口配置
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WindowConfig {
+    pub width: u32,
+    pub height: u32,
+    pub maximized: bool,
+}
+
+impl Default for WindowConfig {
+    fn default() -> Self {
+        Self {
+            width: 900,
+            height: 600,
+            maximized: false,
+        }
+    }
+}
+
 /// 终端配置
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TerminalConfig {
@@ -112,6 +130,7 @@ pub struct ConfigModel {
     pub connections_path: PathBuf,
     pub theme: String,
     pub sync: SyncConfig,
+    pub window: WindowConfig,
 }
 
 impl Default for ConfigModel {
@@ -121,6 +140,7 @@ impl Default for ConfigModel {
             connections_path: Self::default_connections_path(),
             theme: String::from("dark"),
             sync: SyncConfig::default(),
+            window: WindowConfig::default(),
         }
     }
 }
@@ -249,5 +269,65 @@ mod tests {
         assert_eq!(config.foreground_color.len(), 7);
         assert!(config.background_color.starts_with('#'));
         assert_eq!(config.background_color.len(), 7);
+    }
+
+    /// 测试 WindowConfig 默认值
+    #[test]
+    fn test_window_config_default() {
+        let config = WindowConfig::default();
+
+        assert_eq!(config.width, 900);
+        assert_eq!(config.height, 600);
+        assert!(!config.maximized);
+    }
+
+    /// 测试 WindowConfig 序列化
+    #[test]
+    fn test_window_config_serialization() {
+        let config = WindowConfig {
+            width: 1024,
+            height: 768,
+            maximized: true,
+        };
+
+        let serialized = serde_json::to_string(&config).expect("序列化失败");
+        let deserialized: WindowConfig = serde_json::from_str(&serialized).expect("反序列化失败");
+
+        assert_eq!(config.width, deserialized.width);
+        assert_eq!(config.height, deserialized.height);
+        assert_eq!(config.maximized, deserialized.maximized);
+    }
+
+    /// 测试 WindowConfig 相等性
+    #[test]
+    fn test_window_config_equality() {
+        let config1 = WindowConfig {
+            width: 800,
+            height: 600,
+            maximized: false,
+        };
+        let config2 = WindowConfig {
+            width: 800,
+            height: 600,
+            maximized: false,
+        };
+        let config3 = WindowConfig {
+            width: 1024,
+            height: 768,
+            maximized: true,
+        };
+
+        assert_eq!(config1, config2);
+        assert_ne!(config1, config3);
+    }
+
+    /// 测试 ConfigModel 包含窗口配置
+    #[test]
+    fn test_config_model_has_window_config() {
+        let model = ConfigModel::default();
+
+        assert_eq!(model.window.width, 900);
+        assert_eq!(model.window.height, 600);
+        assert!(!model.window.maximized);
     }
 }

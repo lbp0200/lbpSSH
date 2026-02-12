@@ -256,3 +256,145 @@ pub struct SyncResult {
     pub downloaded: usize,
     pub timestamp: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 测试 SyncStatus 枚举
+    #[test]
+    fn test_sync_status_variants() {
+        assert_eq!(SyncStatus::Idle, SyncStatus::Idle);
+        assert_eq!(SyncStatus::Syncing, SyncStatus::Syncing);
+        assert_eq!(SyncStatus::Success, SyncStatus::Success);
+        assert_eq!(SyncStatus::Error("test".to_string()), SyncStatus::Error("test".to_string()));
+    }
+
+    /// 测试 SyncConfig 默认值
+    #[test]
+    fn test_sync_config_default() {
+        let config = SyncConfig::default();
+
+        assert!(!config.enabled);
+        assert!(config.server_url.is_empty());
+        assert!(config.api_key.is_empty());
+        assert_eq!(config.sync_interval_minutes, 30);
+        assert!(config.last_sync_time.is_none());
+        assert!(!config.auto_sync);
+    }
+
+    /// 测试 SyncConfig 序列化
+    #[test]
+    fn test_sync_config_serialization() {
+        let config = SyncConfig {
+            enabled: true,
+            server_url: "https://api.example.com".to_string(),
+            api_key: "test-api-key".to_string(),
+            sync_interval_minutes: 60,
+            last_sync_time: Some("2024-01-01T00:00:00Z".to_string()),
+            auto_sync: true,
+        };
+
+        let serialized = serde_json::to_string(&config).expect("序列化失败");
+        let deserialized: SyncConfig = serde_json::from_str(&serialized).expect("反序列化失败");
+
+        assert_eq!(config.enabled, deserialized.enabled);
+        assert_eq!(config.server_url, deserialized.server_url);
+        assert_eq!(config.sync_interval_minutes, deserialized.sync_interval_minutes);
+    }
+
+    /// 测试 SyncService 创建
+    #[test]
+    fn test_sync_service_new() {
+        let connections_path = PathBuf::from("/test/connections.json");
+        let config_dir = PathBuf::from("/test");
+        let service = SyncService::new(connections_path.clone(), config_dir.clone());
+
+        assert_eq!(service.connections_path, connections_path);
+        assert_eq!(service.sync_config_path, config_dir.join("sync_config.json"));
+    }
+
+    /// 测试 SyncData 序列化
+    #[test]
+    fn test_sync_data_serialization() {
+        let sync_data = SyncData {
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            connections: Vec::new(),
+            version: 1,
+        };
+
+        let serialized = serde_json::to_string(&sync_data).expect("序列化失败");
+        let deserialized: SyncData = serde_json::from_str(&serialized).expect("反序列化失败");
+
+        assert_eq!(sync_data.timestamp, deserialized.timestamp);
+        assert_eq!(sync_data.version, deserialized.version);
+    }
+
+    /// 测试 SyncResult 结构
+    #[test]
+    fn test_sync_result() {
+        let result = SyncResult {
+            uploaded: 5,
+            downloaded: 3,
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        };
+
+        assert_eq!(result.uploaded, 5);
+        assert_eq!(result.downloaded, 3);
+        assert!(!result.timestamp.is_empty());
+    }
+
+    /// 测试 needs_sync 未启用
+    #[test]
+    fn test_needs_sync_disabled() {
+        let service = SyncService::new(
+            PathBuf::from("/test/connections.json"),
+            PathBuf::from("/test"),
+        );
+
+        let config = SyncConfig {
+            enabled: false,
+            auto_sync: true,
+            last_sync_time: None,
+            ..SyncConfig::default()
+        };
+
+        assert!(!service.needs_sync(&config));
+    }
+
+    /// 测试 needs_sync 未设置自动同步
+    #[test]
+    fn test_needs_sync_no_auto() {
+        let service = SyncService::new(
+            PathBuf::from("/test/connections.json"),
+            PathBuf::from("/test"),
+        );
+
+        let config = SyncConfig {
+            enabled: true,
+            auto_sync: false,
+            last_sync_time: None,
+            ..SyncConfig::default()
+        };
+
+        assert!(!service.needs_sync(&config));
+    }
+
+    /// 测试 needs_sync 无最后同步时间
+    #[test]
+    fn test_needs_sync_no_last_sync() {
+        let service = SyncService::new(
+            PathBuf::from("/test/connections.json"),
+            PathBuf::from("/test"),
+        );
+
+        let config = SyncConfig {
+            enabled: true,
+            auto_sync: true,
+            last_sync_time: None,
+            ..SyncConfig::default()
+        };
+
+        assert!(service.needs_sync(&config));
+    }
+}
