@@ -1,0 +1,10 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 164
+expression: html
+---
+
+        <div class="terminal-preview" style="background-color: #1E1E1E; font-family: Menlo; font-size: 14px;">
+            <span>终端预览</span>
+            <code style="color: #CCCCCC;">user@hostname:~$ ls -la</code>
+        </div>

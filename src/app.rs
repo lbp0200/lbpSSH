@@ -54,7 +54,6 @@ pub fn App() -> Element {
     let terminal_content = match active_tab {
         Some(t) => {
             let conn_info = t.connection.clone();
-            let conn_id = t.id.clone();
             Some(rsx! {
                 div {
                     class: "terminal-header",

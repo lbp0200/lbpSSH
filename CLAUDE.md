@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 lbpSSH is a cross-platform SSH terminal manager built with Rust and Dioxus 0.7 (desktop). It manages SSH connections with support for multiple auth types, jump hosts, SOCKS5 proxies, and multi-tab terminals.
 
+是Flutter版/Users/lbp/Projects/lbpSSH的Rust实现
+
 ## Build Commands
 
 ```bash
@@ -53,4 +55,3 @@ cargo test test_name    # Run specific test
 | macOS | Xcode Command Line Tools |
 | Linux | `libgtk-3-dev`, `libwebkit2gtk-4.0-dev` |
 | Windows | WebView2 Runtime |
-

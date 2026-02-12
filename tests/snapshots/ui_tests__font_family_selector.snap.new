@@ -1,0 +1,19 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 277
+expression: html
+---
+
+        <div class="font-family-selector">
+            <label>Font Family</label>
+            <select>
+                <option>Menlo</option>
+                <option>Monaco</option>
+                <option>Consolas</option>
+                <option>Courier New</option>
+                <option>Fira Code</option>
+                <option>JetBrains Mono</option>
+                <option>Source Code Pro</option>
+                <option>Hack</option>
+            </select>
+        </div>

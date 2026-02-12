@@ -371,7 +371,7 @@ impl SshSession {
             channel.close().ok();
         }
         if let Some(session) = self.session.take() {
-            session.disconnect(Some(ssh2::DisconnectCode::ByApplication), "Goodbye", None);
+            let _ = session.disconnect(Some(ssh2::DisconnectCode::ByApplication), "Goodbye", None);
         }
         self.state.store(0, Ordering::SeqCst);
     }

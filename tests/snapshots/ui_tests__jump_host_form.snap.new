@@ -1,0 +1,16 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 314
+expression: html
+---
+
+        <div class="jump-host-form">
+            <label>跳板机地址</label>
+            <input type="text" placeholder="跳板机IP或域名"/>
+            <label>端口</label>
+            <input type="text" value="22"/>
+            <label>跳板机用户名</label>
+            <input type="text" placeholder="跳板机用户名"/>
+            <label>跳板机认证方式</label>
+            <select><option>密码认证</option><option>密钥认证</option></select>
+        </div>

@@ -1,0 +1,18 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 206
+expression: html
+---
+
+        <div class="font-size-presets">
+            <span>Font Size Presets</span>
+            <button>10</button>
+            <button>12</button>
+            <button class="active">14</button>
+            <button>16</button>
+            <button>18</button>
+            <button>20</button>
+            <button>24</button>
+            <button>28</button>
+            <button>32</button>
+        </div>

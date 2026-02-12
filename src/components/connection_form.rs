@@ -1,6 +1,39 @@
 use dioxus::prelude::*;
 use crate::models::connection::{SshConnection, AuthType};
 use uuid::Uuid;
+use std::fs;
+use std::path::Path;
+
+/// 解析 ~/.ssh/config 文件中的主机列表
+pub fn parse_ssh_config_hosts() -> Vec<String> {
+    let mut hosts = Vec::new();
+
+    // 获取主目录下的 .ssh/config 文件
+    if let Ok(home) = std::env::var("HOME") {
+        let config_path = Path::new(&home).join(".ssh").join("config");
+
+        if let Ok(content) = fs::read_to_string(&config_path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    continue;
+                }
+
+                // 解析 Host 指令
+                if let Some(host_name) = trimmed.strip_prefix("Host ") {
+                    if !host_name.trim().is_empty() {
+                        // 只添加简单的 host 别名（排除通配符）
+                        if !host_name.contains('*') && !host_name.contains('?') {
+                            hosts.push(host_name.trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    hosts
+}
 
 /// 连接表单组件
 #[component]
@@ -22,14 +55,43 @@ pub fn ConnectionForm(
     let mut key_passphrase = use_signal(|| String::new());
     let mut notes = use_signal(|| connection.as_ref().and_then(|c| c.notes.clone()).unwrap_or_default());
 
+    // 跳板机状态
+    let mut use_jump_host = use_signal(|| connection.as_ref().and_then(|c| c.jump_host.clone()).is_some());
+    let mut jump_host = use_signal(|| {
+        connection.as_ref()
+            .and_then(|c| c.jump_host.clone())
+            .unwrap_or_default()
+    });
+    let mut jump_host_password = use_signal(|| String::new());
+    let mut jump_host_key_path = use_signal(|| String::new());
+
+    // SOCKS5代理状态
+    let mut use_socks5_proxy = use_signal(|| connection.as_ref().and_then(|c| c.socks5_proxy.clone()).is_some());
+    let mut socks5_proxy = use_signal(|| {
+        connection.as_ref()
+            .and_then(|c| c.socks5_proxy.clone())
+            .unwrap_or_default()
+    });
+    let mut socks5_password = use_signal(|| String::new());
+
+    // SSH Config 主机列表
+    let ssh_config_hosts: Vec<String> = parse_ssh_config_hosts();
+    let mut selected_ssh_config_host = use_signal(|| connection.as_ref().and_then(|c| c.ssh_config_host.clone()).unwrap_or_default());
+    let mut use_ssh_config = use_signal(|| connection.as_ref().and_then(|c| c.ssh_config_host.clone()).is_some());
+
     let form_valid = !name.read().trim().is_empty()
-        && !host.read().trim().is_empty()
+        && ((!*use_ssh_config.read() && !host.read().trim().is_empty())
+            || (*use_ssh_config.read() && !selected_ssh_config_host.read().is_empty()))
         && !username.read().trim().is_empty();
 
     let current_auth_type = auth_type.read().clone();
+    let current_jump_host_auth_type = jump_host.read().auth_type.clone();
     let show_password_fields = current_auth_type == AuthType::Password;
     let show_key_fields = current_auth_type == AuthType::Key || current_auth_type == AuthType::KeyWithPassword;
     let show_passphrase_field = current_auth_type == AuthType::KeyWithPassword;
+
+    let show_jump_host_password = current_jump_host_auth_type == AuthType::Password;
+    let show_jump_host_key = current_jump_host_auth_type == AuthType::Key || current_jump_host_auth_type == AuthType::KeyWithPassword;
 
     let editing_conn = connection.clone();
 
@@ -51,8 +113,8 @@ pub fn ConnectionForm(
                 class: "connection-form",
                 background_color: "#252526",
                 border_radius: "8px",
-                width: "500px",
-                max_height: "80vh",
+                width: "600px",
+                max_height: "85vh",
                 overflow_y: "auto",
                 box_shadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
                 div {
@@ -82,6 +144,15 @@ pub fn ConnectionForm(
                 form {
                     class: "form-body",
                     padding: "20px",
+                    // 基本信息
+                    div {
+                        class: "form-section-title",
+                        font_size: "14px",
+                        color: "#FFFFFF",
+                        font_weight: "600",
+                        margin_bottom: "12px",
+                        "基本设置"
+                    },
                     div {
                         class: "form-group",
                         label {
@@ -99,43 +170,83 @@ pub fn ConnectionForm(
                             placeholder: "例如：生产服务器",
                         }
                     },
+                    // SSH Config 选择
                     div {
-                        class: "form-row",
-                        div {
-                            class: "form-group",
-                            flex: "3",
-                            label {
-                                display: "block",
-                                margin_bottom: "6px",
-                                font_size: "13px",
-                                color: "#CCCCCC",
-                                "主机地址"
-                            },
+                        class: "form-group",
+                        label {
+                            display: "flex",
+                            align_items: "center",
+                            gap: "8px",
+                            margin_bottom: "6px",
+                            font_size: "13px",
+                            color: "#CCCCCC",
+                            cursor: "pointer",
                             input {
-                                class: "form-input",
-                                r#type: "text",
-                                value: "{host.read()}",
-                                oninput: move |e| host.set(e.value().clone()),
-                                placeholder: "例如：192.168.1.100",
-                            }
+                                r#type: "checkbox",
+                                checked: *use_ssh_config.read(),
+                                oninput: move |e| {
+                                    use_ssh_config.set(e.value().parse().unwrap_or(false));
+                                    if *use_ssh_config.read() {
+                                        host.set(String::new());
+                                    }
+                                }
+                            },
+                            "使用 SSH Config 主机"
                         },
-                        div {
-                            class: "form-group",
-                            flex: "1",
-                            label {
-                                display: "block",
-                                margin_bottom: "6px",
-                                font_size: "13px",
-                                color: "#CCCCCC",
-                                "端口"
-                            },
-                            input {
-                                class: "form-input",
-                                r#type: "text",
-                                value: "{port.read()}",
-                                oninput: move |e| port.set(e.value().clone()),
+                        if *use_ssh_config.read() {
+                            select {
+                                class: "form-select",
+                                value: "{selected_ssh_config_host.read()}",
+                                oninput: move |e| {
+                                    selected_ssh_config_host.set(e.value().clone());
+                                },
+                                option { value: "", "请选择主机..." },
+                                for ssh_host in &ssh_config_hosts {
+                                    option { value: "{ssh_host}", "{ssh_host}" }
+                                }
                             }
                         }
+                    },
+                    // 主机和端口
+                    if !*use_ssh_config.read() {
+                        div {
+                            class: "form-row",
+                            div {
+                                class: "form-group",
+                                flex: "3",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#CCCCCC",
+                                    "主机地址"
+                                },
+                                input {
+                                    class: "form-input",
+                                    r#type: "text",
+                                    value: "{host.read()}",
+                                    oninput: move |e| host.set(e.value().clone()),
+                                    placeholder: "例如：192.168.1.100",
+                                }
+                            },
+                            div {
+                                class: "form-group",
+                                flex: "1",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#CCCCCC",
+                                    "端口"
+                                },
+                                input {
+                                    class: "form-input",
+                                    r#type: "text",
+                                    value: "{port.read()}",
+                                    oninput: move |e| port.set(e.value().clone()),
+                                }
+                            }
+                        },
                     },
                     div {
                         class: "form-group",
@@ -171,6 +282,7 @@ pub fn ConnectionForm(
                                     "Password" => AuthType::Password,
                                     "Key" => AuthType::Key,
                                     "KeyWithPassword" => AuthType::KeyWithPassword,
+                                    "SshConfig" => AuthType::SshConfig,
                                     _ => AuthType::Password,
                                 };
                                 auth_type.set(value);
@@ -178,6 +290,7 @@ pub fn ConnectionForm(
                             option { value: "Password", "密码认证" }
                             option { value: "Key", "密钥认证" }
                             option { value: "KeyWithPassword", "密钥+密码认证" }
+                            option { value: "SshConfig", "SSH Config" }
                         }
                     },
                     if show_password_fields {
@@ -235,6 +348,305 @@ pub fn ConnectionForm(
                             }
                         }
                     },
+                    // 跳板机配置
+                    div {
+                        class: "form-divider",
+                        margin: "16px 0",
+                        border_bottom: "1px solid #3C3C3C"
+                    },
+                    div {
+                        class: "form-section-title",
+                        font_size: "14px",
+                        color: "#FFFFFF",
+                        font_weight: "600",
+                        margin_bottom: "12px",
+                        "跳板机配置"
+                    },
+                    div {
+                        class: "form-group",
+                        label {
+                            display: "flex",
+                            align_items: "center",
+                            gap: "8px",
+                            margin_bottom: "6px",
+                            font_size: "13px",
+                            color: "#CCCCCC",
+                            cursor: "pointer",
+                            input {
+                                r#type: "checkbox",
+                                checked: *use_jump_host.read(),
+                                oninput: move |e| {
+                                    use_jump_host.set(e.value().parse().unwrap_or(false));
+                                }
+                            },
+                            "使用跳板机"
+                        },
+                    },
+                    if *use_jump_host.read() {
+                        div {
+                            class: "form-indent",
+                            div {
+                                class: "form-row",
+                                div {
+                                    class: "form-group",
+                                    flex: "3",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "跳板机地址"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "text",
+                                        value: "{jump_host.read().host}",
+                                        oninput: move |e| {
+                                            let mut jh = jump_host.read().clone();
+                                            jh.host = e.value().clone();
+                                            jump_host.set(jh);
+                                        },
+                                        placeholder: "跳板机IP或域名",
+                                    }
+                                },
+                                div {
+                                    class: "form-group",
+                                    flex: "1",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "端口"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "text",
+                                        value: "{jump_host.read().port.to_string()}",
+                                        oninput: move |e| {
+                                            let mut jh = jump_host.read().clone();
+                                            jh.port = e.value().parse().unwrap_or(22);
+                                            jump_host.set(jh);
+                                        },
+                                    }
+                                }
+                            },
+                            div {
+                                class: "form-group",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#AAAAAA",
+                                    "跳板机用户名"
+                                },
+                                input {
+                                    class: "form-input",
+                                    r#type: "text",
+                                    value: "{jump_host.read().username}",
+                                    oninput: move |e| {
+                                        let mut jh = jump_host.read().clone();
+                                        jh.username = e.value().clone();
+                                        jump_host.set(jh);
+                                    },
+                                    placeholder: "跳板机用户名",
+                                }
+                            },
+                            div {
+                                class: "form-group",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#AAAAAA",
+                                    "跳板机认证方式"
+                                },
+                                select {
+                                    class: "form-select",
+                                    value: "{current_jump_host_auth_type:?}",
+                                    oninput: move |e| {
+                                        let value = match e.value().as_str() {
+                                            "Password" => AuthType::Password,
+                                            "Key" => AuthType::Key,
+                                            "KeyWithPassword" => AuthType::KeyWithPassword,
+                                            _ => AuthType::Password,
+                                        };
+                                        let mut jh = jump_host.read().clone();
+                                        jh.auth_type = value;
+                                        jump_host.set(jh);
+                                    },
+                                    option { value: "Password", "密码认证" }
+                                    option { value: "Key", "密钥认证" }
+                                    option { value: "KeyWithPassword", "密钥+密码认证" }
+                                }
+                            },
+                            if show_jump_host_password {
+                                div {
+                                    class: "form-group",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "跳板机密码"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "password",
+                                        value: "{jump_host_password.read()}",
+                                        oninput: move |e| jump_host_password.set(e.value().clone()),
+                                    }
+                                }
+                            },
+                            if show_jump_host_key {
+                                div {
+                                    class: "form-group",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "跳板机私钥文件"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "text",
+                                        value: "{jump_host_key_path.read()}",
+                                        oninput: move |e| jump_host_key_path.set(e.value().clone()),
+                                        placeholder: "~/.ssh/id_rsa",
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    // SOCKS5 代理配置
+                    div {
+                        class: "form-divider",
+                        margin: "16px 0",
+                        border_bottom: "1px solid #3C3C3C"
+                    },
+                    div {
+                        class: "form-section-title",
+                        font_size: "14px",
+                        color: "#FFFFFF",
+                        font_weight: "600",
+                        margin_bottom: "12px",
+                        "SOCKS5 代理配置"
+                    },
+                    div {
+                        class: "form-group",
+                        label {
+                            display: "flex",
+                            align_items: "center",
+                            gap: "8px",
+                            margin_bottom: "6px",
+                            font_size: "13px",
+                            color: "#CCCCCC",
+                            cursor: "pointer",
+                            input {
+                                r#type: "checkbox",
+                                checked: *use_socks5_proxy.read(),
+                                oninput: move |e| {
+                                    use_socks5_proxy.set(e.value().parse().unwrap_or(false));
+                                }
+                            },
+                            "使用 SOCKS5 代理"
+                        },
+                    },
+                    if *use_socks5_proxy.read() {
+                        div {
+                            class: "form-indent",
+                            div {
+                                class: "form-row",
+                                div {
+                                    class: "form-group",
+                                    flex: "3",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "代理地址"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "text",
+                                        value: "{socks5_proxy.read().host}",
+                                        oninput: move |e| {
+                                            let mut sp = socks5_proxy.read().clone();
+                                            sp.host = e.value().clone();
+                                            socks5_proxy.set(sp);
+                                        },
+                                        placeholder: "代理服务器地址",
+                                    }
+                                },
+                                div {
+                                    class: "form-group",
+                                    flex: "1",
+                                    label {
+                                        display: "block",
+                                        margin_bottom: "6px",
+                                        font_size: "13px",
+                                        color: "#AAAAAA",
+                                        "端口"
+                                    },
+                                    input {
+                                        class: "form-input",
+                                        r#type: "text",
+                                        value: "{socks5_proxy.read().port.to_string()}",
+                                        oninput: move |e| {
+                                            let mut sp = socks5_proxy.read().clone();
+                                            sp.port = e.value().parse().unwrap_or(1080);
+                                            socks5_proxy.set(sp);
+                                        },
+                                    }
+                                }
+                            },
+                            div {
+                                class: "form-group",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#AAAAAA",
+                                    "代理用户名（可选）"
+                                },
+                                input {
+                                    class: "form-input",
+                                    r#type: "text",
+                                    value: "{socks5_proxy.read().username.clone().unwrap_or_default()}",
+                                    oninput: move |e| {
+                                        let mut sp = socks5_proxy.read().clone();
+                                        sp.username = if e.value().is_empty() { None } else { Some(e.value().clone()) };
+                                        socks5_proxy.set(sp);
+                                    },
+                                    placeholder: "代理用户名",
+                                }
+                            },
+                            div {
+                                class: "form-group",
+                                label {
+                                    display: "block",
+                                    margin_bottom: "6px",
+                                    font_size: "13px",
+                                    color: "#AAAAAA",
+                                    "代理密码（可选）"
+                                },
+                                input {
+                                    class: "form-input",
+                                    r#type: "password",
+                                    value: "{socks5_password.read()}",
+                                    oninput: move |e| socks5_password.set(e.value().clone()),
+                                }
+                            }
+                        }
+                    },
+                    // 备注
+                    div {
+                        class: "form-divider",
+                        margin: "16px 0",
+                        border_bottom: "1px solid #3C3C3C"
+                    },
                     div {
                         class: "form-group",
                         label {
@@ -283,10 +695,16 @@ pub fn ConnectionForm(
                         opacity: if form_valid { "1" } else { "0.5" },
                         disabled: !form_valid,
                         onclick: move |_| {
+                            let effective_host = if *use_ssh_config.read() {
+                                selected_ssh_config_host.read().clone()
+                            } else {
+                                host.read().clone()
+                            };
+
                             let conn = SshConnection {
                                 id: editing_conn.as_ref().map(|c| c.id.clone()).unwrap_or_else(|| Uuid::new_v4().to_string()),
                                 name: name.read().clone(),
-                                host: host.read().clone(),
+                                host: effective_host,
                                 port: port.read().parse().unwrap_or(22),
                                 username: username.read().clone(),
                                 auth_type: auth_type.read().clone(),
@@ -298,9 +716,26 @@ pub fn ConnectionForm(
                                 private_key_path: if !private_key_path.read().is_empty() { Some(private_key_path.read().clone()) } else { None },
                                 private_key_content: if !private_key_content.read().is_empty() { Some(private_key_content.read().clone()) } else { None },
                                 key_passphrase: if !key_passphrase.read().is_empty() { Some(key_passphrase.read().clone()) } else { None },
-                                jump_host: None,
-                                socks5_proxy: None,
-                                ssh_config_host: None,
+                                jump_host: if *use_jump_host.read() {
+                                    let mut jh = jump_host.read().clone();
+                                    if jh.auth_type == AuthType::Password && !jump_host_password.read().is_empty() {
+                                        jh.password = Some(jump_host_password.read().clone());
+                                    }
+                                    if !jump_host_key_path.read().is_empty() {
+                                        jh.private_key_path = Some(jump_host_key_path.read().clone());
+                                    }
+                                    Some(jh)
+                                } else { None },
+                                socks5_proxy: if *use_socks5_proxy.read() {
+                                    let mut sp = socks5_proxy.read().clone();
+                                    if !socks5_password.read().is_empty() {
+                                        sp.password = Some(socks5_password.read().clone());
+                                    }
+                                    Some(sp)
+                                } else { None },
+                                ssh_config_host: if *use_ssh_config.read() && !selected_ssh_config_host.read().is_empty() {
+                                    Some(selected_ssh_config_host.read().clone())
+                                } else { None },
                                 notes: if !notes.read().is_empty() { Some(notes.read().clone()) } else { None },
                                 group: editing_conn.as_ref().and_then(|c| c.group.clone()),
                                 color: editing_conn.as_ref().and_then(|c| c.color.clone()),

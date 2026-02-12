@@ -4,10 +4,8 @@ use dioxus::prelude::*;
 #[component]
 pub fn ConnectionSearch(
     on_search: EventHandler<String>,
-    on_filter_change: EventHandler<String>,
 ) -> Element {
     let mut search_text = use_signal(|| "".to_string());
-    let mut filter_group = use_signal(|| "all".to_string());
 
     rsx! {
         div {

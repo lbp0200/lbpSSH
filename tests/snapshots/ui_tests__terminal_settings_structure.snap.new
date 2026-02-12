@@ -1,0 +1,30 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 42
+expression: html
+---
+
+        <div class="settings-modal" style="background-color: #2D2D2D;">
+            <h2 style="color: #FFFFFF;">Terminal Settings</h2>
+            <div class="terminal-preview">
+                <span>终端预览</span>
+                <code>user@hostname:~$ ls -la</code>
+            </div>
+            <div class="font-settings">
+                <label>Font Family: Menlo</label>
+                <label>Font Size: 14</label>
+                <label>Font Weight: 400</label>
+                <label>Letter Spacing: 0</label>
+                <label>Line Height: 1.2</label>
+            </div>
+            <div class="color-settings">
+                <label>Background: #1E1E1E</label>
+                <label>Foreground: #CCCCCC</label>
+                <label>Cursor: #FFFFFF</label>
+            </div>
+            <div class="shell-settings">
+                <label>Shell: 系统默认</label>
+            </div>
+            <button class="btn-primary">Save</button>
+            <button class="btn-secondary">Reset</button>
+        </div>

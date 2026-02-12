@@ -1,5 +1,4 @@
 use std::sync::{Arc, Mutex};
-use crate::models::config::ConfigModel;
 
 /// 同步状态
 #[derive(Clone, Debug)]

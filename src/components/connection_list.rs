@@ -16,8 +16,6 @@ pub fn ConnectionItem(
     let is_connected = session_manager.is_connected(&conn.id);
 
     let conn_id = conn.id.clone();
-    let conn_id_for_edit = conn.id.clone();
-    let conn_id_for_delete = conn.id.clone();
     let conn_id_for_connect = conn.id.clone();
 
     let connection_color = conn.color.clone().unwrap_or_else(|| "#007ACC".to_string());

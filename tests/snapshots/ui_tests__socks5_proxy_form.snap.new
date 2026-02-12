@@ -1,0 +1,16 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 333
+expression: html
+---
+
+        <div class="socks5-proxy-form">
+            <label>代理地址</label>
+            <input type="text" placeholder="代理服务器地址"/>
+            <label>端口</label>
+            <input type="text" value="1080"/>
+            <label>代理用户名（可选）</label>
+            <input type="text" placeholder="代理用户名"/>
+            <label>代理密码（可选）</label>
+            <input type="password"/>
+        </div>

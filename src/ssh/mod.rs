@@ -1,8 +1,7 @@
 mod session;
 pub use session::{SshSession, SshError};
 
-mod sync_state;
-pub use sync_state::{SyncState, SyncStateService, get_sync_state_service};
+pub mod local_terminal;
 
 pub mod session_manager {
     use super::*;

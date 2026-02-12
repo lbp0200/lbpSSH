@@ -1,0 +1,11 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 236
+expression: html
+---
+
+        <div class="platform-selector">
+            <button class="active" style="background-color: #007ACC;">GitHub Gist</button>
+            <button style="background-color: #1E1E1E;">Gitee Gist</button>
+            <button style="background-color: #1E1E1E;">Custom</button>
+        </div>

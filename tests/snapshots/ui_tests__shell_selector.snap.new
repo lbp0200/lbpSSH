@@ -1,0 +1,16 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 255
+expression: html
+---
+
+        <div class="shell-selector">
+            <label>Shell</label>
+            <select>
+                <option value="">系统默认Shell</option>
+                <option value="/bin/bash">/bin/bash</option>
+                <option value="/bin/zsh">/bin/zsh</option>
+                <option value="/bin/fish">/bin/fish</option>
+                <option value="powershell">powershell</option>
+            </select>
+        </div>

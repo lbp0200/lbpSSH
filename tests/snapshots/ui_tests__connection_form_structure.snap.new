@@ -1,0 +1,45 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 90
+expression: html
+---
+
+        <div class="connection-form-modal">
+            <div class="connection-form" style="background-color: #252526;">
+                <h2>添加连接</h2>
+                <form class="form-body">
+                    <div class="form-section">
+                        <h3>基本设置</h3>
+                        <label>连接名称</label>
+                        <input type="text" placeholder="例如：生产服务器"/>
+                        <label>主机地址</label>
+                        <input type="text" placeholder="例如：192.168.1.100"/>
+                        <label>端口</label>
+                        <input type="text" value="22"/>
+                        <label>用户名</label>
+                        <input type="text" placeholder="例如：root"/>
+                    </div>
+                    <div class="form-section">
+                        <h3>认证方式</h3>
+                        <select>
+                            <option>密码认证</option>
+                            <option>密钥认证</option>
+                            <option>密钥+密码认证</option>
+                            <option>SSH Config</option>
+                        </select>
+                    </div>
+                    <div class="form-section">
+                        <h3>跳板机配置</h3>
+                        <label><input type="checkbox"/> 使用跳板机</label>
+                    </div>
+                    <div class="form-section">
+                        <h3>SOCKS5 代理配置</h3>
+                        <label><input type="checkbox"/> 使用 SOCKS5 代理</label>
+                    </div>
+                </form>
+                <div class="form-footer">
+                    <button>取消</button>
+                    <button class="btn-primary">保存</button>
+                </div>
+            </div>
+        </div>

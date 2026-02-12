@@ -1,0 +1,18 @@
+---
+source: tests/ui_tests.rs
+assertion_line: 185
+expression: html
+---
+
+        <div class="settings-page">
+            <div class="settings-navigation" style="width: 200px; background-color: #252526;">
+                <h2>Settings</h2>
+                <nav class="settings-tabs">
+                    <button class="active">Terminal</button>
+                    <button>Connections</button>
+                    <button>Import/Export</button>
+                    <button>Sync</button>
+                </nav>
+            </div>
+            <div class="settings-content" style="flex: 1; background-color: #1E1E1E;"></div>
+        </div>
