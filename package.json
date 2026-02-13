@@ -1,0 +1,25 @@
+{
+  "name": "lbpssh_rust",
+  "version": "1.0.0",
+  "description": "使用 Rust 和 Dioxus 重写的跨平台 SSH 终端管理器。",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lbp0200/lbpssh.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lbp0200/lbpssh/issues"
+  },
+  "homepage": "https://github.com/lbp0200/lbpssh#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
