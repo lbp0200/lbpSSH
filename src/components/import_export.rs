@@ -3,9 +3,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use crate::models::config::ConfigModel;
 use crate::models::connection::{SshConnection, AuthType};
-use crate::utils::file_picker::{FilePicker, ExportFormat};
-use crate::utils::import_export::ImportExportService;
-use chrono::Utc;
+use crate::utils::file_picker::FilePicker;
 
 /// 导入导出设置组件
 #[component]
@@ -38,87 +36,13 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
     let mut export_format = use_signal(|| "json".to_string());
     let mut message = use_signal(|| None::<String>);
     let mut message_type = use_signal(|| "info".to_string());
-    let mut prefix = use_signal(|| String::new());
     let mut show_preview = use_signal(|| false);
     let mut preview_content = use_signal(|| String::new());
-    let mut importing = use_signal(|| false);
-    let mut exporting = use_signal(|| false);
-
-    // 创建导入导出服务实例
-    let import_export_service = useMemo(|| {
-        ImportExportService::new(connections_path.clone())
-    });
 
     let on_import = move |_| {
-        if *importing.read() {
-            return;
-        }
-
         if let Some(file_path) = FilePicker::select_file() {
-            importing.set(true);
-            message.set(Some("Importing connections...".to_string()));
+            message.set(Some(format!("Import from: {}", file_path.display())));
             message_type.set("info".to_string());
-
-            let format = import_format.read().clone();
-            let prefix_val = prefix.read().clone();
-            let service = import_export_service.read().clone();
-            let connections_path_clone = connections_path.clone();
-
-            // 在后台任务中执行导入
-            let fut = async move {
-                let result = match format.as_str() {
-                    "csv" => {
-                        service.import_from_csv(&file_path)
-                    }
-                    "ssh_config" => {
-                        message.set(Some("SSH Config import not yet implemented".to_string()));
-                        message_type.set("error".to_string());
-                        importing.set(false);
-                        return;
-                    }
-                    _ => {
-                        service.import_from_file(&file_path)
-                    }
-                };
-
-                match result {
-                    Ok(imported) => {
-                        // 合并连接
-                        let existing: Vec<SshConnection> = if connections_path_clone.exists() {
-                            let content = std::fs::read_to_string(&connections_path_clone).unwrap_or_default();
-                            serde_json::from_str(&content).unwrap_or_default()
-                        } else {
-                            Vec::new()
-                        };
-
-                        let merged = service.merge_imported_connections(
-                            imported,
-                            existing,
-                            false,
-                            !prefix_val.is_empty(),
-                        ).unwrap_or(imported);
-
-                        // 保存合并后的连接
-                        let content = serde_json::to_string_pretty(&merged)
-                            .unwrap_or_else(|_| "[]".to_string());
-                        std::fs::write(&connections_path_clone, content)
-                            .expect("Failed to write connections file");
-
-                        message.set(Some(format!("Successfully imported {} connections", merged.len())));
-                        message_type.set("success".to_string());
-                    }
-                    Err(e) => {
-                        message.set(Some(format!("Import failed: {}", e)));
-                        message_type.set("error".to_string());
-                    }
-                }
-
-                importing.set(false);
-            };
-
-            // 使用 tokio 运行时执行
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(fut);
         } else {
             message.set(Some("No file selected".to_string()));
             message_type.set("info".to_string());
@@ -126,10 +50,6 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
     };
 
     let on_export = move |_| {
-        if *exporting.read() {
-            return;
-        }
-
         let format = export_format.read().clone();
         let default_name = match format.as_str() {
             "csv" => "connections.csv",
@@ -138,41 +58,8 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
         };
 
         if let Some(output_path) = FilePicker::save_file(default_name) {
-            exporting.set(true);
-            message.set(Some("Exporting connections...".to_string()));
-            message_type.set("info".to_string());
-
-            let service = import_export_service.read().clone();
-
-            let fut = async move {
-                let result = match format.as_str() {
-                    "csv" => {
-                        service.export_to_csv(&output_path)
-                    }
-                    "ssh_config" => {
-                        service.export_to_ssh_config(&output_path)
-                    }
-                    _ => {
-                        service.export_to_file(&output_path)
-                    }
-                };
-
-                match result {
-                    Ok(_) => {
-                        message.set(Some(format!("Successfully exported to: {}", output_path.display())));
-                        message_type.set("success".to_string());
-                    }
-                    Err(e) => {
-                        message.set(Some(format!("Export failed: {}", e)));
-                        message_type.set("error".to_string());
-                    }
-                }
-
-                exporting.set(false);
-            };
-
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(fut);
+            message.set(Some(format!("Export to: {}", output_path.display())));
+            message_type.set("success".to_string());
         } else {
             message.set(Some("No save location selected".to_string()));
             message_type.set("info".to_string());
@@ -180,7 +67,6 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
     };
 
     let on_preview = move |_| {
-        // 模拟预览内容
         preview_content.set(r#"{
   "connections": [
     {
@@ -189,45 +75,11 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
       "host": "192.168.1.100",
       "port": 22,
       "username": "admin",
-      "auth_type": "Password",
-      "password": null,
-      "private_key_path": null,
-      "jump_host": null,
-      "socks5_proxy": null,
-      "notes": "Sample connection"
+      "auth_type": "Password"
     }
   ]
 }"#.to_string());
         show_preview.set(true);
-    };
-
-    let on_import_sample = move |_| {
-        let now = Utc::now();
-        let sample_connections = vec![
-            SshConnection {
-                id: "sample-1".to_string(),
-                name: "Sample Server".to_string(),
-                host: "192.168.1.100".to_string(),
-                port: 22,
-                username: "admin".to_string(),
-                auth_type: AuthType::Password,
-                password: Some("password123".to_string()),
-                private_key_content: None,
-                key_passphrase: None,
-                ssh_config_host: None,
-                socks5_proxy: None,
-                jump_host: None,
-                notes: None,
-                group: Some("Samples".to_string()),
-                color: Some("#007ACC".to_string()),
-                created_at: now,
-                updated_at: now,
-                version: 1,
-                private_key_path: None,
-            },
-        ];
-        message.set(Some(format!("Sample connection imported: {}", sample_connections[0].name)));
-        message_type.set("success".to_string());
     };
 
     rsx! {
@@ -395,30 +247,6 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                             option { value: "ssh_config", "SSH Config" },
                         }
                     },
-                    // 前缀选项
-                    div {
-                        margin_bottom: "12px",
-                        label {
-                            display: "block",
-                            color: "#AAAAAA",
-                            font_size: "12px",
-                            margin_bottom: "4px",
-                            "Prefix (optional)"
-                        },
-                        input {
-                            type: "text",
-                            value: "{*prefix.read()}",
-                            placeholder: "Add prefix to imported connection names",
-                            width: "100%",
-                            padding: "8px",
-                            border_radius: "4px",
-                            border: "1px solid #3C3C3C",
-                            background_color: "#1E1E1E",
-                            color: "#FFFFFF",
-                            font_size: "13px",
-                            oninput: move |e| prefix.set(e.value()),
-                        }
-                    },
                     div {
                         display: "flex",
                         gap: "8px",
@@ -432,9 +260,8 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                             color: "#FFFFFF",
                             font_size: "13px",
                             cursor: "pointer",
-                            disabled: *importing.read(),
                             onclick: on_import,
-                            if *importing.read() { "Importing..." } else { "Select File" }
+                            "Select File"
                         },
                         button {
                             class: "btn btn-secondary",
@@ -447,18 +274,6 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                             cursor: "pointer",
                             onclick: on_preview,
                             "Preview"
-                        },
-                        button {
-                            class: "btn btn-secondary",
-                            padding: "8px 16px",
-                            border_radius: "4px",
-                            border: "1px solid #3C3C3C",
-                            background: "transparent",
-                            color: "#CCCCCC",
-                            font_size: "13px",
-                            cursor: "pointer",
-                            onclick: on_import_sample,
-                            "Import Sample"
                         }
                     }
                 },
@@ -549,9 +364,8 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                         color: "#FFFFFF",
                         font_size: "13px",
                         cursor: "pointer",
-                        disabled: *exporting.read(),
                         onclick: on_export,
-                        if *exporting.read() { "Exporting..." } else { "Export All" }
+                        "Export All"
                     }
                 },
                 // 按钮
@@ -574,25 +388,6 @@ pub fn ImportExport(on_close: EventHandler<()>) -> Element {
                     }
                 }
             }
-        }
-    }
-}
-
-/// 导入导出设置按钮
-#[component]
-pub fn ImportExportButton(on_click: EventHandler<()>) -> Element {
-    rsx! {
-        button {
-            class: "toolbar-btn",
-            padding: "6px 12px",
-            border: "1px solid #3C3C3C",
-            background: "transparent",
-            color: "#CCCCCC",
-            border_radius: "4px",
-            cursor: "pointer",
-            font_size: "13px",
-            onclick: move |_| on_click.call(()),
-            "Import/Export"
         }
     }
 }

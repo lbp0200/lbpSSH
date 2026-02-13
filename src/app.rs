@@ -1,10 +1,12 @@
 use dioxus::prelude::*;
-use std::fmt;
 use std::sync::Arc;
 use std::sync::RwLock;
 use crate::models::connection::SshConnection;
 use crate::models::config::ConfigModel;
 use crate::ssh::session_manager::get_session_manager;
+use crate::components::terminal_settings::TerminalSettings;
+use crate::components::import_export::ImportExport;
+use crate::components::sync_settings::SyncSettings;
 
 /// Tab 信息
 #[derive(Clone, PartialEq, Debug)]
@@ -40,7 +42,7 @@ pub fn App() -> Element {
     let mut editing_connection = use_signal(|| None::<Option<SshConnection>>);
     let mut show_settings = use_signal(|| false);
     let mut success_message = use_signal(|| None::<String>);
-    let show_connection_dropdown = use_signal(|| false);
+    let mut show_connection_dropdown = use_signal(|| false);
 
     let active_tab = if let Some(active_id) = active_tab_id.read().clone() {
         tabs.read().iter().find(|t| t.id == active_id).cloned()
@@ -79,6 +81,44 @@ pub fn App() -> Element {
                     active_tab_id: active_tab_id.read().clone(),
                     show_dropdown: *show_connection_dropdown.read(),
                     dropdown_connections: connections.read().clone(),
+                    on_settings_click: move |_| show_settings.set(true),
+                    on_add_click: move |_| {
+                        let current = *show_connection_dropdown.read();
+                        show_connection_dropdown.set(!current);
+                    },
+                    on_local_terminal_click: move |_| {
+                        // 创建本地终端 Tab
+                        let tab_id = uuid::Uuid::new_v4().to_string();
+                        let new_tab = TabInfo {
+                            id: tab_id.clone(),
+                            name: "本地终端".to_string(),
+                            connection: None,
+                        };
+                        let mut tabs_vec = tabs.read().clone();
+                        tabs_vec.push(new_tab);
+                        tabs.set(tabs_vec);
+                        active_tab_id.set(Some(tab_id));
+                        show_connection_dropdown.set(false);
+                    },
+                    on_connection_click: move |conn: SshConnection| {
+                        // 创建连接 Tab
+                        let tab_id = conn.id.clone();
+                        let new_tab = TabInfo {
+                            id: tab_id.clone(),
+                            name: conn.name.clone(),
+                            connection: Some(conn),
+                        };
+                        let mut tabs_vec = tabs.read().clone();
+                        tabs_vec.push(new_tab);
+                        tabs.set(tabs_vec);
+                        active_tab_id.set(Some(tab_id));
+                        show_connection_dropdown.set(false);
+                    },
+                    on_add_new_connection_click: move |_| {
+                        editing_connection.set(None);
+                        show_form.set(true);
+                        show_connection_dropdown.set(false);
+                    },
                 },
             },
             div {
@@ -221,12 +261,18 @@ fn TopBarComponent(
     active_tab_id: Option<String>,
     show_dropdown: bool,
     dropdown_connections: Vec<SshConnection>,
+    on_settings_click: EventHandler<()>,
+    on_add_click: EventHandler<()>,
+    on_local_terminal_click: EventHandler<()>,
+    on_connection_click: EventHandler<SshConnection>,
+    on_add_new_connection_click: EventHandler<()>,
 ) -> Element {
     rsx! {
         div {
             class: "tabs-bar",
             button {
                 class: "tabs-settings-btn",
+                onclick: move |_| on_settings_click.call(()),
                 "⚙️"
             },
             div {
@@ -242,22 +288,35 @@ fn TopBarComponent(
                 class: "tabs-add-dropdown",
                 button {
                     class: "tabs-add-btn",
+                    onclick: move |_| on_add_click.call(()),
                     "+"
                 },
                 if show_dropdown {
                     div {
                         class: "dropdown-menu",
-                        div { class: "dropdown-item", "🖥️ 本地终端" },
+                        div {
+                            class: "dropdown-item",
+                            onclick: move |_| on_local_terminal_click.call(()),
+                            "🖥️ 本地终端"
+                        },
                         div { class: "dropdown-divider" },
                         if dropdown_connections.is_empty() {
                             div { class: "dropdown-item disabled", "暂无保存的连接" }
                         } else {
                             for conn in dropdown_connections {
-                                div { class: "dropdown-item", "🔑 {conn.name}" }
+                                div {
+                                    class: "dropdown-item",
+                                    onclick: move |_| on_connection_click.call(conn.clone()),
+                                    "🔑 {conn.name}"
+                                }
                             }
                         },
                         div { class: "dropdown-divider" },
-                        div { class: "dropdown-item", "➕ 添加新连接" }
+                        div {
+                            class: "dropdown-item",
+                            onclick: move |_| on_add_new_connection_click.call(()),
+                            "➕ 添加新连接"
+                        }
                     }
                 }
             }
@@ -389,7 +448,9 @@ fn SettingsComponent(
                     div {
                         class: "settings-content",
                         if *selected_tab.read() == 0 {
-                            TerminalSettings {}
+                            TerminalSettings {
+                                on_close: move |_| on_close.call(()),
+                            }
                         } else if *selected_tab.read() == 1 {
                             ConnectionManagement {
                                 connections: connections,
@@ -398,33 +459,15 @@ fn SettingsComponent(
                                 on_add: on_add_connection,
                             }
                         } else if *selected_tab.read() == 2 {
-                            ImportExportSettings {}
+                            ImportExport {
+                                on_close: move |_| on_close.call(()),
+                            }
                         } else if *selected_tab.read() == 3 {
-                            SyncSettings {}
+                            SyncSettings {
+                                on_close: move |_| on_close.call(()),
+                            }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-/// 终端设置
-#[component]
-fn TerminalSettings() -> Element {
-    let mut font_size = use_signal(|| "14".to_string());
-    rsx! {
-        div {
-            class: "settings-section",
-            h3 { "终端显示设置" },
-            div {
-                class: "form-group",
-                label { "字体大小" },
-                input {
-                    class: "form-input",
-                    type: "text",
-                    value: "{*font_size.read()}",
-                    oninput: move |e| font_size.set(e.value()),
                 }
             }
         }
@@ -463,49 +506,10 @@ fn ConnectionManagement(
                                 class: "connection-info",
                                 div { class: "connection-name", "{conn.name}" },
                                 div { class: "connection-host", "{conn.host}:{conn.port} @{conn.username}" }
-                            },
-                            div {
-                                class: "connection-actions",
-                                button { class: "action-btn", "编辑" },
-                                button { class: "action-btn danger", "删除" }
                             }
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/// 导入导出设置
-#[component]
-fn ImportExportSettings() -> Element {
-    rsx! {
-        div {
-            class: "settings-section",
-            h3 { "导入导出" },
-            p { class: "settings-description", "导出或导入连接配置" },
-            div {
-                class: "import-export-buttons",
-                button { class: "btn btn-primary", "导出配置" },
-                button { class: "btn btn-secondary", "导入配置" }
-            }
-        }
-    }
-}
-
-/// 同步设置
-#[component]
-fn SyncSettings() -> Element {
-    rsx! {
-        div {
-            class: "settings-section",
-            h3 { "同步设置" },
-            p { class: "settings-description", "配置 Gitee Gist 同步" },
-            div {
-                class: "form-group",
-                label { "Gist ID" },
-                input { class: "form-input", type: "text", placeholder: "输入 Gist ID" }
             }
         }
     }
