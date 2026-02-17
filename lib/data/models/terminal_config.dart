@@ -16,6 +16,7 @@ class TerminalConfig {
   final int padding;
   final double devicePixelRatio;
   final String shellPath;
+  final bool enableKittyKeyboard;
 
   TerminalConfig({
     this.fontFamily = 'Menlo',
@@ -30,6 +31,7 @@ class TerminalConfig {
     this.padding = 8,
     this.devicePixelRatio = 1.0,
     this.shellPath = '',
+    this.enableKittyKeyboard = false,
   });
 
   factory TerminalConfig.fromJson(Map<String, dynamic> json) =>
@@ -50,6 +52,7 @@ class TerminalConfig {
     int? padding,
     double? devicePixelRatio,
     String? shellPath,
+    bool? enableKittyKeyboard,
   }) {
     return TerminalConfig(
       fontFamily: fontFamily ?? this.fontFamily,
@@ -64,6 +67,7 @@ class TerminalConfig {
       padding: padding ?? this.padding,
       devicePixelRatio: devicePixelRatio ?? this.devicePixelRatio,
       shellPath: shellPath ?? this.shellPath,
+      enableKittyKeyboard: enableKittyKeyboard ?? this.enableKittyKeyboard,
     );
   }
 

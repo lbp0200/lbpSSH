@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:xterm/xterm.dart';
+import 'package:kterm/kterm.dart';
 import 'terminal_input_service.dart';
 import 'local_terminal_service.dart';
 import '../../data/models/terminal_config.dart';
@@ -19,8 +19,18 @@ class TerminalSession {
     required this.name,
     required this.inputService,
     TerminalConfig? terminalConfig,
+    bool enableKittyKeyboard = false,
   }) : terminal = Terminal(maxLines: 10000),
-       controller = TerminalController();
+       controller = TerminalController() {
+    // 如果启用了 Kitty Keyboard Support，发送初始化序列
+    if (enableKittyKeyboard) {
+      terminal.write('\x1b[>1u');
+    }
+  }
+
+  /// 获取 GraphicsManager 实例（由 kterm 自动创建）
+  /// 注意: graphicsManager 是由 kterm 内部管理的
+  dynamic get graphicsManager => terminal.graphicsManager;
 
   /// 获取用户友好的错误信息
   String _getFriendlyErrorMessage(dynamic error) {
@@ -79,7 +89,7 @@ class TerminalSession {
     // 监听终端尺寸变化（仅对 LocalTerminalService 有效）
     terminal.onResize = (width, height, pixelWidth, pixelHeight) {
       if (inputService is LocalTerminalService) {
-        (inputService as LocalTerminalService).resize(height, width);
+        (inputService as LocalTerminalService).resize(width, height);
       }
     };
   }
@@ -113,12 +123,14 @@ class TerminalService {
     required String name,
     required TerminalInputService inputService,
     TerminalConfig? terminalConfig,
+    bool enableKittyKeyboard = false,
   }) {
     final session = TerminalSession(
       id: id,
       name: name,
       inputService: inputService,
       terminalConfig: terminalConfig,
+      enableKittyKeyboard: enableKittyKeyboard,
     );
     _sessions[id] = session;
     session.initialize();

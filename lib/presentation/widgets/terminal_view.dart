@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:xterm/xterm.dart';
+import 'package:kterm/kterm.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/terminal_service.dart';
@@ -23,6 +23,7 @@ class TerminalViewWidget extends StatefulWidget {
 
 class _TerminalViewWidgetState extends State<TerminalViewWidget> {
   final FocusNode _focusNode = FocusNode(debugLabel: 'terminal-input');
+  bool _shiftEnterHandled = false;
 
   @override
   void initState() {
@@ -39,6 +40,30 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
   void dispose() {
     _focusNode.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _handleShiftEnter(TerminalSession session, KeyEvent event) {
+    final bool isShiftEnter = event.logicalKey == LogicalKeyboardKey.enter &&
+        HardwareKeyboard.instance.isShiftPressed;
+
+    if (isShiftEnter && !_shiftEnterHandled) {
+      _shiftEnterHandled = true;
+      if (event is KeyDownEvent) {
+        // 发送 LF (Line Feed) 换行符
+        // 这是最基础的换行方式
+        session.terminal.write('\x0a');
+      }
+      // 100ms 后重置，允许下次按键
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _shiftEnterHandled = false;
+      });
+      return KeyEventResult.handled;
+    }
+    // 非 Shift+Enter 时重置标志
+    if (!isShiftEnter) {
+      _shiftEnterHandled = false;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
@@ -115,6 +140,9 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
                   ).withValues(alpha: 0.5),
                   searchHitForeground: parseColor('#000000'),
                 ),
+                onKeyEvent: (node, event) {
+                  return _handleShiftEnter(session, event);
+                },
               ),
             );
           },

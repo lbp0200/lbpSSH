@@ -343,6 +343,24 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
             },
           ),
           const SizedBox(height: 32),
+          const Text(
+            '高级终端功能',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('Kitty Keyboard Support'),
+            subtitle: const Text(
+              '启用 Kitty 键盘协议，支持更多键盘快捷键（如 Ctrl+Shift+字母）。连接时发送 \\x1b[>1u 初始化序列。',
+            ),
+            value: _config.enableKittyKeyboard,
+            onChanged: (value) {
+              setState(() {
+                _config = _config.copyWith(enableKittyKeyboard: value);
+              });
+            },
+          ),
+          const SizedBox(height: 32),
           Row(
             children: [
               OutlinedButton(
