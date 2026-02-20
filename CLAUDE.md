@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 lbpSSH is a cross-platform SSH terminal manager built with Flutter for Windows, Linux, and macOS. It manages SSH connections with multiple authentication methods, supports jump/bastion hosts, and syncs configurations to GitHub Gist/Repository or Gitee.
 
+## Release Process
+
+```bash
+# 1. Update version in pubspec.yaml
+# 2. Commit changes: git add pubspec.yaml && git commit -m "release: bump version to X.Y.Z"
+# 3. Create tag: git tag vX.Y.Z
+# 4. Push: git push && git push origin vX.Y.Z
+```
+
 ## Build Commands
 
 ```bash
