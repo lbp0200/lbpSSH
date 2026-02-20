@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:kterm/kterm.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/models/ssh_connection.dart';
+import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
 import '../providers/terminal_provider.dart';
 import '../providers/app_config_provider.dart';
@@ -22,50 +23,6 @@ class TerminalViewWidget extends StatefulWidget {
 }
 
 class _TerminalViewWidgetState extends State<TerminalViewWidget> {
-  final FocusNode _focusNode = FocusNode(debugLabel: 'terminal-input');
-  bool _shiftEnterHandled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // 确保组件挂载后请求焦点
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        FocusScope.of(context).requestFocus(_focusNode);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  KeyEventResult _handleShiftEnter(TerminalSession session, KeyEvent event) {
-    final bool isShiftEnter = event.logicalKey == LogicalKeyboardKey.enter &&
-        HardwareKeyboard.instance.isShiftPressed;
-
-    if (isShiftEnter && !_shiftEnterHandled) {
-      _shiftEnterHandled = true;
-      if (event is KeyDownEvent) {
-        // 发送 LF (Line Feed) 换行符
-        // 这是最基础的换行方式
-        session.terminal.write('\x0a');
-      }
-      // 100ms 后重置，允许下次按键
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _shiftEnterHandled = false;
-      });
-      return KeyEventResult.handled;
-    }
-    // 非 Shift+Enter 时重置标志
-    if (!isShiftEnter) {
-      _shiftEnterHandled = false;
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer2<TerminalProvider, AppConfigProvider>(
@@ -88,66 +45,119 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
           }
         }
 
-        // 使用 xterm 4.0.0 的 TerminalView widget
-        // 通过 TerminalTheme 应用颜色配置
-        // 通过 TerminalStyle 应用字体大小
-
         return LayoutBuilder(
           builder: (context, constraints) {
             return SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight,
-              child: TerminalView(
-                session.terminal,
-                key: ValueKey(
-                  'terminal_${config.fontSize}_${config.fontFamily}',
-                ),
+              child: _TerminalViewWithSelection(
+                terminal: session.terminal,
                 controller: session.controller,
-                autofocus: true,
-                textStyle: TerminalStyle(
-                  fontSize: config.fontSize,
-                  fontFamily: config.fontFamily.isEmpty ? 'Menlo' : config.fontFamily,
-                  height: config.lineHeight,
-                ),
-                theme: TerminalTheme(
-                  foreground: parseColor(config.foregroundColor),
-                  background: parseColor(config.backgroundColor),
-                  cursor: parseColor(config.cursorColor),
-                  selection: parseColor(
-                    config.foregroundColor,
-                  ).withValues(alpha: 0.3),
-                  black: parseColor('#000000'),
-                  red: parseColor('#CD3131'),
-                  green: parseColor('#0DBC79'),
-                  yellow: parseColor('#E5E510'),
-                  blue: parseColor('#2472C8'),
-                  magenta: parseColor('#BC3FBC'),
-                  cyan: parseColor('#11A8CD'),
-                  white: parseColor('#E5E5E5'),
-                  brightBlack: parseColor('#666666'),
-                  brightRed: parseColor('#F14C4C'),
-                  brightGreen: parseColor('#23D18B'),
-                  brightYellow: parseColor('#F5F543'),
-                  brightBlue: parseColor('#3B8EEA'),
-                  brightMagenta: parseColor('#D670D6'),
-                  brightCyan: parseColor('#29B8DB'),
-                  brightWhite: parseColor('#E5E5E5'),
-                  searchHitBackground: parseColor(
-                    '#FFFF00',
-                  ).withValues(alpha: 0.3),
-                  searchHitBackgroundCurrent: parseColor(
-                    '#FFFF00',
-                  ).withValues(alpha: 0.5),
-                  searchHitForeground: parseColor('#000000'),
-                ),
-                onKeyEvent: (node, event) {
-                  return _handleShiftEnter(session, event);
-                },
+                config: config,
+                parseColor: parseColor,
               ),
             );
           },
         );
       },
+    );
+  }
+}
+
+/// 带选择复制功能的 TerminalView 包装器
+class _TerminalViewWithSelection extends StatefulWidget {
+  final Terminal terminal;
+  final TerminalController controller;
+  final TerminalConfig config;
+  final Color Function(String) parseColor;
+
+  const _TerminalViewWithSelection({
+    required this.terminal,
+    required this.controller,
+    required this.config,
+    required this.parseColor,
+  });
+
+  @override
+  State<_TerminalViewWithSelection> createState() => _TerminalViewWithSelectionState();
+}
+
+class _TerminalViewWithSelectionState extends State<_TerminalViewWithSelection> {
+  String? _lastSelection;
+
+  @override
+  void initState() {
+    super.initState();
+    // 监听选择变化，自动复制到剪贴板
+    widget.controller.addListener(_onSelectionChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onSelectionChanged);
+    super.dispose();
+  }
+
+  void _onSelectionChanged() {
+    final selection = widget.controller.selection;
+    if (selection != null) {
+      final selectedText = widget.terminal.buffer.getText(selection);
+      // 只有当选中文本发生变化时才复制到剪贴板
+      if (selectedText != _lastSelection && selectedText.isNotEmpty) {
+        _lastSelection = selectedText;
+        Clipboard.setData(ClipboardData(text: selectedText));
+      }
+    } else {
+      _lastSelection = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TerminalView(
+      widget.terminal,
+      key: ValueKey(
+        'terminal_${widget.config.fontSize}_${widget.config.fontFamily}',
+      ),
+      controller: widget.controller,
+      autofocus: true,
+      readOnly: false,
+      // 确保启用文本输入（用于 IME/中文输入法）
+      hardwareKeyboardOnly: false,
+      // 使用通用文本输入类型
+      keyboardType: TextInputType.text,
+      textStyle: TerminalStyle(
+        fontSize: widget.config.fontSize,
+        fontFamily: widget.config.fontFamily.isEmpty ? 'Menlo' : widget.config.fontFamily,
+        height: widget.config.lineHeight,
+      ),
+      theme: TerminalTheme(
+        foreground: widget.parseColor(widget.config.foregroundColor),
+        background: widget.parseColor(widget.config.backgroundColor),
+        cursor: widget.parseColor(widget.config.cursorColor),
+        selection: widget.parseColor(
+          widget.config.foregroundColor,
+        ).withValues(alpha: 0.3),
+        black: widget.parseColor('#000000'),
+        red: widget.parseColor('#CD3131'),
+        green: widget.parseColor('#0DBC79'),
+        yellow: widget.parseColor('#E5E510'),
+        blue: widget.parseColor('#2472C8'),
+        magenta: widget.parseColor('#BC3FBC'),
+        cyan: widget.parseColor('#11A8CD'),
+        white: widget.parseColor('#E5E5E5'),
+        brightBlack: widget.parseColor('#666666'),
+        brightRed: widget.parseColor('#F14C4C'),
+        brightGreen: widget.parseColor('#23D18B'),
+        brightYellow: widget.parseColor('#F5F543'),
+        brightBlue: widget.parseColor('#3B8EEA'),
+        brightMagenta: widget.parseColor('#D670D6'),
+        brightCyan: widget.parseColor('#29B8DB'),
+        brightWhite: widget.parseColor('#E5E5E5'),
+        searchHitBackground: widget.parseColor('#FFFF00').withValues(alpha: 0.3),
+        searchHitBackgroundCurrent: widget.parseColor('#FFFF00').withValues(alpha: 0.5),
+        searchHitForeground: widget.parseColor('#000000'),
+      ),
     );
   }
 }

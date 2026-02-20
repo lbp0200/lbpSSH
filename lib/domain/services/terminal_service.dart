@@ -19,13 +19,11 @@ class TerminalSession {
     required this.name,
     required this.inputService,
     TerminalConfig? terminalConfig,
-    bool enableKittyKeyboard = false,
   }) : terminal = Terminal(maxLines: 10000),
        controller = TerminalController() {
-    // 如果启用了 Kitty Keyboard Support，发送初始化序列
-    if (enableKittyKeyboard) {
-      terminal.write('\x1b[>1u');
-    }
+    // 禁用 Kitty 键盘模式，使用传统终端序列
+    // 这样可以确保与所有 SSH 服务器兼容
+    terminal.setKittyMode(false);
   }
 
   /// 获取 GraphicsManager 实例（由 kterm 自动创建）
@@ -76,13 +74,13 @@ class TerminalSession {
 
     // 监听终端输入
     terminal.onOutput = (data) {
-      // 当用户输入时，发送到输入服务
+      // 跳过空数据
+      if (data.isEmpty) return;
+      // 发送输入到 SSH/本地终端
       try {
         inputService.sendInput(data);
       } catch (e) {
-        // 性能优化：使用更友好的错误信息
-        final errorMessage = _getFriendlyErrorMessage(e);
-        terminal.write('\r\n[输入发送失败: $errorMessage]\r\n');
+        terminal.write('\r\n[输入发送失败: $e]\r\n');
       }
     };
 
@@ -123,14 +121,12 @@ class TerminalService {
     required String name,
     required TerminalInputService inputService,
     TerminalConfig? terminalConfig,
-    bool enableKittyKeyboard = false,
   }) {
     final session = TerminalSession(
       id: id,
       name: name,
       inputService: inputService,
       terminalConfig: terminalConfig,
-      enableKittyKeyboard: enableKittyKeyboard,
     );
     _sessions[id] = session;
     session.initialize();

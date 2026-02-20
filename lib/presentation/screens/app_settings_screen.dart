@@ -344,19 +344,19 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
           ),
           const SizedBox(height: 32),
           const Text(
-            '高级终端功能',
+            '终端兼容性设置',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           SwitchListTile(
-            title: const Text('Kitty Keyboard Support'),
+            title: const Text('启用 Kitty 协议'),
             subtitle: const Text(
-              '启用 Kitty 键盘协议，支持更多键盘快捷键（如 Ctrl+Shift+字母）。连接时发送 \\x1b[>1u 初始化序列。',
+              '发送终端设备属性查询 (\\x1b[>1u)，让支持 Kitty 协议的应用（如 Neovim）自动启用高级特性。关闭此选项可兼容老旧终端设备。',
             ),
-            value: _config.enableKittyKeyboard,
+            value: _config.enableKittyProtocol,
             onChanged: (value) {
               setState(() {
-                _config = _config.copyWith(enableKittyKeyboard: value);
+                _config = _config.copyWith(enableKittyProtocol: value);
               });
             },
           ),

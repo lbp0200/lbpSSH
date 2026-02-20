@@ -21,7 +21,7 @@ TerminalConfig _$TerminalConfigFromJson(Map<String, dynamic> json) =>
       padding: (json['padding'] as num?)?.toInt() ?? 8,
       devicePixelRatio: (json['devicePixelRatio'] as num?)?.toDouble() ?? 1.0,
       shellPath: json['shellPath'] as String? ?? '',
-      enableKittyKeyboard: json['enableKittyKeyboard'] as bool? ?? false,
+      enableKittyProtocol: json['enableKittyProtocol'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$TerminalConfigToJson(TerminalConfig instance) =>
@@ -38,5 +38,5 @@ Map<String, dynamic> _$TerminalConfigToJson(TerminalConfig instance) =>
       'padding': instance.padding,
       'devicePixelRatio': instance.devicePixelRatio,
       'shellPath': instance.shellPath,
-      'enableKittyKeyboard': instance.enableKittyKeyboard,
+      'enableKittyProtocol': instance.enableKittyProtocol,
     };

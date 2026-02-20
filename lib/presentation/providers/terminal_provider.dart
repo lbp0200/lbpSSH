@@ -85,7 +85,6 @@ class TerminalProvider extends ChangeNotifier {
       name: connection.name,
       inputService: sshService,
       terminalConfig: terminalConfig,
-      enableKittyKeyboard: terminalConfig.enableKittyKeyboard,
     );
 
     _activeSessionId = connection.id;
