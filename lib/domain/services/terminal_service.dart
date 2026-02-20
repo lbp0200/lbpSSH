@@ -30,20 +30,6 @@ class TerminalSession {
   /// 注意: graphicsManager 是由 kterm 内部管理的
   dynamic get graphicsManager => terminal.graphicsManager;
 
-  /// 获取用户友好的错误信息
-  String _getFriendlyErrorMessage(dynamic error) {
-    final errorStr = error.toString();
-    if (errorStr.contains('Connection')) {
-      return '连接中断，请检查网络';
-    } else if (errorStr.contains('Authentication')) {
-      return '认证失败，请检查密码或密钥';
-    } else if (errorStr.contains('Timeout')) {
-      return '连接超时，请稍后重试';
-    } else {
-      return '未知错误';
-    }
-  }
-
   /// 初始化终端会话
   Future<void> initialize() async {
     // 监听输出
