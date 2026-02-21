@@ -12,6 +12,7 @@ import 'presentation/providers/terminal_provider.dart';
 import 'presentation/providers/sync_provider.dart';
 import 'presentation/providers/app_config_provider.dart';
 import 'presentation/providers/import_export_provider.dart';
+import 'presentation/providers/sftp_provider.dart';
 import 'presentation/screens/main_screen.dart';
 
 void main() async {
@@ -45,6 +46,11 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => ImportExportProvider(importExportService),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SftpProvider(
+            context.read<TerminalProvider>(),
+          ),
         ),
       ],
       child: const MyApp(),
