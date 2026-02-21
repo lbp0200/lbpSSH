@@ -34,6 +34,9 @@ dependencies:
   # UI
   cupertino_icons: ^1.0.8
 
+  # App info
+  package_info_plus: ^8.0.0
+
   # SSH 客户端
   dartssh2: ^2.13.0
 

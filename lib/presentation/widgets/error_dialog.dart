@@ -2,9 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../../core/constants/app_constants.dart';
 
 /// 显示错误详情对话框
 ///
@@ -18,7 +17,10 @@ Future<void> showErrorDialog(
   required Object error,
   StackTrace? stackTrace,
   Map<String, String>? extraContext,
-}) {
+}) async {
+  final packageInfo = await PackageInfo.fromPlatform();
+  if (!context.mounted) return;
+
   return showDialog(
     context: context,
     builder: (context) => ErrorDialog(
@@ -26,6 +28,7 @@ Future<void> showErrorDialog(
       error: error,
       stackTrace: stackTrace,
       extraContext: extraContext,
+      appVersion: packageInfo.version,
     ),
   );
 }
@@ -36,6 +39,7 @@ class ErrorDialog extends StatefulWidget {
   final Object error;
   final StackTrace? stackTrace;
   final Map<String, String>? extraContext;
+  final String appVersion;
 
   const ErrorDialog({
     super.key,
@@ -43,6 +47,7 @@ class ErrorDialog extends StatefulWidget {
     required this.error,
     this.stackTrace,
     this.extraContext,
+    required this.appVersion,
   });
 
   @override
@@ -83,7 +88,7 @@ class _ErrorDialogState extends State<ErrorDialog> {
 
     buffer.writeln('**环境信息**:');
     buffer.writeln('- 操作系统: ${Platform.operatingSystem}');
-    buffer.writeln('- 应用版本: ${AppConstants.appVersion}');
+    buffer.writeln('- 应用版本: ${widget.appVersion}');
     buffer.writeln('- 时间: ${DateTime.now().toIso8601String()}');
 
     return buffer.toString();
