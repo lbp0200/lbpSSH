@@ -7,8 +7,9 @@ import '../screens/connection_form.dart';
 /// 连接列表组件
 class ConnectionList extends StatelessWidget {
   final Function(SshConnection)? onConnectionTap;
+  final Function(SshConnection)? onSftpTap;
 
-  const ConnectionList({super.key, this.onConnectionTap});
+  const ConnectionList({super.key, this.onConnectionTap, this.onSftpTap});
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +74,7 @@ class ConnectionList extends StatelessWidget {
               },
               onEdit: () => _showConnectionForm(context, connection),
               onDelete: () => _deleteConnection(context, provider, connection),
+              onSftpTap: () => onSftpTap?.call(connection),
             );
           },
         );
@@ -134,12 +136,14 @@ class _ConnectionListItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onSftpTap;
 
   const _ConnectionListItem({
     required this.connection,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    this.onSftpTap,
   });
 
   @override
@@ -155,36 +159,46 @@ class _ConnectionListItem extends StatelessWidget {
         subtitle: Text(
           '${connection.username}@${connection.host}:${connection.port}',
         ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('编辑'),
-                ],
-              ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.folder_copy),
+              onPressed: onSftpTap,
+              tooltip: 'SFTP',
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('删除', style: TextStyle(color: Colors.red)),
-                ],
-              ),
+            PopupMenuButton(
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20),
+                      SizedBox(width: 8),
+                      Text('编辑'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('删除', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+              onSelected: (value) {
+                if (value == 'edit') {
+                  onEdit();
+                } else if (value == 'delete') {
+                  onDelete();
+                }
+              },
             ),
           ],
-          onSelected: (value) {
-            if (value == 'edit') {
-              onEdit();
-            } else if (value == 'delete') {
-              onDelete();
-            }
-          },
         ),
         onTap: onTap,
       ),
