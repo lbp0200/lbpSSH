@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/services/sync_service.dart'
     show SyncStatusEnum, SyncPlatform, SyncConfig;
 import '../providers/sync_provider.dart';
+import '../widgets/error_dialog.dart';
 
 /// 同步设置界面
 class SyncSettingsScreen extends StatefulWidget {
@@ -116,11 +117,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('连接测试成功')));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        showErrorDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text('连接测试失败: $e')));
+          title: '连接测试失败',
+          error: e,
+          stackTrace: stackTrace,
+        );
       }
     }
   }
@@ -396,11 +400,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('配置已上传')));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        showErrorDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text('上传失败: $e')));
+          title: '上传失败',
+          error: e,
+          stackTrace: stackTrace,
+        );
       }
     }
   }
@@ -420,11 +427,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('配置已下载')));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        showErrorDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text('下载失败: $e')));
+          title: '下载失败',
+          error: e,
+          stackTrace: stackTrace,
+        );
       }
     }
   }
