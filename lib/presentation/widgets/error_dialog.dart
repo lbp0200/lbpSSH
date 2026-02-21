@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_constants.dart';
+
 /// 显示错误详情对话框
 ///
 /// [title] 简要错误标题
@@ -81,7 +83,7 @@ class _ErrorDialogState extends State<ErrorDialog> {
 
     buffer.writeln('**环境信息**:');
     buffer.writeln('- 操作系统: ${Platform.operatingSystem}');
-    buffer.writeln('- 应用版本: 1.0.2');
+    buffer.writeln('- 应用版本: ${AppConstants.appVersion}');
     buffer.writeln('- 时间: ${DateTime.now().toIso8601String()}');
 
     return buffer.toString();
