@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/ssh_config_service.dart';
 import '../providers/connection_provider.dart';
+import '../widgets/error_dialog.dart';
 
 /// 连接配置表单界面
 class ConnectionFormScreen extends StatefulWidget {
@@ -129,11 +130,14 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
         String fileContent;
         try {
           fileContent = await file.readAsString();
-        } catch (e) {
+        } catch (e, stackTrace) {
           if (!mounted) return;
-          ScaffoldMessenger.of(
+          showErrorDialog(
             context,
-          ).showSnackBar(SnackBar(content: Text('读取文件失败: $e')));
+            title: '读取文件失败',
+            error: e,
+            stackTrace: stackTrace,
+          );
           return;
         }
 
@@ -162,11 +166,14 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
           SnackBar(content: Text('私钥文件已加载: ${filePath.split('/').last}')),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showErrorDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text('选择文件失败: $e')));
+        title: '选择文件失败',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -334,11 +341,14 @@ class _ConnectionFormScreenState extends State<ConnectionFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(widget.connection != null ? '连接已更新' : '连接已添加')),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showErrorDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
+        title: '保存失败',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
