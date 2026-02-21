@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kterm/kterm.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'error_dialog.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
@@ -297,11 +299,14 @@ class TerminalTabsView extends StatelessWidget {
                   onPressed: () async {
                     try {
                       await terminalProvider.createLocalTerminal();
-                    } catch (e) {
+                    } catch (e, stackTrace) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(
+                        showErrorDialog(
                           context,
-                        ).showSnackBar(SnackBar(content: Text('创建终端失败: $e')));
+                          title: '创建终端失败',
+                          error: e,
+                          stackTrace: stackTrace,
+                        );
                       }
                     }
                   },
