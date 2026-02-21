@@ -178,6 +178,14 @@ class SshService implements TerminalInputService {
   SshConnectionState _state = SshConnectionState.disconnected;
   SshConnectionState get state => _state;
 
+  /// 获取 SFTP 客户端（如果已连接）
+  Future<SftpClient?> getSftpClient() async {
+    if (_client != null && _state == SshConnectionState.connected) {
+      return _client!.sftp();
+    }
+    return null;
+  }
+
   /// 性能优化：批量输出处理
   void _scheduleOutputFlush() {
     _outputTimer?.cancel();
