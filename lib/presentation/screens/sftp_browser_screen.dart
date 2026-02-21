@@ -111,7 +111,9 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     final result = await FilePicker.platform.pickFiles();
     if (result != null && result.files.single.path != null) {
       final file = result.files.single;
-      final localPath = file.path!;
+      // TODO: 使用 localPath 调用 KittyFileTransferService
+      // ignore: unused_local_variable
+      final localPath = file.path;
       final fileName = file.name;
       final fileSize = file.size;
 
