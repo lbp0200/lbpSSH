@@ -1,5 +1,25 @@
 import 'dart:async';
 
+/// 文件传输进度
+class TransferProgress {
+  final String fileName;
+  final int transferredBytes;
+  final int totalBytes;
+  final double percent;
+  final int bytesPerSecond;
+
+  TransferProgress({
+    required this.fileName,
+    required this.transferredBytes,
+    required this.totalBytes,
+    required this.percent,
+    required this.bytesPerSecond,
+  });
+}
+
+/// 文件传输进度回调
+typedef TransferProgressCallback = void Function(TransferProgress progress);
+
 /// Kitty 协议支持检测结果
 class ProtocolSupportResult {
   final bool isSupported;
@@ -37,13 +57,18 @@ class KittyFileTransferService {
 
   /// 发送文件到终端（发送模式）
   ///
-  /// [sessionId] - 终端会话 ID
-  /// [filePath] - 要发送的文件路径
-  Future<void> sendFile(String sessionId, String filePath) async {
-    // TODO: 实现发送文件逻辑
-    // 1. 构建 OSC 5113 控制序列
-    // 2. 通过终端会话发送
-    // 3. 处理响应
+  /// [localPath] - 本地文件路径
+  /// [remoteFileName] - 远程文件名
+  /// [onProgress] - 进度回调
+  Future<void> sendFile({
+    required String localPath,
+    required String remoteFileName,
+    required TransferProgressCallback onProgress,
+  }) async {
+    // TODO: 实现带进度回调的文件发送
+    // 1. 读取本地文件
+    // 2. 分块发送 OSC 5113 序列
+    // 3. 通过 onProgress 报告进度
     throw UnimplementedError('发送文件功能待实现');
   }
 
