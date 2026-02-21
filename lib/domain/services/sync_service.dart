@@ -371,7 +371,7 @@ class SyncService with ChangeNotifier {
         },
       };
 
-      await _dio.patch(
+      await _dio.post(
         url,
         data: data,
         options: Options(
