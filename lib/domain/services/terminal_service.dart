@@ -30,6 +30,11 @@ class TerminalSession {
   /// 注意: graphicsManager 是由 kterm 内部管理的
   dynamic get graphicsManager => terminal.graphicsManager;
 
+  /// 发送原始字符到终端（用于发送 OSC 序列）
+  void writeRaw(String data) {
+    terminal.write(data);
+  }
+
   /// 初始化终端会话
   Future<void> initialize() async {
     // 监听输出
