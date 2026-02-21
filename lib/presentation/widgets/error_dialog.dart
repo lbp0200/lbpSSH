@@ -1,0 +1,255 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// 显示错误详情对话框
+///
+/// [title] 简要错误标题
+/// [error] 错误对象
+/// [stackTrace] 堆栈跟踪（可选）
+/// [extraContext] 额外上下文信息（如连接名、主机等）
+Future<void> showErrorDialog(
+  BuildContext context, {
+  required String title,
+  required Object error,
+  StackTrace? stackTrace,
+  Map<String, String>? extraContext,
+}) {
+  return showDialog(
+    context: context,
+    builder: (context) => ErrorDialog(
+      title: title,
+      error: error,
+      stackTrace: stackTrace,
+      extraContext: extraContext,
+    ),
+  );
+}
+
+/// 错误详情对话框
+class ErrorDialog extends StatefulWidget {
+  final String title;
+  final Object error;
+  final StackTrace? stackTrace;
+  final Map<String, String>? extraContext;
+
+  const ErrorDialog({
+    super.key,
+    required this.title,
+    required this.error,
+    this.stackTrace,
+    this.extraContext,
+  });
+
+  @override
+  State<ErrorDialog> createState() => _ErrorDialogState();
+}
+
+class _ErrorDialogState extends State<ErrorDialog> {
+  bool _copied = false;
+  bool _errorExpanded = true;
+  bool _stackExpanded = true;
+
+  String get _errorString => widget.error.toString();
+  String get _stackString => widget.stackTrace?.toString() ?? '';
+
+  String _buildReport() {
+    final buffer = StringBuffer();
+    buffer.writeln('## 错误报告');
+    buffer.writeln();
+    buffer.writeln('**错误类型**: ${widget.error.runtimeType}');
+    buffer.writeln('**错误信息**: ${widget.error}');
+    buffer.writeln();
+
+    if (_stackString.isNotEmpty) {
+      buffer.writeln('**Stack Trace**:');
+      buffer.writeln('```');
+      buffer.writeln(_stackString);
+      buffer.writeln('```');
+      buffer.writeln();
+    }
+
+    if (widget.extraContext != null && widget.extraContext!.isNotEmpty) {
+      buffer.writeln('**额外上下文**:');
+      for (final entry in widget.extraContext!.entries) {
+        buffer.writeln('- ${entry.key}: ${entry.value}');
+      }
+      buffer.writeln();
+    }
+
+    buffer.writeln('**环境信息**:');
+    buffer.writeln('- 操作系统: ${Platform.operatingSystem}');
+    buffer.writeln('- 应用版本: 1.0.2');
+    buffer.writeln('- 时间: ${DateTime.now().toIso8601String()}');
+
+    return buffer.toString();
+  }
+
+  Future<void> _copyReport() async {
+    await Clipboard.setData(ClipboardData(text: _buildReport()));
+    if (mounted) {
+      setState(() => _copied = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('错误报告已复制到剪贴板')),
+      );
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _copied = false);
+      });
+    }
+  }
+
+  Future<void> _copyAndOpenIssues() async {
+    await Clipboard.setData(ClipboardData(text: _buildReport()));
+
+    final uri = Uri.parse('https://github.com/lbp0200/lbpssh/issues');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+
+    if (mounted) {
+      setState(() => _copied = true);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _copied = false);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final errorTextStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontFamily: 'monospace',
+    );
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.error_outline, color: theme.colorScheme.error),
+          const SizedBox(width: 12),
+          Expanded(child: Text(widget.title)),
+        ],
+      ),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.6,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 错误信息
+              _buildSection(
+                title: '错误信息',
+                expanded: _errorExpanded,
+                onToggle: () => setState(() => _errorExpanded = !_errorExpanded),
+                child: SelectableText(_errorString, style: errorTextStyle),
+              ),
+
+              // Stack Trace
+              if (_stackString.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildSection(
+                  title: 'Stack Trace',
+                  expanded: _stackExpanded,
+                  onToggle: () => setState(() => _stackExpanded = !_stackExpanded),
+                  child: SelectableText(_stackString, style: errorTextStyle),
+                ),
+              ],
+
+              // 额外上下文
+              if (widget.extraContext != null && widget.extraContext!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: widget.extraContext!.entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                '${entry.key}:',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: SelectableText(
+                                entry.value,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _copyReport,
+          child: const Text('复制报告'),
+        ),
+        FilledButton.icon(
+          onPressed: _copyAndOpenIssues,
+          icon: Icon(_copied ? Icons.check : Icons.open_in_new),
+          label: Text(_copied ? '已复制' : '反馈问题'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required bool expanded,
+    required VoidCallback onToggle,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (expanded) child,
+      ],
+    );
+  }
+}
