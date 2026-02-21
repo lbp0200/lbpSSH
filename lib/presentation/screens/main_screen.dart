@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/terminal_provider.dart';
+import '../screens/sftp_browser_screen.dart';
+import '../widgets/connection_list.dart';
 import '../widgets/terminal_view.dart';
 
 /// 主界面
@@ -27,7 +29,32 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: TerminalTabsView(),
+      body: Row(
+        children: [
+          // Connection list sidebar
+          SizedBox(
+            width: 280,
+            child: ConnectionList(
+              onConnectionTap: (connection) {
+                // Connection tap is handled by TerminalTabsView popup menu
+              },
+              onSftpTap: (connection) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SftpBrowserScreen(connection: connection),
+                  ),
+                );
+              },
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          // Terminal view
+          const Expanded(
+            child: TerminalTabsView(),
+          ),
+        ],
+      ),
     );
   }
 }
