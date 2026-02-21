@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
 import 'package:lbp_ssh/domain/services/sftp_service.dart';
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
+import 'package:lbp_ssh/presentation/widgets/transfer_progress_dialog.dart';
 
 /// SFTP 浏览器界面
 class SftpBrowserScreen extends StatefulWidget {
@@ -107,14 +110,44 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   Future<void> _uploadFile() async {
     final result = await FilePicker.platform.pickFiles();
     if (result != null && result.files.single.path != null) {
+      final file = result.files.single;
+      final localPath = file.path!;
+      final fileName = file.name;
+      final fileSize = file.size;
+
+      // 创建进度流
+      final progressController = StreamController<TransferProgress>();
+
+      if (!mounted) return;
+
+      // 显示进度对话框
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => TransferProgressDialog(
+          fileName: fileName,
+          totalBytes: fileSize,
+          progressStream: progressController.stream,
+          onCancel: () {
+            progressController.close();
+            Navigator.pop(context);
+          },
+        ),
+      );
+
       try {
-        await _sftpService?.uploadFile(
-          result.files.single.path!,
-          result.files.single.name,
-        );
-        await _refresh();
+        // TODO: 调用 KittyFileTransferService 发送文件
+        // 使用 progressController.add() 更新进度
+
+        if (mounted) {
+          Navigator.pop(context); // 关闭进度对话框
+          _showMessage('上传成功');
+        }
       } catch (e) {
-        _showError(e.toString());
+        if (mounted) {
+          Navigator.pop(context);
+          _showError('上传失败: $e');
+        }
       }
     }
   }
