@@ -5,14 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:kterm/kterm.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'error_dialog.dart';
+import '../providers/app_config_provider.dart';
+import '../providers/connection_provider.dart';
+import '../providers/terminal_provider.dart';
+import '../screens/app_settings_screen.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
-import '../providers/terminal_provider.dart';
-import '../providers/app_config_provider.dart';
-import '../providers/connection_provider.dart';
-import '../screens/app_settings_screen.dart';
+import 'error_dialog.dart';
 
 /// 终端视图组件
 class TerminalViewWidget extends StatefulWidget {
