@@ -4,7 +4,6 @@ import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import '../screens/app_settings_screen.dart';
 import 'connection_list.dart';
-import 'compact_connection_list.dart';
 
 class CollapsibleSidebar extends StatefulWidget {
   final Function(SshConnection)? onConnectionTap;
@@ -133,14 +132,11 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar> {
           ),
           // Connection list
           Expanded(
-            child: _isExpanded
-                ? ConnectionList(
-                    onConnectionTap: widget.onConnectionTap,
-                    onSftpTap: widget.onSftpTap,
-                  )
-                : CompactConnectionList(
-                    onConnectionTap: widget.onConnectionTap,
-                  ),
+            child: ConnectionList(
+              isCompact: !_isExpanded,
+              onConnectionTap: widget.onConnectionTap,
+              onSftpTap: widget.onSftpTap,
+            ),
           ),
           // Bottom toggle button
           if (_isExpanded)

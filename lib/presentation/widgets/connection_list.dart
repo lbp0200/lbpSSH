@@ -8,8 +8,14 @@ import '../screens/connection_form.dart';
 class ConnectionList extends StatelessWidget {
   final Function(SshConnection)? onConnectionTap;
   final Function(SshConnection)? onSftpTap;
+  final bool isCompact;
 
-  const ConnectionList({super.key, this.onConnectionTap, this.onSftpTap});
+  const ConnectionList({
+    super.key,
+    this.onConnectionTap,
+    this.onSftpTap,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
