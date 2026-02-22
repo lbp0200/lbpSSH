@@ -76,9 +76,6 @@ dependencies:
   # 共享首选项
   shared_preferences: ^2.2.2
 
-  # 剪贴板
-  super_clipboard: ^0.8.0
-
   # UUID 生成
   uuid: ^4.3.3
 
