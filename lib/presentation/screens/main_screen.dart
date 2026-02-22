@@ -33,6 +33,13 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           // Connection list sidebar
           CollapsibleSidebar(
+            onConnectionTap: (connection) async {
+              final terminalProvider = Provider.of<TerminalProvider>(
+                context,
+                listen: false,
+              );
+              await terminalProvider.createSession(connection);
+            },
             onSftpTap: (connection) {
               Navigator.push(
                 context,
