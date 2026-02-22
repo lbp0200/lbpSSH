@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,6 +26,31 @@ class TerminalViewWidget extends StatefulWidget {
 }
 
 class _TerminalViewWidgetState extends State<TerminalViewWidget> {
+  StreamSubscription<({String title, String body})>? _notificationSubscription;
+  String? _subscribedSessionId;
+
+  void _subscribeToNotifications(TerminalSession session) {
+    if (_subscribedSessionId == session.id) return;
+    _notificationSubscription?.cancel();
+    _subscribedSessionId = session.id;
+    _notificationSubscription = session.notificationStream.listen((notification) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(notification.title),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<TerminalProvider, AppConfigProvider>(
@@ -34,6 +60,9 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
         if (session == null) {
           return const Center(child: Text('请选择一个连接'));
         }
+
+        // Subscribe to notification stream for the active session
+        _subscribeToNotifications(session);
 
         // 获取终端配置
         final config = configProvider.terminalConfig;
