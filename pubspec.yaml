@@ -76,11 +76,17 @@ dependencies:
   # 共享首选项
   shared_preferences: ^2.2.2
 
+  # 剪贴板
+  super_clipboard: ^0.8.0
+
   # UUID 生成
   uuid: ^4.3.3
 
   # 文件选择器
   file_picker: ^8.0.0
+
+  # 桌面通知
+  flutter_local_notifications: ^18.0.0
 
   # 窗口管理
   window_manager: ^0.4.0
