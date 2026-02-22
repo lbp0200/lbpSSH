@@ -115,7 +115,7 @@ class TerminalSession {
         _fileTransferController.add(FileTransferEvent(
           type: 'start',
           fileId: params['fid'],
-          fileName: params['n'] != null ? utf8.decode(base64Decode(params['n']!)) : null,
+          fileName: _decodeBase64(params['n']),
           fileSize: int.tryParse(params['size'] ?? ''),
         ));
         break;
@@ -124,7 +124,7 @@ class TerminalSession {
           type: 'chunk',
           fileId: params['fid'],
           offset: int.tryParse(params['offset'] ?? ''),
-          data: params['d'] != null ? base64Decode(params['d']!) : null,
+          data: _decodeBase64Bytes(params['d']),
         ));
         break;
       case 'finish':
@@ -133,6 +133,26 @@ class TerminalSession {
           fileId: params['fid'],
         ));
         break;
+    }
+  }
+
+  /// 解码 Base64 字符串为 UTF-8 文本
+  String? _decodeBase64(String? encoded) {
+    if (encoded == null) return null;
+    try {
+      return utf8.decode(base64Decode(encoded));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 解码 Base64 字符串为字节数组
+  Uint8List? _decodeBase64Bytes(String? encoded) {
+    if (encoded == null) return null;
+    try {
+      return base64Decode(encoded);
+    } catch (e) {
+      return null;
     }
   }
 
