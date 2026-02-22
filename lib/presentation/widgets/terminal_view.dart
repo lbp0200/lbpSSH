@@ -14,6 +14,7 @@ import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
 import 'error_dialog.dart';
+import 'graphics_overlay.dart';
 
 /// 终端视图组件
 class TerminalViewWidget extends StatefulWidget {
@@ -145,50 +146,70 @@ class _TerminalViewWithSelectionState extends State<_TerminalViewWithSelection> 
 
   @override
   Widget build(BuildContext context) {
-    return TerminalView(
-      widget.terminal,
-      key: ValueKey(
-        'terminal_${widget.config.fontSize}_${widget.config.fontFamily}',
-      ),
-      controller: widget.controller,
-      autofocus: true,
-      readOnly: false,
-      // 确保启用文本输入（用于 IME/中文输入法）
-      hardwareKeyboardOnly: false,
-      // 使用通用文本输入类型
-      keyboardType: TextInputType.text,
-      textStyle: TerminalStyle(
-        fontSize: widget.config.fontSize,
-        fontFamily: widget.config.fontFamily.isEmpty ? 'Menlo' : widget.config.fontFamily,
-        height: widget.config.lineHeight,
-      ),
-      theme: TerminalTheme(
-        foreground: widget.parseColor(widget.config.foregroundColor),
-        background: widget.parseColor(widget.config.backgroundColor),
-        cursor: widget.parseColor(widget.config.cursorColor),
-        selection: widget.parseColor(
-          widget.config.foregroundColor,
-        ).withValues(alpha: 0.3),
-        black: widget.parseColor('#000000'),
-        red: widget.parseColor('#CD3131'),
-        green: widget.parseColor('#0DBC79'),
-        yellow: widget.parseColor('#E5E510'),
-        blue: widget.parseColor('#2472C8'),
-        magenta: widget.parseColor('#BC3FBC'),
-        cyan: widget.parseColor('#11A8CD'),
-        white: widget.parseColor('#E5E5E5'),
-        brightBlack: widget.parseColor('#666666'),
-        brightRed: widget.parseColor('#F14C4C'),
-        brightGreen: widget.parseColor('#23D18B'),
-        brightYellow: widget.parseColor('#F5F543'),
-        brightBlue: widget.parseColor('#3B8EEA'),
-        brightMagenta: widget.parseColor('#D670D6'),
-        brightCyan: widget.parseColor('#29B8DB'),
-        brightWhite: widget.parseColor('#E5E5E5'),
-        searchHitBackground: widget.parseColor('#FFFF00').withValues(alpha: 0.3),
-        searchHitBackgroundCurrent: widget.parseColor('#FFFF00').withValues(alpha: 0.5),
-        searchHitForeground: widget.parseColor('#000000'),
-      ),
+    // 获取 GraphicsManager（如果可用）
+    final graphicsManager = widget.terminal.graphicsManager as dynamic;
+
+    // 计算单元格尺寸（基于配置的字体大小和行高）
+    // 假设等宽字体的宽高比约为 0.6
+    final cellWidth = widget.config.fontSize * 0.6;
+    final cellHeight = widget.config.fontSize * widget.config.lineHeight;
+
+    return Stack(
+      children: [
+        TerminalView(
+          widget.terminal,
+          key: ValueKey(
+            'terminal_${widget.config.fontSize}_${widget.config.fontFamily}',
+          ),
+          controller: widget.controller,
+          autofocus: true,
+          readOnly: false,
+          // 确保启用文本输入（用于 IME/中文输入法）
+          hardwareKeyboardOnly: false,
+          // 使用通用文本输入类型
+          keyboardType: TextInputType.text,
+          textStyle: TerminalStyle(
+            fontSize: widget.config.fontSize,
+            fontFamily: widget.config.fontFamily.isEmpty ? 'Menlo' : widget.config.fontFamily,
+            height: widget.config.lineHeight,
+          ),
+          theme: TerminalTheme(
+            foreground: widget.parseColor(widget.config.foregroundColor),
+            background: widget.parseColor(widget.config.backgroundColor),
+            cursor: widget.parseColor(widget.config.cursorColor),
+            selection: widget.parseColor(
+              widget.config.foregroundColor,
+            ).withValues(alpha: 0.3),
+            black: widget.parseColor('#000000'),
+            red: widget.parseColor('#CD3131'),
+            green: widget.parseColor('#0DBC79'),
+            yellow: widget.parseColor('#E5E510'),
+            blue: widget.parseColor('#2472C8'),
+            magenta: widget.parseColor('#BC3FBC'),
+            cyan: widget.parseColor('#11A8CD'),
+            white: widget.parseColor('#E5E5E5'),
+            brightBlack: widget.parseColor('#666666'),
+            brightRed: widget.parseColor('#F14C4C'),
+            brightGreen: widget.parseColor('#23D18B'),
+            brightYellow: widget.parseColor('#F5F543'),
+            brightBlue: widget.parseColor('#3B8EEA'),
+            brightMagenta: widget.parseColor('#D670D6'),
+            brightCyan: widget.parseColor('#29B8DB'),
+            brightWhite: widget.parseColor('#E5E5E5'),
+            searchHitBackground: widget.parseColor('#FFFF00').withValues(alpha: 0.3),
+            searchHitBackgroundCurrent: widget.parseColor('#FFFF00').withValues(alpha: 0.5),
+            searchHitForeground: widget.parseColor('#000000'),
+          ),
+        ),
+        // 图形叠加层（Kitty 图形协议）
+        if (graphicsManager != null)
+          GraphicsOverlayWidget(
+            graphicsManager: graphicsManager,
+            cellWidth: cellWidth,
+            cellHeight: cellHeight,
+            scrollOffset: 0,
+          ),
+      ],
     );
   }
 }
