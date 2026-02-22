@@ -4,9 +4,26 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
-import 'package:lbp_ssh/domain/services/sftp_service.dart';
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
 import 'package:lbp_ssh/presentation/widgets/transfer_progress_dialog.dart';
+
+/// 简单的文件项（用于显示文件列表）
+/// 注：当前版本仅支持文件上传，文件列表功能待实现
+class FileItem {
+  final String name;
+  final String path;
+  final bool isDirectory;
+  final int? size;
+  final DateTime? modified;
+
+  FileItem({
+    required this.name,
+    required this.path,
+    required this.isDirectory,
+    this.size,
+    this.modified,
+  });
+}
 
 /// SFTP 浏览器界面
 class SftpBrowserScreen extends StatefulWidget {
@@ -23,7 +40,7 @@ class SftpBrowserScreen extends StatefulWidget {
 
 class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   KittyFileTransferService? _transferService;
-  List<SftpItem> _items = [];
+  List<dynamic> _items = [];
   bool _loading = false;
   String _currentPath = '/';
   String? _error;
@@ -83,7 +100,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     }
   }
 
-  Future<void> _onItemTap(SftpItem item) async {
+  Future<void> _onItemTap(FileItem item) async {
     if (item.isDirectory) {
       await _transferService?.changeDirectory(item.name);
       await _refresh();
@@ -160,7 +177,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     }
   }
 
-  Future<void> _downloadFile(SftpItem item) async {
+  Future<void> _downloadFile(FileItem item) async {
     final result = await FilePicker.platform.saveFile(
       fileName: item.name,
     );
@@ -174,7 +191,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     }
   }
 
-  Future<void> _deleteItem(SftpItem item) async {
+  Future<void> _deleteItem(FileItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -313,7 +330,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
             item.isDirectory ? Icons.folder : _getFileIcon(item.name),
           ),
           title: Text(item.name),
-          subtitle: item.isDirectory ? null : Text(_formatSize(item.size)),
+          subtitle: item.isDirectory ? null : Text(item.size != null ? _formatSize(item.size!) : '-'),
           onTap: () => _onItemTap(item),
           onLongPress: () => _showItemMenu(item),
         );
@@ -346,7 +363,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     );
   }
 
-  void _showItemMenu(SftpItem item) {
+  void _showItemMenu(FileItem item) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(

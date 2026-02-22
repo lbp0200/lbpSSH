@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'sftp_service.dart';
 import 'terminal_service.dart';
 
 /// 文件传输进度
@@ -98,7 +97,8 @@ class KittyFileTransferService {
   bool get supportsKittyProtocol => false;
 
   /// 获取当前目录文件列表
-  Future<List<SftpItem>> listCurrentDirectory() async {
+  /// 注：当前版本仅支持文件上传，文件列表功能待实现
+  Future<List<dynamic>> listCurrentDirectory() async {
     // TODO: 使用 ls 命令通过终端获取文件列表
     throw UnimplementedError('目录列表功能待实现');
   }
