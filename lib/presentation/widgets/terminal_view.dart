@@ -207,6 +207,8 @@ class _TerminalViewWithSelectionState extends State<_TerminalViewWithSelection> 
             graphicsManager: graphicsManager,
             cellWidth: cellWidth,
             cellHeight: cellHeight,
+            // TODO: Get scrollOffset from terminal controller
+            // Currently hardcoded to 0 - images won't scroll with terminal
             scrollOffset: 0,
           ),
       ],
