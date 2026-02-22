@@ -8,12 +8,24 @@ class ConnectionProvider extends ChangeNotifier {
   List<SshConnection> _connections = [];
   bool _isLoading = false;
   String? _error;
+  String _searchQuery = '';
 
   ConnectionProvider(this._repository);
 
   List<SshConnection> get connections => _connections;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String get searchQuery => _searchQuery;
+
+  List<SshConnection> get filteredConnections {
+    if (_searchQuery.isEmpty) return _connections;
+    final query = _searchQuery.toLowerCase();
+    return _connections.where((c) =>
+      c.name.toLowerCase().contains(query) ||
+      c.host.toLowerCase().contains(query) ||
+      c.username.toLowerCase().contains(query)
+    ).toList();
+  }
 
   /// 加载所有连接
   Future<void> loadConnections() async {
@@ -71,5 +83,17 @@ class ConnectionProvider extends ChangeNotifier {
   /// 根据 ID 获取连接
   SshConnection? getConnectionById(String id) {
     return _repository.getConnectionById(id);
+  }
+
+  /// 设置搜索查询
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  /// 清除搜索
+  void clearSearch() {
+    _searchQuery = '';
+    notifyListeners();
   }
 }
