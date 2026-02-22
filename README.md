@@ -188,6 +188,47 @@ flutter build macos --release
 - 支持多标签页同时连接多个服务器 | Multi-tab for multiple servers
 - 标签页支持拖拽排序 | Drag to reorder tabs
 
+### 文件传输 | File Transfer
+
+lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输 | lbpSSH uses Kitty protocol OSC 5113 for file transfer
+
+> **注意 | Note**: 远程服务器需要安装 Kitty 的 `ki` 工具才能接收文件 | Remote server needs Kitty's `ki` tool installed to receive files
+
+- **已实现 | Implemented**: 文件上传 (File Upload)
+- **待实现 | TODO**: 文件列表浏览、文件下载 (File list browsing, File download)
+
+---
+
+## 注意事项 | Notes
+
+### Kitty 协议文件传输 | Kitty Protocol File Transfer
+
+lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输，替代传统的 SFTP。
+
+lbpSSH uses Kitty protocol OSC 5113 for file transfer, replacing traditional SFTP.
+
+**前置要求 | Requirements**:
+- 远程服务器需要安装 [Kitty](https://sw.kovidgoyal.net/kitty/) 终端工具
+- Remote server needs [Kitty](https://sw.kovidgoyal.net/kitty/) terminal tool installed
+
+**安装 ki 工具 | Install ki tool**:
+```bash
+# 方法一：从源码编译
+git clone https://github.com/kovidgoyal/kitty
+cd kitty
+python3 setup.py ki
+
+# 方法二：使用 pip
+pip3 install kitty-cli
+```
+
+**已实现功能 | Implemented**:
+- ✅ 文件上传 (File Upload)
+
+**待实现功能 | TODO**:
+- ⏳ 文件列表浏览 (File list browsing)
+- ⏳ 文件下载 (File download)
+
 ---
 
 ## 项目结构 | Project Structure
