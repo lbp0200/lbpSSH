@@ -132,6 +132,11 @@ class TerminalProvider extends ChangeNotifier {
     return service is SshService ? service : null;
   }
 
+  /// 获取终端会话
+  TerminalSession? getSession(String sessionId) {
+    return _terminalService.getSession(sessionId);
+  }
+
   @override
   void dispose() {
     for (final service in _services.values) {

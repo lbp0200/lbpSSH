@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'terminal_service.dart';
+
 /// 文件传输进度
 class TransferProgress {
   final String fileName;
@@ -79,6 +81,9 @@ class KittyFileTransferEncoder {
 /// 通过 SSH 终端发送 OSC 5113 控制序列实现文件传输
 class KittyFileTransferService {
   final KittyFileTransferEncoder _encoder = KittyFileTransferEncoder();
+  final TerminalSession session;
+
+  KittyFileTransferService({required this.session});
 
   /// 是否支持 Kitty 协议
   bool get supportsKittyProtocol => false;

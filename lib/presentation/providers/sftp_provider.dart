@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
-import 'package:lbp_ssh/domain/services/sftp_service.dart';
+import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
 import 'package:lbp_ssh/presentation/providers/terminal_provider.dart';
 
 /// SFTP 标签页数据
 class SftpTab {
   final String id;
   final SshConnection connection;
-  final SftpService service;
+  final KittyFileTransferService service;
   String currentPath;
 
   SftpTab({
@@ -31,29 +31,19 @@ class SftpProvider extends ChangeNotifier {
   Future<SftpTab> openTab(SshConnection connection, {String? password}) async {
     final tabId = '${connection.id}_${DateTime.now().millisecondsSinceEpoch}';
 
-    // 尝试复用已有连接
-    final sshService = _terminalProvider.getSshService(connection.id);
-    SftpService sftpService;
-
-    if (sshService != null && sshService.state.name == 'connected') {
-      // 复用 SSH 连接
-      sftpService = SftpService();
-      final client = await sshService.getSftpClient();
-      if (client != null) {
-        sftpService.attachClient(client, '/');
-      } else {
-        await sftpService.connect(connection, password: password);
-      }
-    } else {
-      // 创建新连接
-      sftpService = SftpService();
-      await sftpService.connect(connection, password: password);
+    // 获取终端会话
+    final session = _terminalProvider.getSession(connection.id);
+    if (session == null) {
+      throw Exception('终端会话不存在');
     }
+
+    // 创建 KittyFileTransferService
+    final transferService = KittyFileTransferService(session: session);
 
     final tab = SftpTab(
       id: tabId,
       connection: connection,
-      service: sftpService,
+      service: transferService,
       currentPath: '/',
     );
 
