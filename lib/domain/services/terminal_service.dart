@@ -14,6 +14,11 @@ class TerminalSession {
   StreamSubscription<String>? _outputSubscription;
   StreamSubscription<bool>? _stateSubscription;
 
+  // 通知流控制器
+  final _notificationController = StreamController<({String title, String body})>.broadcast();
+  /// 通知流，用于监听终端发出的桌面通知
+  Stream<({String title, String body})> get notificationStream => _notificationController.stream;
+
   TerminalSession({
     required this.id,
     required this.name,
@@ -24,6 +29,11 @@ class TerminalSession {
     // 禁用 Kitty 键盘模式，使用传统终端序列
     // 这样可以确保与所有 SSH 服务器兼容
     terminal.setKittyMode(false);
+
+    // 监听终端通知（Kitty 协议）
+    terminal.onNotification = (title, body) {
+      _notificationController.add((title: title, body: body));
+    };
   }
 
   /// 获取 GraphicsManager 实例（由 kterm 自动创建）
@@ -97,6 +107,7 @@ class TerminalSession {
   void dispose() {
     _outputSubscription?.cancel();
     _stateSubscription?.cancel();
+    _notificationController.close();
     inputService.dispose();
     controller.dispose();
   }
