@@ -164,44 +164,48 @@ class _ConnectionListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: Icon(
-          Icons.computer,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        title: Text(connection.name),
-        subtitle: Text(
-          '${connection.username}@${connection.host}:${connection.port}',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.folder_copy),
-              onPressed: onSftpTap,
-              tooltip: 'SFTP',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use smaller margin when width is limited
+        final horizontalMargin = constraints.maxWidth < 100 ? 4.0 : 8.0;
+        return Card(
+          margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 4),
+          child: ListTile(
+            leading: Icon(
+              Icons.computer,
+              color: Theme.of(context).colorScheme.primary,
             ),
-            PopupMenuButton(
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 20),
-                      SizedBox(width: 8),
-                      Text('编辑'),
-                    ],
-                  ),
+            title: Text(connection.name),
+            subtitle: Text(
+              '${connection.username}@${connection.host}:${connection.port}',
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.folder_copy),
+                  onPressed: onSftpTap,
+                  tooltip: 'SFTP',
                 ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 20, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('删除', style: TextStyle(color: Colors.red)),
+                PopupMenuButton(
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('编辑'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('删除', style: TextStyle(color: Colors.red)),
                     ],
                   ),
                 ),
@@ -215,9 +219,11 @@ class _ConnectionListItem extends StatelessWidget {
               },
             ),
           ],
-        ),
-        onTap: onTap,
-      ),
+            ),
+          onTap: onTap,
+          ),
+        );
+      },
     );
   }
 }
