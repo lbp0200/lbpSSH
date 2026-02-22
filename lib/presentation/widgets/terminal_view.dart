@@ -37,7 +37,7 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(notification.title),
+          content: Text('${notification.title}\n${notification.body}'),
           duration: const Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
         ),
