@@ -6,6 +6,27 @@ import 'terminal_input_service.dart';
 import 'local_terminal_service.dart';
 import '../../data/models/terminal_config.dart';
 
+/// 文件传输事件
+class FileTransferEvent {
+  final String type; // 'start', 'chunk', 'end', 'error'
+  final String? fileId;
+  final String? fileName;
+  final int? fileSize;
+  final int? offset;
+  final Uint8List? data;
+  final String? error;
+
+  FileTransferEvent({
+    required this.type,
+    this.fileId,
+    this.fileName,
+    this.fileSize,
+    this.offset,
+    this.data,
+    this.error,
+  });
+}
+
 /// 终端会话
 class TerminalSession {
   final String id;
@@ -20,6 +41,11 @@ class TerminalSession {
   final _notificationController = StreamController<({String title, String body})>.broadcast();
   /// 通知流，用于监听终端发出的桌面通知
   Stream<({String title, String body})> get notificationStream => _notificationController.stream;
+
+  // 文件传输流控制器
+  final _fileTransferController = StreamController<FileTransferEvent>.broadcast();
+  /// 文件传输流，用于监听远程发送的文件
+  Stream<FileTransferEvent> get fileTransferStream => _fileTransferController.stream;
 
   TerminalSession({
     required this.id,
@@ -61,6 +87,53 @@ class TerminalSession {
         // Ignore clipboard errors
       }
     };
+
+    // 监听私有 OSC 序列（用于文件传输等）
+    terminal.onPrivateOSC = (code, args) {
+      if (code == '5113') {
+        _handleFileTransfer(args);
+      }
+    };
+  }
+
+  void _handleFileTransfer(List<String> args) {
+    // 解析 OSC 5113 参数
+    // 格式: ac=xxx;id=xxx;fid=xxx;n=xxx;size=xxx;d=xxx
+    final params = <String, String>{};
+    for (final arg in args) {
+      final parts = arg.split('=');
+      if (parts.length == 2) {
+        params[parts[0]] = parts[1];
+      }
+    }
+
+    final action = params['ac'];
+
+    switch (action) {
+      case 'send':
+        // 远程请求发送文件给我们
+        _fileTransferController.add(FileTransferEvent(
+          type: 'start',
+          fileId: params['fid'],
+          fileName: params['n'] != null ? utf8.decode(base64Decode(params['n']!)) : null,
+          fileSize: int.tryParse(params['size'] ?? ''),
+        ));
+        break;
+      case 'data':
+        _fileTransferController.add(FileTransferEvent(
+          type: 'chunk',
+          fileId: params['fid'],
+          offset: int.tryParse(params['offset'] ?? ''),
+          data: params['d'] != null ? base64Decode(params['d']!) : null,
+        ));
+        break;
+      case 'finish':
+        _fileTransferController.add(FileTransferEvent(
+          type: 'end',
+          fileId: params['fid'],
+        ));
+        break;
+    }
   }
 
   /// 获取 GraphicsManager 实例（由 kterm 自动创建）
@@ -135,6 +208,7 @@ class TerminalSession {
     _outputSubscription?.cancel();
     _stateSubscription?.cancel();
     _notificationController.close();
+    _fileTransferController.close();
     inputService.dispose();
     controller.dispose();
   }
