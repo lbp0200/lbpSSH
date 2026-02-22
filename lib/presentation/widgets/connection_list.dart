@@ -34,7 +34,7 @@ class ConnectionList extends StatelessWidget {
           );
         }
 
-        final connections = provider.connections;
+        final connections = provider.filteredConnections;
 
         if (connections.isEmpty) {
           return Center(
@@ -72,6 +72,16 @@ class ConnectionList extends StatelessWidget {
           itemCount: connections.length,
           itemBuilder: (context, index) {
             final connection = connections[index];
+            if (isCompact) {
+              return _CompactConnectionItem(
+                connection: connection,
+                onTap: () {
+                  onConnectionTap?.call(connection);
+                  _onConnectionTap(context, connection);
+                },
+                onSftpTap: onSftpTap != null ? () => onSftpTap!(connection) : null,
+              );
+            }
             return _ConnectionListItem(
               connection: connection,
               onTap: () {
@@ -80,7 +90,7 @@ class ConnectionList extends StatelessWidget {
               },
               onEdit: () => _showConnectionForm(context, connection),
               onDelete: () => _deleteConnection(context, provider, connection),
-              onSftpTap: () => onSftpTap?.call(connection),
+              onSftpTap: onSftpTap != null ? () => onSftpTap!(connection) : null,
             );
           },
         );
@@ -208,6 +218,60 @@ class _ConnectionListItem extends StatelessWidget {
         ),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+/// 紧凑模式连接项（图标模式）
+class _CompactConnectionItem extends StatelessWidget {
+  final SshConnection connection;
+  final VoidCallback onTap;
+  final VoidCallback? onSftpTap;
+
+  const _CompactConnectionItem({
+    required this.connection,
+    required this.onTap,
+    this.onSftpTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.computer,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  connection.name,
+                  style: const TextStyle(fontSize: 10),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (onSftpTap != null)
+          InkWell(
+            onTap: onSftpTap,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Icon(
+                Icons.folder_copy,
+                size: 16,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
