@@ -37,11 +37,13 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar> {
   }
 
   void _toggleSearch() {
+    final provider = context.read<ConnectionProvider>();
     setState(() {
       if (_isExpanded) {
         _showSearch = !_showSearch;
         if (!_showSearch) {
           _searchController.clear();
+          provider.clearSearch();
         }
       } else {
         _isExpanded = true;
