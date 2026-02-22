@@ -201,19 +201,8 @@ class TerminalTabsView extends StatelessWidget {
       terminalProvider.switchToSession(connection.id);
     } else {
       try {
+        // createSession now auto-connects
         await terminalProvider.createSession(connection);
-        final sshService = terminalProvider.getSshService(connection.id);
-
-        if (sshService != null) {
-          try {
-            await sshService.connect(connection);
-          } catch (e) {
-            terminalProvider.closeSession(connection.id);
-            if (context.mounted) {
-              _showErrorDialog(context, connection, e.toString());
-            }
-          }
-        }
       } catch (e) {
         if (context.mounted) {
           _showErrorDialog(context, connection, e.toString());

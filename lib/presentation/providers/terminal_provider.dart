@@ -90,6 +90,15 @@ class TerminalProvider extends ChangeNotifier {
     _activeSessionId = connection.id;
     notifyListeners();
 
+    // 自动连接 SSH
+    try {
+      await sshService.connect(connection);
+    } catch (e) {
+      // 连接失败时关闭会话并抛出异常
+      closeSession(connection.id);
+      rethrow;
+    }
+
     return session;
   }
 
