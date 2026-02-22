@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:kterm/kterm.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 import 'terminal_input_service.dart';
 import 'local_terminal_service.dart';
 import '../../data/models/terminal_config.dart';
@@ -33,6 +35,42 @@ class TerminalSession {
     // 监听终端通知（Kitty 协议）
     terminal.onNotification = (title, body) {
       _notificationController.add((title: title, body: body));
+    };
+
+    // 监听剪贴板读取（OSC 52）
+    // 回调需要读取剪贴板内容并通过 terminal.write 写回 OSC 52 响应序列
+    terminal.onClipboardRead = (target) async {
+      try {
+        final clipboard = SystemClipboard.instance;
+        if (clipboard == null) return;
+
+        final reader = await clipboard.read();
+        if (reader.canProvide(Formats.plainText)) {
+          final text = await reader.readValue(Formats.plainText);
+          if (text != null) {
+            final encoded = base64Encode(utf8.encode(text));
+            // 写回 OSC 52 响应序列
+            terminal.write('\x1b]52;$target;$encoded\x1b\\');
+          }
+        }
+      } catch (e) {
+        // Ignore clipboard errors
+      }
+    };
+
+    // 监听剪贴板写入（OSC 52）
+    terminal.onClipboardWrite = (data, target) async {
+      try {
+        final text = utf8.decode(base64Decode(data));
+        final clipboard = SystemClipboard.instance;
+        if (clipboard == null) return;
+
+        final item = DataWriterItem();
+        item.add(Formats.plainText(text));
+        await clipboard.write([item]);
+      } catch (e) {
+        // Ignore clipboard errors
+      }
     };
   }
 
