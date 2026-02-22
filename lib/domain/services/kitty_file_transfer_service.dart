@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'sftp_service.dart';
 import 'terminal_service.dart';
 
 /// 文件传输进度
@@ -81,12 +82,65 @@ class KittyFileTransferEncoder {
 /// 通过 SSH 终端发送 OSC 5113 控制序列实现文件传输
 class KittyFileTransferService {
   final KittyFileTransferEncoder _encoder = KittyFileTransferEncoder();
-  final TerminalSession session;
+  final TerminalSession? _session;
+  String _currentPath = '/';
 
-  KittyFileTransferService({required this.session});
+  // ignore: prefer_const_constructors
+  KittyFileTransferService({TerminalSession? session}) : _session = session;
+
+  /// 当前路径
+  String get currentPath => _currentPath;
+
+  /// 是否已连接
+  bool get isConnected => _session != null;
 
   /// 是否支持 Kitty 协议
   bool get supportsKittyProtocol => false;
+
+  /// 获取当前目录文件列表
+  Future<List<SftpItem>> listCurrentDirectory() async {
+    // TODO: 使用 ls 命令通过终端获取文件列表
+    throw UnimplementedError('目录列表功能待实现');
+  }
+
+  /// 进入目录
+  Future<void> changeDirectory(String path) async {
+    // TODO: 通过终端命令切换目录
+    final newPath = path.startsWith('/') ? path : '$_currentPath/$path';
+    _currentPath = newPath;
+  }
+
+  /// 返回上级目录
+  Future<void> goUp() async {
+    if (_currentPath == '/') return;
+    final parts = _currentPath.split('/');
+    parts.removeLast();
+    _currentPath = parts.isEmpty ? '/' : parts.join('/');
+  }
+
+  /// 创建目录
+  Future<void> createDirectory(String name) async {
+    // TODO: 通过终端命令创建目录
+    throw UnimplementedError('创建目录功能待实现');
+  }
+
+  /// 删除文件
+  Future<void> removeFile(String path) async {
+    // TODO: 通过终端命令删除文件
+    throw UnimplementedError('删除文件功能待实现');
+  }
+
+  /// 删除目录
+  Future<void> removeDirectory(String path) async {
+    // TODO: 通过终端命令删除目录
+    throw UnimplementedError('删除目录功能待实现');
+  }
+
+  /// 下载文件
+  Future<void> downloadFile(String remotePath, String localPath) async {
+    // TODO: 通过 Kitty 协议接收文件
+    throw UnimplementedError('下载文件功能待实现');
+  }
 
   /// 检查远程是否支持 Kitty 协议
   ///

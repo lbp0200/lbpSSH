@@ -22,7 +22,7 @@ class SftpBrowserScreen extends StatefulWidget {
 }
 
 class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
-  SftpService? _sftpService;
+  KittyFileTransferService? _transferService;
   List<SftpItem> _items = [];
   bool _loading = false;
   String _currentPath = '/';
@@ -44,7 +44,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
       final provider = context.read<SftpProvider>();
       final tab = await provider.openTab(widget.connection);
       setState(() {
-        _sftpService = tab.service;
+        _transferService = tab.service;
         _currentPath = tab.currentPath;
       });
       await _refresh();
@@ -60,17 +60,17 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   }
 
   Future<void> _refresh() async {
-    if (_sftpService == null) return;
+    if (_transferService == null) return;
 
     setState(() {
       _loading = true;
     });
 
     try {
-      final items = await _sftpService!.listCurrentDirectory();
+      final items = await _transferService!.listCurrentDirectory();
       setState(() {
         _items = items;
-        _currentPath = _sftpService!.currentPath;
+        _currentPath = _transferService!.currentPath;
       });
     } catch (e) {
       setState(() {
@@ -85,13 +85,13 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
 
   Future<void> _onItemTap(SftpItem item) async {
     if (item.isDirectory) {
-      await _sftpService?.changeDirectory(item.name);
+      await _transferService?.changeDirectory(item.name);
       await _refresh();
     }
   }
 
   Future<void> _goUp() async {
-    await _sftpService?.goUp();
+    await _transferService?.goUp();
     await _refresh();
   }
 
@@ -99,7 +99,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     final name = await _showNameDialog('新建文件夹', '新建文件夹');
     if (name != null && name.isNotEmpty) {
       try {
-        await _sftpService?.createDirectory(name);
+        await _transferService?.createDirectory(name);
         await _refresh();
       } catch (e) {
         _showError(e.toString());
@@ -160,7 +160,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     );
     if (result != null) {
       try {
-        await _sftpService?.downloadFile(item.path, result);
+        await _transferService?.downloadFile(item.path, result);
         _showMessage('下载成功');
       } catch (e) {
         _showError(e.toString());
@@ -190,9 +190,9 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
     if (confirmed == true) {
       try {
         if (item.isDirectory) {
-          await _sftpService?.removeDirectory(item.path);
+          await _transferService?.removeDirectory(item.path);
         } else {
-          await _sftpService?.removeFile(item.path);
+          await _transferService?.removeFile(item.path);
         }
         await _refresh();
       } catch (e) {
