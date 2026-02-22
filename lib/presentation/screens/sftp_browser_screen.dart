@@ -113,7 +113,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
       final file = result.files.single;
       // TODO: 使用 localPath 调用 KittyFileTransferService
       // ignore: unused_local_variable
-      final localPath = file.path;
+      final String localPath = file.path!;
       final fileName = file.name;
       final fileSize = file.size;
 
@@ -138,8 +138,14 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
       );
 
       try {
-        // TODO: 调用 KittyFileTransferService 发送文件
-        // 使用 progressController.add() 更新进度
+        // 调用 KittyFileTransferService 发送文件
+        await _transferService?.sendFile(
+          localPath: localPath,
+          remoteFileName: '$_currentPath/$fileName',
+          onProgress: (progress) {
+            progressController.add(progress);
+          },
+        );
 
         if (mounted) {
           Navigator.pop(context); // 关闭进度对话框
