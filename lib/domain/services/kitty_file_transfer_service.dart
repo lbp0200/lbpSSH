@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 
 /// 文件传输进度
 class TransferProgress {
@@ -31,10 +35,51 @@ class ProtocolSupportResult {
   });
 }
 
+/// Kitty 协议文件传输编码器
+class KittyFileTransferEncoder {
+  /// 编码文件名为 base64
+  String encodeFileName(String name) {
+    return base64Encode(utf8.encode(name));
+  }
+
+  /// 创建发送会话开始序列
+  String createSendSession(String sessionId) {
+    return '\x1b]5113;ac=send;id=$sessionId\x1b\\';
+  }
+
+  /// 创建文件元数据序列
+  String createFileMetadata({
+    required String sessionId,
+    required String fileId,
+    required String fileName,
+    required int fileSize,
+  }) {
+    final encodedName = encodeFileName(fileName);
+    return '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize\x1b\\';
+  }
+
+  /// 创建数据块序列
+  String createDataChunk({
+    required String sessionId,
+    required String fileId,
+    required List<int> data,
+  }) {
+    final encoded = base64Encode(data);
+    return '\x1b]5113;ac=data;id=$sessionId;fid=$fileId;d=$encoded\x1b\\';
+  }
+
+  /// 创建传输结束序列
+  String createFinishSession(String sessionId) {
+    return '\x1b]5113;ac=finish;id=$sessionId\x1b\\';
+  }
+}
+
 /// Kitty 文件传输服务
 ///
 /// 通过 SSH 终端发送 OSC 5113 控制序列实现文件传输
 class KittyFileTransferService {
+  final KittyFileTransferEncoder _encoder = KittyFileTransferEncoder();
+
   /// 是否支持 Kitty 协议
   bool get supportsKittyProtocol => false;
 
@@ -65,11 +110,54 @@ class KittyFileTransferService {
     required String remoteFileName,
     required TransferProgressCallback onProgress,
   }) async {
-    // TODO: 实现带进度回调的文件发送
-    // 1. 读取本地文件
-    // 2. 分块发送 OSC 5113 序列
-    // 3. 通过 onProgress 报告进度
-    throw UnimplementedError('发送文件功能待实现');
+    final file = File(localPath);
+    if (!await file.exists()) {
+      throw Exception('文件不存在: $localPath');
+    }
+
+    final fileName = p.basename(localPath);
+    final fileSize = await file.length();
+    final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
+    final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
+
+    // 1. 开始发送会话
+    print(_encoder.createSendSession(transferId));
+
+    // 2. 发送文件元数据
+    print(_encoder.createFileMetadata(
+      sessionId: transferId,
+      fileId: fileId,
+      fileName: remoteFileName,
+      fileSize: fileSize,
+    ));
+
+    // 3. 分块发送数据
+    final stream = file.openRead();
+    int transferred = 0;
+    int startTime = DateTime.now().millisecondsSinceEpoch;
+
+    await for (final chunk in stream) {
+      print(_encoder.createDataChunk(
+        sessionId: transferId,
+        fileId: fileId,
+        data: chunk,
+      ));
+
+      transferred += chunk.length;
+      final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+      final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
+
+      onProgress(TransferProgress(
+        fileName: fileName,
+        transferredBytes: transferred,
+        totalBytes: fileSize,
+        percent: transferred / fileSize * 100,
+        bytesPerSecond: speed,
+      ));
+    }
+
+    // 4. 结束会话
+    print(_encoder.createFinishSession(transferId));
   }
 
   /// 从终端接收文件（接收模式）
