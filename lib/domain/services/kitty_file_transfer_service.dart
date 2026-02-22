@@ -169,6 +169,10 @@ class KittyFileTransferService {
     required String remoteFileName,
     required TransferProgressCallback onProgress,
   }) async {
+    if (_session == null) {
+      throw Exception('未连接到终端，无法发送文件。请确保已建立 SSH 连接。');
+    }
+
     final file = File(localPath);
     if (!await file.exists()) {
       throw Exception('文件不存在: $localPath');
@@ -180,10 +184,10 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    print(_encoder.createSendSession(transferId));
+    _session.writeRaw(_encoder.createSendSession(transferId));
 
     // 2. 发送文件元数据
-    print(_encoder.createFileMetadata(
+    _session.writeRaw(_encoder.createFileMetadata(
       sessionId: transferId,
       fileId: fileId,
       fileName: remoteFileName,
@@ -196,7 +200,7 @@ class KittyFileTransferService {
     int startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
-      print(_encoder.createDataChunk(
+      _session.writeRaw(_encoder.createDataChunk(
         sessionId: transferId,
         fileId: fileId,
         data: chunk,
@@ -216,7 +220,7 @@ class KittyFileTransferService {
     }
 
     // 4. 结束会话
-    print(_encoder.createFinishSession(transferId));
+    _session.writeRaw(_encoder.createFinishSession(transferId));
   }
 
   /// 从终端接收文件（接收模式）
