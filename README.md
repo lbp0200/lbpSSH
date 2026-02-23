@@ -187,6 +187,7 @@ flutter build macos --release
 - 点击连接列表中的连接快速打开终端 | Click connection to open terminal
 - 支持多标签页同时连接多个服务器 | Multi-tab for multiple servers
 - 标签页支持拖拽排序 | Drag to reorder tabs
+- 支持拖拽文件到终端上传 | Drag files to terminal to upload
 
 ### 文件传输 | File Transfer
 
@@ -223,6 +224,7 @@ pip3 install kitty-cli
 
 **已实现功能 | Implemented**:
 - ✅ 文件上传 (File Upload)
+- ✅ 拖拽上传 (Drag-and-drop upload)
 - ✅ 文件列表浏览 (File list browsing)
 - ✅ 文件下载 (File download)
 - ✅ 目录导航 (cd, cd ..)
