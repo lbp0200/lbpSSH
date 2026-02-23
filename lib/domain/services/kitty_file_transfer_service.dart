@@ -661,7 +661,7 @@ class KittyFileTransferService {
     ));
 
     // 递归发送文件和目录
-    Future<void> sendEntity(Entity entity, String remoteEntityPath) async {
+    Future<void> sendEntity(FileSystemEntity entity, String remoteEntityPath) async {
       if (entity is File) {
         totalFiles++;
         final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
@@ -682,7 +682,7 @@ class KittyFileTransferService {
             fileId: fileId,
             data: chunk,
           ));
-          transferred += chunk.length;
+          transferred = transferred + chunk.length;
         }
 
         transferredFiles++;
