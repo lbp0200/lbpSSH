@@ -7,21 +7,22 @@ import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
 import 'package:lbp_ssh/presentation/widgets/transfer_progress_dialog.dart';
 
-/// 简单的文件项（用于显示文件列表）
-/// 注：当前版本仅支持文件上传，文件列表功能待实现
+/// 远程文件项（用于显示文件列表）
 class FileItem {
   final String name;
   final String path;
   final bool isDirectory;
-  final int? size;
+  final int size;
   final DateTime? modified;
+  final String permissions;
 
   FileItem({
     required this.name,
     required this.path,
     required this.isDirectory,
-    this.size,
+    this.size = 0,
     this.modified,
+    this.permissions = '',
   });
 }
 
