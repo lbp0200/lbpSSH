@@ -59,7 +59,11 @@ macos/Pods/
 # 桌面端 (Linux/Windows) 相关
 # ----------------------------------------------------------------------------
 linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugins.cmake
 windows/flutter/ephemeral/
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugins.cmake
 windows/CMakeSettings.json
 windows/out/
 
