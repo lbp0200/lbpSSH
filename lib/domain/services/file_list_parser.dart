@@ -1,4 +1,4 @@
-import 'package:lbp_ssh/presentation/screens/sftp_browser_screen.dart';
+import '../../presentation/screens/sftp_browser_screen.dart';
 
 /// 远程文件解析器
 /// 解析 ls -la --time-style=long-iso 输出
@@ -48,8 +48,11 @@ class FileListParser {
     if (parts.length >= 10) {
       try {
         // parts[5] = "2024-01-15", parts[6] = "10:30"
+        // 验证日期格式
         final dateParts = parts[5].split('-');
+        if (dateParts.length != 3) return null;
         final timeParts = parts[6].split(':');
+        if (timeParts.length != 2) return null;
         modified = DateTime(
           int.parse(dateParts[0]),
           int.parse(dateParts[1]),
