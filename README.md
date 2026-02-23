@@ -1,6 +1,6 @@
 # lbpSSH
 
-跨平台 SSH 终端管理器 | Cross-platform SSH Terminal Manager
+Cross-platform SSH Terminal Manager
 
 <div align="center">
 
@@ -8,95 +8,77 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-green.svg)](#)
 [![Flutter](https://img.shields.io/badge/Flutter-3.10.7+-blue.svg)](#)
 
+[English](README.md) | [中文](README.zh-CN.md)
+
 </div>
 
 ---
 
-## 功能特性 | Features
+## Features
 
-- **SSH 连接管理** - 添加、编辑、删除 SSH 连接配置
-  - SSH connection management - Add, edit, delete SSH connections
-- **多种认证方式** - 密码、密钥、密钥+密码
-  - Multiple authentication methods - Password, Private Key, Private Key + Password
-- **跳板机支持** - 通过跳板机连接到目标服务器
-  - Jump host/Bastion support - Connect through jump hosts
-- **终端模拟器** - 基于 xterm 的完整交互式终端体验
-  - Terminal emulator - Full interactive terminal based on xterm
-- **多标签页** - 同时管理多个 SSH 连接
-  - Multi-tab support - Manage multiple SSH connections simultaneously
-- **配置同步** - 支持同步到 Gitee Gist 或 GitHub Gist
-  - Configuration sync - Sync to Gitee Gist or GitHub Gist
-- **加密存储** - 敏感信息本地加密存储
-  - Encrypted storage - Sensitive data encrypted locally
+- **SSH Connection Management** - Add, edit, delete SSH connections
+- **Multiple Authentication Methods** - Password, Private Key, Private Key + Password
+- **Jump Host Support** - Connect through jump/bastion hosts
+- **Terminal Emulator** - Full interactive terminal based on xterm
+- **Multi-tab Support** - Manage multiple SSH connections simultaneously
+- **Configuration Sync** - Sync to Gitee Gist or GitHub Gist
+- **Encrypted Storage** - Sensitive data encrypted locally
 
 ---
 
-## 为什么选择 lbpSSH | Why lbpSSH
+## Why lbpSSH
 
 | Feature | lbpSSH | Termius | MobaXterm | PuTTY | Tabby |
 |---------|--------|---------|-----------|-------|-------|
-| **跨平台** Cross-platform | ✅ Win/Lin/Mac | ✅ Win/Lin/Mac | ❌ Windows | ❌ Windows | ✅ Win/Lin/Mac |
-| **开源免费** Open Source & Free | ✅ MIT | ❌ 收费 | ❌ 收费 | ✅ 免费 | ✅ 免费 |
-| **配置同步** Config Sync | ✅ Gist | ✅ Termius Cloud | ❌ | ❌ | ❌ |
-| **跳板机** Jump Host | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **多标签页** Multi-tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **加密存储** Encrypted Storage | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **自托管同步** Self-hosted Sync | ✅ Gitee | ❌ | ❌ | ❌ | ❌ |
+| **Cross-platform** | ✅ Win/Lin/Mac | ✅ Win/Lin/Mac | ❌ Windows | ❌ Windows | ✅ Win/Lin/Mac |
+| **Open Source & Free** | ✅ MIT | ❌ Paid | ❌ Paid | ✅ Free | ✅ Free |
+| **Config Sync** | ✅ Gist | ✅ Termius Cloud | ❌ | ❌ | ❌ |
+| **Jump Host** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Multi-tab** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Encrypted Storage** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Self-hosted Sync** | ✅ Gitee | ❌ | ❌ | ❌ | ❌ |
 
-### 核心优势 | Key Advantages
+### Key Advantages
 
-1. **完全开源** - MIT 许可证，代码完全透明
-   - Fully open source - MIT license, completely transparent code
+1. **Fully Open Source** - MIT license, completely transparent code
 
-2. **自托管同步** - 支持 Gitee Gist，无需第三方云服务
-   - Self-hosted sync - Gitee Gist support, no third-party cloud
+2. **Self-hosted Sync** - Gitee Gist support, no third-party cloud required
 
-3. **隐私优先** - 所有数据本地加密存储
-   - Privacy first - All data encrypted locally
+3. **Privacy First** - All data encrypted locally
 
-4. **Flutter 开发** - 现代化 UI，一套代码多平台
-   - Flutter based - Modern UI, single codebase multi-platform
-
-### 对比说明 | Comparison Notes
-
-- **Termius**: 功能全面但收费，自有云服务
-- **MobaXterm**: Windows 首选，但仅限 Windows
-- **PuTTY**: 经典工具，但功能简单，无标签页
-- **Tabby**: 现代化终端，但配置同步需要付费插件
-
-lbpSSH 结合了以上工具的优点，提供免费、跨平台、配置同步的完整解决方案。
+4. **Flutter Based** - Modern UI, single codebase multi-platform
 
 ---
 
-## 下载安装 | Download & Install
+## Download & Install
 
 ### macOS
 
-#### Homebrew (推荐 | Recommended)
+#### Homebrew (Recommended)
 
 ```bash
-# 添加 Homebrew Tap
+# Add Homebrew Tap
 brew tap lbp0200/lbpssh-tap
 
-# 安装 lbpSSH
+# Install lbpSSH
 brew install --cask lbpssh
 ```
 
-#### 手动下载 | Manual Download
+#### Manual Download
 
-从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-macos-universal.zip`，解压后拖动 `lbpSSH.app` 到 Applications 文件夹。
+Download `lbpSSH-macos-universal.zip` from [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest), unzip and drag `lbpSSH.app` to Applications.
 
 ---
 
 ### Windows
 
-从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-windows-x64.zip`，解压后运行 `lbpSSH.exe`。
+Download `lbpSSH-windows-x64.zip` from [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) and run `lbpSSH.exe`.
 
 ---
 
 ### Linux
 
-从 [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) 下载 `lbpSSH-linux-x64.zip`，解压后运行：
+Download `lbpSSH-linux-x64.zip` from [GitHub Releases](https://github.com/lbp0200/lbpssh/releases/latest) and run:
 
 ```bash
 cd bundle
@@ -106,21 +88,21 @@ chmod +x lbpSSH
 
 ---
 
-## 快速开始 | Quick Start
+## Quick Start
 
-### 前置要求 | Requirements
+### Requirements
 
 - Flutter SDK (3.10.7+)
 - Dart SDK
 - Desktop platform support (Windows, Linux, macOS)
 
-### 安装依赖 | Install Dependencies
+### Install Dependencies
 
 ```bash
 flutter pub get
 ```
 
-### 运行应用 | Run Application
+### Run Application
 
 ```bash
 # Windows
@@ -133,7 +115,7 @@ flutter run -d linux
 flutter run -d macos
 ```
 
-### 构建发布版本 | Build for Release
+### Build for Release
 
 ```bash
 # Windows
@@ -148,177 +130,174 @@ flutter build macos --release
 
 ---
 
-## 配置同步 | Configuration Sync
+## Configuration Sync
 
-将 SSH 配置同步到云端 Gist，方便多设备共享配置 | Sync SSH config to cloud Gist for multi-device sharing
+Sync SSH config to cloud Gist for multi-device sharing.
 
-### Gitee Gist 同步 | Gitee Gist Sync
+### Gitee Gist Sync
 
-1. 访问 [Gitee 个人访问令牌](https://gitee.com/profile/personal_access_tokens) 创建 Token | Create token at Gitee personal access tokens
-2. 在应用的"同步设置"中选择 **Gitee Gist** | Select **Gitee Gist** in sync settings
-3. 填入 Token，选择是否填写 Gist ID | Enter token, optionally fill Gist ID
-4. 点击"保存配置"，然后使用"上传配置"同步到 Gist | Save config, then use "Upload" to sync
+1. Create a token at [Gitee personal access tokens](https://gitee.com/profile/personal_access_tokens)
+2. Select **Gitee Gist** in sync settings
+3. Enter token, optionally fill Gist ID
+4. Save config, then use "Upload" to sync
 
-### GitHub Gist 同步 | GitHub Gist Sync
+### GitHub Gist Sync
 
-1. 访问 [GitHub Settings](https://github.com/settings/tokens/new?scopes=gist) 创建 Personal Access Token（需勾选 `gist` 权限）| Create Personal Access Token at GitHub Settings (need `gist` scope)
-2. 在应用的"同步设置"中选择 **GitHub Gist** | Select **GitHub Gist** in sync settings
-3. 填入 Token，选择是否填写 Gist ID | Enter token, optionally fill Gist ID
-4. 点击"保存配置"，然后使用"上传配置"同步到 Gist | Save config, then use "Upload" to sync
-
----
-
-## 使用说明 | Usage
-
-### 添加 SSH 连接 | Add SSH Connection
-
-1. 点击应用栏的"添加连接"按钮 | Click "Add Connection" button
-2. 填写连接信息：| Fill connection info:
-   - 连接名称 | Connection name
-   - 主机地址和端口 | Host address and port
-   - 用户名 | Username
-   - 选择认证方式（密码/密钥/密钥+密码）| Auth method (Password/Private Key/Private Key+Password)
-   - 输入相应的认证信息 | Enter auth info
-3. 可选：配置跳板机 | Optional: Configure jump host
-4. 点击"保存" | Click "Save"
-
-### 连接管理 | Connection Management
-
-- 点击连接列表中的连接快速打开终端 | Click connection to open terminal
-- 支持多标签页同时连接多个服务器 | Multi-tab for multiple servers
-- 标签页支持拖拽排序 | Drag to reorder tabs
-- 支持拖拽文件到终端上传 | Drag files to terminal to upload
-
-### 文件传输 | File Transfer
-
-lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输 | lbpSSH uses Kitty protocol OSC 5113 for file transfer
-
-> **注意 | Note**: 远程服务器需要安装 Kitty 的 `ki` 工具才能接收文件 | Remote server needs Kitty's `ki` tool installed to receive files
-
-- **已实现 | Implemented**: 文件上传、文件列表浏览、文件下载 (File Upload, File list browsing, File download)
+1. Create a Personal Access Token at [GitHub Settings](https://github.com/settings/tokens/new?scopes=gist) (need `gist` scope)
+2. Select **GitHub Gist** in sync settings
+3. Enter token, optionally fill Gist ID
+4. Save config, then use "Upload" to sync
 
 ---
 
-## Kitty 协议支持 | Kitty Protocol Support
+## Usage
 
-lbpSSH 全面支持 Kitty 终端协议，提供丰富的终端增强功能 | lbpSSH fully supports Kitty terminal protocol with rich terminal enhancement features
+### Add SSH Connection
 
-### 已实现功能 | Implemented Features
+1. Click "Add Connection" button
+2. Fill connection info:
+   - Connection name
+   - Host address and port
+   - Username
+   - Auth method (Password/Private Key/Private Key+Password)
+   - Auth info
+3. Optional: Configure jump host
+4. Click "Save"
 
-| 功能 | Feature | 协议 | Protocol |
-|------|---------|------|----------|
-| 文件传输 | File Transfer | OSC 5113 | ✅ |
-| 桌面通知 | Desktop Notifications | OSC 99 | ✅ |
-| 图像显示 | Graphics Protocol | OSC 71 | ✅ |
-| Shell 集成 | Shell Integration | OSC 133 | ✅ |
-| 超链接 | Hyperlinks | OSC 8 | ✅ |
-| 鼠标指针 | Pointer Shapes | OSC 22 | ✅ |
-| 颜色栈 | Color Stack | OSC 4, 21 | ✅ |
-| 文本大小 | Text Sizing | - | ✅ |
-| 终端标记 | Marks | - | ✅ |
-| 窗口标题 | Window Title | OSC 0, 1, 2 | ✅ |
-| 提示符颜色 | Prompt Colors | OSC 10-132, 708 | ✅ |
-| 键盘协议 | Keyboard Protocol | OSC 1, 2, 200, 201 | ✅ |
-| 远程控制 | Remote Control | OSC 5xx | ✅ |
-| 终端模式 | Terminal Modes | SM/RM | ✅ |
-| 会话管理 | Session Management | - | ✅ |
-| 终端操作 | Actions | OSC 5 | ✅ |
-| 下划线样式 | Underline Styles | OSC 4:58 | ✅ |
-| 扩展搜索 | Extended Search | - | ✅ |
-| 程序启动 | Program Launch | OSC 6 | ✅ |
-| 多光标 | Multiple Cursors | OSC 6 > | ✅ |
-| 广色域 | Wide Gamut Colors | - | ✅ |
-| 滚动控制 | Scroll Control | OSC 2026 | ✅ |
-| 窗口布局 | Layout Management | OSC 20 | ✅ |
-| 终端截图 | Screenshot | OSC 20 | ✅ |
+### Connection Management
 
-### 文件传输增强 | File Transfer Enhanced
+- Click connection to open terminal
+- Multi-tab for multiple servers
+- Drag to reorder tabs
+- Drag files to terminal to upload
 
-- ✅ 文件上传 (File Upload)
-- ✅ 拖拽上传 (Drag-and-drop upload)
-- ✅ 文件列表浏览 (File list browsing)
-- ✅ 文件下载 (File download)
-- ✅ 目录导航 (cd, cd ..)
-- ✅ 目录操作 (mkdir, rm, rmdir)
-- ✅ 压缩传输 (compression=zlib)
-- ✅ 符号链接 (symlink support)
-- ✅ 元数据保留 (metadata preservation)
-- ✅ 传输取消 (transfer cancel)
-- ✅ 静默模式 (quiet mode)
-- ✅ 密码授权 (password authorization)
+### File Transfer
 
-### 安装 ki 工具 | Install ki tool
+lbpSSH uses Kitty protocol OSC 5113 for file transfer.
 
-> **注意**: 远程服务器需要安装 Kitty 的 `ki` 工具才能使用文件传输功能
+> **Note**: Remote server needs Kitty's `ki` tool installed to receive files
+
+- **Implemented**: File Upload, File list browsing, File download
+
+---
+
+## Kitty Protocol Support
+
+lbpSSH fully supports Kitty terminal protocol with rich terminal enhancement features.
+
+### Implemented Features
+
+| Feature | Protocol |
+|--------|----------|
+| File Transfer | OSC 5113 |
+| Desktop Notifications | OSC 99 |
+| Graphics Protocol | OSC 71 |
+| Shell Integration | OSC 133 |
+| Hyperlinks | OSC 8 |
+| Pointer Shapes | OSC 22 |
+| Color Stack | OSC 4, 21 |
+| Text Sizing | - |
+| Marks | - |
+| Window Title | OSC 0, 1, 2 |
+| Prompt Colors | OSC 10-132, 708 |
+| Keyboard Protocol | OSC 1, 2, 200, 201 |
+| Remote Control | OSC 5xx |
+| Terminal Modes | SM/RM |
+| Session Management | - |
+| Actions | OSC 5 |
+| Underline Styles | OSC 4:58 |
+| Extended Search | - |
+| Program Launch | OSC 6 |
+| Multiple Cursors | OSC 6 > |
+| Wide Gamut Colors | - |
+| Scroll Control | OSC 2026 |
+| Layout Management | OSC 20 |
+| Screenshot | OSC 20 |
+
+### File Transfer Enhanced
+
+- ✅ File Upload
+- ✅ Drag-and-drop upload
+- ✅ File list browsing
+- ✅ File download
+- ✅ Directory navigation (cd, cd ..)
+- ✅ Directory operations (mkdir, rm, rmdir)
+- ✅ Compression (compression=zlib)
+- ✅ Symlink support
+- ✅ Metadata preservation
+- ✅ Transfer cancel
+- ✅ Quiet mode
+- ✅ Password authorization
+
+### Install ki tool
+
 > **Note**: Remote server needs Kitty's `ki` tool for file transfer
 
 ```bash
-# 方法一：从源码编译
+# Method 1: Build from source
 git clone https://github.com/kovidgoyal/kitty
 cd kitty
 python3 setup.py ki
 
-# 方法二：使用 pip
+# Method 2: Use pip
 pip3 install kitty-cli
 ```
 
 ---
 
-## 项目结构 | Project Structure
+## Project Structure
 
 ```
 lib/
-├── main.dart                    # 应用入口 | App entry point
-├── core/                        # 核心配置 | Core config
-│   ├── theme/                   # 主题配置 | Theme
-│   └── constants/               # 常量定义 | Constants
-├── data/                         # 数据层 | Data layer
-│   ├── models/                  # 数据模型 | Data models
-│   └── repositories/             # 数据仓库 | Repositories
-├── domain/                       # 业务逻辑层 | Business logic
-│   └── services/                # 业务服务 | Services
-├── presentation/                  # 展示层 | Presentation layer
-│   ├── screens/                 # 页面 | Screens
-│   ├── widgets/                 # 组件 | Widgets
-│   └── providers/               # 状态管理 | State management
-└── utils/                        # 工具类 | Utilities
+├── main.dart                    # App entry point
+├── core/                        # Core config
+│   ├── theme/                   # Theme
+│   └── constants/               # Constants
+├── data/                         # Data layer
+│   ├── models/                  # Data models
+│   └── repositories/             # Repositories
+├── domain/                       # Business logic
+│   └── services/                # Services
+├── presentation:                  # Presentation layer
+│   ├── screens/                 # Screens
+│   ├── widgets/                 # Widgets
+│   └── providers/               # State management
+└── utils/                        # Utilities
 ```
 
 ---
 
-## 技术栈 | Tech Stack
+## Tech Stack
 
-| 技术 | Technology | 用途 | Purpose |
-|------|------------|------|---------|
-| Flutter | Cross-platform UI | UI 框架 | UI framework |
-| dartssh2 | SSH Client | SSH 客户端 | SSH client |
-| xterm | Terminal Emulator | 终端模拟器 | Terminal emulator |
-| flutter_pty | PTY Support | 伪终端支持 | PTY support |
-| provider | State Management | 状态管理 | State management |
-| dio | HTTP Client | HTTP 客户端 | HTTP client |
-| encrypt | Encryption | 加密 | Encryption |
-| shared_preferences | Local Storage | 本地存储 | Local storage |
+| Technology | Purpose |
+|------------|---------|
+| Flutter | Cross-platform UI |
+| dartssh2 | SSH Client |
+| xterm | Terminal Emulator |
+| flutter_pty | PTY Support |
+| provider | State Management |
+| dio | HTTP Client |
+| encrypt | Encryption |
+| shared_preferences | Local Storage |
 
 ---
 
-## 开发 | Development
+## Development
 
-### 代码规范 | Code Conventions
+### Code Conventions
 
-- 文件命名使用 `snake_case` | Files: `snake_case`
-- 类使用 `PascalCase` | Classes: `PascalCase`
-- 变量方法使用 `camelCase` | Variables/Methods: `camelCase`
-- 私有成员使用下划线前缀 | Private members: underscore prefix
+- Files: `snake_case`
+- Classes: `PascalCase`
+- Variables/Methods: `camelCase`
+- Private members: underscore prefix
 
-### 代码生成 | Code Generation
-
-修改模型类后需要重新生成代码 | Regenerate after model changes:
+### Code Generation
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 代码分析 | Code Analysis
+### Code Analysis
 
 ```bash
 flutter analyze
@@ -326,12 +305,12 @@ flutter analyze
 
 ---
 
-## 贡献 | Contributing
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！| Issues and PRs welcome!
+Issues and PRs welcome!
 
 ---
 
-## 许可证 | License
+## License
 
 MIT License
