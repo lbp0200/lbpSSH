@@ -46,9 +46,17 @@ class FileListParser {
     // 解析日期时间
     DateTime? modified;
     if (parts.length >= 10) {
-      final dateStr = '${parts[5]} ${parts[6]} ${parts[7]}';
       try {
-        modified = DateTime.parse(dateStr);
+        // parts[5] = "2024-01-15", parts[6] = "10:30"
+        final dateParts = parts[5].split('-');
+        final timeParts = parts[6].split(':');
+        modified = DateTime(
+          int.parse(dateParts[0]),
+          int.parse(dateParts[1]),
+          int.parse(dateParts[2]),
+          int.parse(timeParts[0]),
+          int.parse(timeParts[1]),
+        );
       } catch (_) {
         // 忽略解析错误
       }
