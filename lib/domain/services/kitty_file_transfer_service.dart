@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'file_list_parser.dart';
+import '../../presentation/screens/sftp_browser_screen.dart';
 import 'terminal_service.dart';
 
 /// 文件传输进度
@@ -97,22 +99,52 @@ class KittyFileTransferService {
   bool get supportsKittyProtocol => false;
 
   /// 获取当前目录文件列表
-  /// 注：当前版本仅支持文件上传，文件列表功能待实现
-  Future<List<dynamic>> listCurrentDirectory() async {
-    // TODO: 使用 ls 命令通过终端获取文件列表
-    throw UnimplementedError('目录列表功能待实现');
+  Future<List<FileItem>> listCurrentDirectory() async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    // 发送 ls 命令
+    final outputBuffer = StringBuffer();
+
+    // 监听终端输出
+    final subscription = _session!.inputService.outputStream.listen((output) {
+      outputBuffer.write(output);
+    });
+
+    // 执行 ls 命令
+    await _session!.executeCommand('ls -la --time-style=long-iso');
+
+    // 等待一段时间让输出完成
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // 取消订阅
+    await subscription.cancel();
+
+    // 解析输出
+    final output = outputBuffer.toString();
+    return FileListParser.parse(output, _currentPath);
   }
 
   /// 进入目录
   Future<void> changeDirectory(String path) async {
-    // TODO: 通过终端命令切换目录
-    final newPath = path.startsWith('/') ? path : '$_currentPath/$path';
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final newPath = path.startsWith('/')
+        ? path
+        : (_currentPath == '/' ? '/$path' : '$_currentPath/$path');
+
+    await _session!.executeCommand('cd "$newPath"');
     _currentPath = newPath;
   }
 
   /// 返回上级目录
   Future<void> goUp() async {
     if (_currentPath == '/') return;
+
+    await _session!.executeCommand('cd ..');
     final parts = _currentPath.split('/');
     parts.removeLast();
     _currentPath = parts.isEmpty ? '/' : parts.join('/');
