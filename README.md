@@ -228,6 +228,9 @@ lbpSSH 全面支持 Kitty 终端协议，提供丰富的终端增强功能 | lbp
 | 程序启动 | Program Launch | OSC 6 | ✅ |
 | 多光标 | Multiple Cursors | OSC 6 > | ✅ |
 | 广色域 | Wide Gamut Colors | - | ✅ |
+| 滚动控制 | Scroll Control | OSC 2026 | ✅ |
+| 窗口布局 | Layout Management | OSC 20 | ✅ |
+| 终端截图 | Screenshot | OSC 20 | ✅ |
 
 ### 文件传输增强 | File Transfer Enhanced
 
@@ -257,6 +260,201 @@ python3 setup.py ki
 
 # 方法二：使用 pip
 pip3 install kitty-cli
+```
+
+### 使用示例 | Usage Examples
+
+以下是如何使用各个 Kitty 协议服务的代码示例：
+
+#### 文件传输 | File Transfer
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_file_transfer_service.dart';
+
+// 创建服务
+final transferService = KittyFileTransferService(session: session);
+
+// 上传文件
+await transferService.sendFile(
+  localPath: '/local/file.txt',
+  remotePath: '/remote/file.txt',
+  onProgress: (progress) {
+    print('进度: ${progress.percent}%');
+  },
+);
+
+// 压缩传输
+await transferService.sendFile(
+  localPath: '/local/file.txt',
+  remotePath: '/remote/file.txt',
+  compression: CompressionType.zlib,
+);
+```
+
+#### 桌面通知 | Desktop Notifications
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_notification_service.dart';
+
+final notificationService = KittyNotificationService(session: session);
+
+// 显示通知
+await notificationService.showNotification(
+  id: '001',
+  title: '下载完成',
+  body: '文件已下载到 /home/user/',
+);
+
+// 更新进度
+await notificationService.updateProgress(
+  id: '001',
+  progress: 50,
+);
+
+// 关闭通知
+await notificationService.closeNotification('001');
+```
+
+#### 图像显示 | Graphics Protocol
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_graphics_service.dart';
+import 'dart:typed_data';
+
+final graphicsService = KittyGraphicsService(session: session);
+
+// 加载图像
+final imageId = await graphicsService.loadImage(
+  imageData,
+  width: 800,
+  height: 600,
+);
+
+// 从路径加载
+await graphicsService.loadImageFromPath(
+  '/path/to/image.png',
+  placement: ImagePlacement.cursor,
+);
+
+// 删除图像
+await graphicsService.deleteImage(imageId);
+```
+
+#### Shell 集成 | Shell Integration
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_shell_integration_service.dart';
+
+final shellService = KittyShellIntegrationService(session: session);
+
+// 监听工作目录变化
+shellService.onWorkingDirectory = (cwd) {
+  print('当前目录: $cwd');
+};
+
+// 监听命令退出状态
+shellService.onExitStatus = (status) {
+  print('命令退出状态: $status');
+};
+```
+
+#### 超链接 | Hyperlinks
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_extended_protocol_service.dart';
+
+final hyperlinkService = KittyHyperlinkService(session: session);
+
+// 打开超链接
+await hyperlinkService.openHyperlink('https://example.com', id: 'link1');
+
+// 关闭超链接
+await hyperlinkService.closeHyperlink();
+```
+
+#### 终端模式 | Terminal Modes
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_terminal_modes_service.dart';
+
+final modesService = KittyTerminalModesService(session: session);
+
+// 启用 Bracketed Paste 模式
+await modesService.enableBracketedPaste();
+
+// 启用鼠标追踪
+await modesService.enableMouseTracking(mode: MouseTrackingMode.click);
+
+// 隐藏光标
+await modesService.hideCursor();
+```
+
+#### 远程控制 | Remote Control
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_remote_control_service.dart';
+
+final remoteService = KittyRemoteControlService(session: session);
+
+// 获取终端尺寸
+final size = await remoteService.getSize();
+
+// 发送中断信号 (Ctrl+C)
+await remoteService.sendInterrupt();
+
+// 清屏
+await remoteService.clearScreen();
+```
+
+#### 键盘协议 | Keyboard Protocol
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_keyboard_service.dart';
+
+final keyboardService = KittyKeyboardService(session: session);
+
+// 发送功能键
+await keyboardService.sendFunctionKey(1);  // F1
+
+// 发送光标键
+await keyboardService.sendCursorKey('up');
+
+// 发送文本
+await keyboardService.sendText('Hello World');
+```
+
+#### 程序启动 | Program Launch
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_launch_service.dart';
+
+final launchService = KittyLaunchService(session: session);
+
+// 在新标签页启动程序
+await launchService.launchInTab('vim');
+
+// 使用系统默认应用打开文件
+await launchService.openFile('/path/to/file.txt');
+
+// 打开 URL
+await launchService.openUrl('https://example.com');
+```
+
+#### 截图服务 | Screenshot
+
+```dart
+import 'package:lbpSSH/domain/services/kitty_screenshot_service.dart';
+
+final screenshotService = KittyScreenshotService(session: session);
+
+// 截取整个屏幕
+await screenshotService.captureScreen();
+
+// 截取当前窗口
+await screenshotService.captureWindow();
+
+// 截取选区
+await screenshotService.captureSelection();
 ```
 
 ---
