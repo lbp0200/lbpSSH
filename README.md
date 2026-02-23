@@ -194,8 +194,7 @@ lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输 | lbpSSH uses Kitty pr
 
 > **注意 | Note**: 远程服务器需要安装 Kitty 的 `ki` 工具才能接收文件 | Remote server needs Kitty's `ki` tool installed to receive files
 
-- **已实现 | Implemented**: 文件上传 (File Upload)
-- **待实现 | TODO**: 文件列表浏览、文件下载 (File list browsing, File download)
+- **已实现 | Implemented**: 文件上传、文件列表浏览、文件下载 (File Upload, File list browsing, File download)
 
 ---
 
@@ -224,10 +223,10 @@ pip3 install kitty-cli
 
 **已实现功能 | Implemented**:
 - ✅ 文件上传 (File Upload)
-
-**待实现功能 | TODO**:
-- ⏳ 文件列表浏览 (File list browsing)
-- ⏳ 文件下载 (File download)
+- ✅ 文件列表浏览 (File list browsing)
+- ✅ 文件下载 (File download)
+- ✅ 目录导航 (cd, cd ..)
+- ✅ 目录操作 (mkdir, rm, rmdir)
 
 ---
 
