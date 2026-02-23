@@ -96,3 +96,9 @@ Providers use `ChangeNotifier` via `MultiProvider` in `main.dart`. Follow the pa
 - No mobile platform support (desktop only)
 - Sensitive data encrypted with user-provided master password
 - Configuration stored in local JSON file (`~/.config/lbpSSH/ssh_connections.json` on Linux)
+
+## Kitty Protocol References
+
+- **Kitty 协议文档**: `/Users/lbp/Projects/KittyProtocol/docs/kitty/docs`
+- **Kitty 协议 Dart 实现源码**: `/Users/lbp/Projects/KittyProtocol`
+- **kterm 终端控件源码**: `/Users/lbp/Projects/kterm.dart`
