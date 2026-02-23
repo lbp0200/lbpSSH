@@ -8,6 +8,62 @@ import 'file_list_parser.dart';
 import '../../presentation/screens/sftp_browser_screen.dart';
 import 'terminal_service.dart';
 
+/// 压缩类型
+enum CompressionType {
+  none,
+  zlib,
+}
+
+/// 文件类型
+enum FileType {
+  regular,
+  directory,
+  symlink,
+  link,
+}
+
+/// 传输类型
+enum TransmissionType {
+  simple,
+  rsync,
+}
+
+/// 文件元数据
+class FileMetadata {
+  final String name;
+  final FileType fileType;
+  final int? size;
+  final int? permissions;
+  final int? mtime; // 纳秒级时间戳
+  final String? linkTarget;
+
+  FileMetadata({
+    required this.name,
+    this.fileType = FileType.regular,
+    this.size,
+    this.permissions,
+    this.mtime,
+    this.linkTarget,
+  });
+}
+
+/// 传输状态
+class TransferStatus {
+  final String sessionId;
+  final String? fileId;
+  final bool isOk;
+  final String? errorMessage;
+  final int? size;
+
+  TransferStatus({
+    required this.sessionId,
+    this.fileId,
+    required this.isOk,
+    this.errorMessage,
+    this.size,
+  });
+}
+
 /// 文件传输进度
 class TransferProgress {
   final String fileName;
@@ -47,8 +103,35 @@ class KittyFileTransferEncoder {
   }
 
   /// 创建发送会话开始序列
-  String createSendSession(String sessionId) {
-    return '\x1b]5113;ac=send;id=$sessionId\x1b\\';
+  String createSendSession(String sessionId, {CompressionType compression = CompressionType.none, String? bypass, int quiet = 0}) {
+    String cmd = '\x1b]5113;ac=send;id=$sessionId';
+    if (compression == CompressionType.zlib) {
+      cmd += ';zip=zlib';
+    }
+    if (bypass != null) {
+      cmd += ';pw=$bypass';
+    }
+    if (quiet > 0) {
+      cmd += ';q=$quiet';
+    }
+    cmd += '\x1b\\';
+    return cmd;
+  }
+
+  /// 创建接收会话开始序列
+  String createReceiveSession(String sessionId, {CompressionType compression = CompressionType.none, String? bypass, int quiet = 0}) {
+    String cmd = '\x1b]5113;ac=recv;id=$sessionId';
+    if (compression == CompressionType.zlib) {
+      cmd += ';zip=zlib';
+    }
+    if (bypass != null) {
+      cmd += ';pw=$bypass';
+    }
+    if (quiet > 0) {
+      cmd += ';q=$quiet';
+    }
+    cmd += '\x1b\\';
+    return cmd;
   }
 
   /// 创建文件元数据序列
@@ -57,9 +140,74 @@ class KittyFileTransferEncoder {
     required String fileId,
     required String fileName,
     required int fileSize,
+    FileType fileType = FileType.regular,
+    TransmissionType transmissionType = TransmissionType.simple,
+    int? permissions,
+    int? mtime,
+    String? linkTarget,
   }) {
     final encodedName = encodeFileName(fileName);
-    return '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize\x1b\\';
+    String cmd = '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize';
+
+    // 文件类型
+    switch (fileType) {
+      case FileType.directory:
+        cmd += ';ft=directory';
+        break;
+      case FileType.symlink:
+        cmd += ';ft=symlink';
+        break;
+      case FileType.link:
+        cmd += ';ft=link';
+        break;
+      default:
+        break;
+    }
+
+    // 传输类型
+    if (transmissionType == TransmissionType.rsync) {
+      cmd += ';tt=rsync';
+    }
+
+    // 权限
+    if (permissions != null) {
+      cmd += ';prm=$permissions';
+    }
+
+    // 修改时间 (纳秒级时间戳)
+    if (mtime != null) {
+      cmd += ';mod=$mtime';
+    }
+
+    // 符号链接目标
+    if (linkTarget != null) {
+      cmd += ';n=${encodeFileName(linkTarget)}';
+    }
+
+    cmd += '\x1b\\';
+    return cmd;
+  }
+
+  /// 创建目录元数据序列
+  String createDirectoryMetadata({
+    required String sessionId,
+    required String fileId,
+    required String dirName,
+    int? permissions,
+    int? mtime,
+  }) {
+    final encodedName = encodeFileName(dirName);
+    String cmd = '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;ft=directory';
+
+    if (permissions != null) {
+      cmd += ';prm=$permissions';
+    }
+    if (mtime != null) {
+      cmd += ';mod=$mtime';
+    }
+
+    cmd += '\x1b\\';
+    return cmd;
   }
 
   /// 创建数据块序列
@@ -72,9 +220,57 @@ class KittyFileTransferEncoder {
     return '\x1b]5113;ac=data;id=$sessionId;fid=$fileId;d=$encoded\x1b\\';
   }
 
+  /// 创建数据结束序列
+  String createEndData(String sessionId, String fileId, {List<int>? data}) {
+    if (data != null) {
+      final encoded = base64Encode(data);
+      return '\x1b]5113;ac=end_data;id=$sessionId;fid=$fileId;d=$encoded\x1b\\';
+    }
+    return '\x1b]5113;ac=end_data;id=$sessionId;fid=$fileId\x1b\\';
+  }
+
   /// 创建传输结束序列
   String createFinishSession(String sessionId) {
     return '\x1b]5113;ac=finish;id=$sessionId\x1b\\';
+  }
+
+  /// 创建取消传输序列
+  String createCancelSession(String sessionId) {
+    return '\x1b]5113;ac=cancel;id=$sessionId\x1b\\';
+  }
+
+  /// 解析状态响应
+  TransferStatus? parseStatusResponse(String response) {
+    // 解析 OSC 5113 响应
+    // 格式: ac=status;id=xxx;st=OK 或 ac=status;id=xxx;st=ERROR:message
+    try {
+      final regex = RegExp(r'ac=status;id=([^;]+);st=([^:]+)(?::(.*))?');
+      final match = regex.firstMatch(response);
+      if (match != null) {
+        final sessionId = match.group(1)!;
+        final status = match.group(2)!;
+        final message = match.group(3);
+        final isOk = status == 'OK';
+
+        // 提取 size 参数
+        int? size;
+        final sizeRegex = RegExp(r'sz=(\d+)');
+        final sizeMatch = sizeRegex.firstMatch(response);
+        if (sizeMatch != null) {
+          size = int.tryParse(sizeMatch.group(1)!);
+        }
+
+        return TransferStatus(
+          sessionId: sessionId,
+          isOk: isOk,
+          errorMessage: message,
+          size: size,
+        );
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+    return null;
   }
 }
 
@@ -308,10 +504,16 @@ class KittyFileTransferService {
   /// [localPath] - 本地文件路径
   /// [remoteFileName] - 远程文件名
   /// [onProgress] - 进度回调
+  /// [compression] - 压缩类型
+  /// [bypass] - 预共享密码 (SHA256 哈希)
+  /// [quiet] - 静默模式 (0=详细, 1=仅错误, 2=完全静默)
   Future<void> sendFile({
     required String localPath,
     required String remoteFileName,
     required TransferProgressCallback onProgress,
+    CompressionType compression = CompressionType.none,
+    String? bypass,
+    int quiet = 0,
   }) async {
     if (_session == null) {
       throw Exception('未连接到终端，无法发送文件。请确保已建立 SSH 连接。');
@@ -328,7 +530,12 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(_encoder.createSendSession(transferId));
+    _session.writeRaw(_encoder.createSendSession(
+      transferId,
+      compression: compression,
+      bypass: bypass,
+      quiet: quiet,
+    ));
 
     // 2. 发送文件元数据
     _session.writeRaw(_encoder.createFileMetadata(
@@ -341,7 +548,7 @@ class KittyFileTransferService {
     // 3. 分块发送数据
     final stream = file.openRead();
     int transferred = 0;
-    int startTime = DateTime.now().millisecondsSinceEpoch;
+    final startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
       _session.writeRaw(_encoder.createDataChunk(
@@ -367,18 +574,269 @@ class KittyFileTransferService {
     _session.writeRaw(_encoder.createFinishSession(transferId));
   }
 
-  /// 从终端接收文件（接收模式）
-  ///
-  /// [sessionId] - 终端会话 ID
-  /// [remotePath] - 远程文件路径
-  Future<void> receiveFile(String sessionId, String remotePath) async {
-    // TODO: 实现接收文件逻辑
-    throw UnimplementedError('接收文件功能待实现');
+  /// 发送符号链接
+  Future<void> sendSymlink({
+    required String localPath,
+    required String remoteFileName,
+    required TransferProgressCallback onProgress,
+    CompressionType compression = CompressionType.none,
+    String? bypass,
+    int quiet = 0,
+  }) async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final link = Link(localPath);
+    if (!await link.exists()) {
+      throw Exception('符号链接不存在: $localPath');
+    }
+
+    final target = await link.target();
+    final fileName = p.basename(localPath);
+    final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
+    final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
+
+    // 1. 开始发送会话
+    _session.writeRaw(_encoder.createSendSession(
+      transferId,
+      compression: compression,
+      bypass: bypass,
+      quiet: quiet,
+    ));
+
+    // 2. 发送符号链接元数据
+    _session.writeRaw(_encoder.createFileMetadata(
+      sessionId: transferId,
+      fileId: fileId,
+      fileName: remoteFileName,
+      fileSize: 0,
+      fileType: FileType.symlink,
+      linkTarget: target,
+    ));
+
+    // 3. 发送结束
+    _session.writeRaw(_encoder.createEndData(transferId, fileId));
+
+    // 4. 结束会话
+    _session.writeRaw(_encoder.createFinishSession(transferId));
+
+    onProgress(TransferProgress(
+      fileName: fileName,
+      transferredBytes: 0,
+      totalBytes: 0,
+      percent: 100,
+      bytesPerSecond: 0,
+    ));
+  }
+
+  /// 发送目录（递归）
+  Future<void> sendDirectory({
+    required String localPath,
+    required String remotePath,
+    required TransferProgressCallback onProgress,
+    CompressionType compression = CompressionType.none,
+    String? bypass,
+    int quiet = 0,
+  }) async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final dir = Directory(localPath);
+    if (!await dir.exists()) {
+      throw Exception('目录不存在: $localPath');
+    }
+
+    final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
+    int totalFiles = 0;
+    int transferredFiles = 0;
+
+    // 1. 开始发送会话
+    _session.writeRaw(_encoder.createSendSession(
+      transferId,
+      compression: compression,
+      bypass: bypass,
+      quiet: quiet,
+    ));
+
+    // 递归发送文件和目录
+    Future<void> sendEntity(FileSystemEntity entity, String remoteEntityPath) async {
+      if (entity is File) {
+        totalFiles++;
+        final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
+        final fileSize = await entity.length();
+
+        _session.writeRaw(_encoder.createFileMetadata(
+          sessionId: transferId,
+          fileId: fileId,
+          fileName: remoteEntityPath,
+          fileSize: fileSize,
+        ));
+
+        final stream = entity.openRead();
+        int transferred = 0;
+        await for (final chunk in stream) {
+          _session.writeRaw(_encoder.createDataChunk(
+            sessionId: transferId,
+            fileId: fileId,
+            data: chunk,
+          ));
+          transferred = transferred + chunk.length;
+        }
+
+        transferredFiles++;
+        onProgress(TransferProgress(
+          fileName: p.basename(remoteEntityPath),
+          transferredBytes: transferred,
+          totalBytes: fileSize,
+          percent: 0, // 目录传输不计算百分比
+          bytesPerSecond: 0,
+        ));
+      } else if (entity is Directory) {
+        final dirId = 'd${DateTime.now().millisecondsSinceEpoch}';
+        _session.writeRaw(_encoder.createDirectoryMetadata(
+          sessionId: transferId,
+          fileId: dirId,
+          dirName: remoteEntityPath,
+        ));
+
+        // 递归处理子目录
+        final children = entity.listSync();
+        for (final child in children) {
+          final childName = p.basename(child.path);
+          final childRemotePath = '$remoteEntityPath/$childName';
+          await sendEntity(child, childRemotePath);
+        }
+      } else if (entity is Link) {
+        final target = await entity.target();
+        final linkId = 'l${DateTime.now().millisecondsSinceEpoch}';
+        _session.writeRaw(_encoder.createFileMetadata(
+          sessionId: transferId,
+          fileId: linkId,
+          fileName: remoteEntityPath,
+          fileSize: 0,
+          fileType: FileType.symlink,
+          linkTarget: target,
+        ));
+      }
+    }
+
+    // 发送根目录
+    final dirName = p.basename(localPath);
+    _session.writeRaw(_encoder.createDirectoryMetadata(
+      sessionId: transferId,
+      fileId: 'root',
+      dirName: remotePath,
+    ));
+
+    // 发送所有内容
+    final children = dir.listSync();
+    for (final child in children) {
+      final childName = p.basename(child.path);
+      final childRemotePath = '$remotePath/$childName';
+      await sendEntity(child, childRemotePath);
+    }
+
+    // 结束会话
+    _session.writeRaw(_encoder.createFinishSession(transferId));
+
+    onProgress(TransferProgress(
+      fileName: dirName,
+      transferredBytes: 0,
+      totalBytes: 0,
+      percent: 100,
+      bytesPerSecond: 0,
+    ));
+  }
+
+  /// 发送文件带元数据
+  Future<void> sendFileWithMetadata({
+    required String localPath,
+    required String remoteFileName,
+    required TransferProgressCallback onProgress,
+    CompressionType compression = CompressionType.none,
+    TransmissionType transmissionType = TransmissionType.simple,
+    int? permissions,
+    int? mtime,
+    String? bypass,
+    int quiet = 0,
+  }) async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final file = File(localPath);
+    if (!await file.exists()) {
+      throw Exception('文件不存在: $localPath');
+    }
+
+    final fileName = p.basename(localPath);
+    final fileSize = await file.length();
+    final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
+    final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
+
+    // 开始发送会话
+    _session.writeRaw(_encoder.createSendSession(
+      transferId,
+      compression: compression,
+      bypass: bypass,
+      quiet: quiet,
+    ));
+
+    // 发送文件元数据（带权限和时间）
+    _session.writeRaw(_encoder.createFileMetadata(
+      sessionId: transferId,
+      fileId: fileId,
+      fileName: remoteFileName,
+      fileSize: fileSize,
+      transmissionType: transmissionType,
+      permissions: permissions,
+      mtime: mtime,
+    ));
+
+    // 分块发送数据
+    final stream = file.openRead();
+    int transferred = 0;
+    final startTime = DateTime.now().millisecondsSinceEpoch;
+
+    await for (final chunk in stream) {
+      _session.writeRaw(_encoder.createDataChunk(
+        sessionId: transferId,
+        fileId: fileId,
+        data: chunk,
+      ));
+
+      transferred += chunk.length;
+      final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+      final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
+
+      onProgress(TransferProgress(
+        fileName: fileName,
+        transferredBytes: transferred,
+        totalBytes: fileSize,
+        percent: transferred / fileSize * 100,
+        bytesPerSecond: speed,
+      ));
+    }
+
+    // 结束会话
+    _session.writeRaw(_encoder.createFinishSession(transferId));
   }
 
   /// 取消传输
-  Future<void> cancelTransfer(String sessionId) async {
-    // TODO: 实现取消传输逻辑
-    throw UnimplementedError('取消传输功能待实现');
+  Future<void> cancelTransfer(String transferId) async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    _session.writeRaw(_encoder.createCancelSession(transferId));
+  }
+
+  /// 从终端接收文件（接收模式）- 已废弃，使用 downloadFile
+  @Deprecated('请使用 downloadFile 方法')
+  Future<void> receiveFile(String sessionId, String remotePath) async {
+    // 已由 downloadFile 实现
+    throw UnimplementedError('请使用 downloadFile 方法');
   }
 }
