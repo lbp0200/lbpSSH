@@ -6,9 +6,9 @@ void main() {
     test('returns unsupported when remote has no ki tool', () async {
       // 当远程没有安装 ki 工具时，应该返回不支持
       final service = KittyFileTransferService();
-      final result = await service.checkProtocolSupport('test-session');
+      final result = await service.checkProtocolSupport();
       expect(result.isSupported, isFalse);
-      expect(result.errorMessage, contains('ki'));
+      expect(result.errorMessage, contains('未连接到终端'));
     });
 
     test('generates correct OSC sequence for send session', () {
