@@ -202,6 +202,9 @@ class KittyFileTransferService {
     int totalSize = 0;
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
+    // 创建 Completer 等待传输完成
+    final completer = Completer<void>();
+
     // 监听文件传输事件
     final subscription = _session!.fileTransferStream.listen((event) async {
       switch (event.type) {
@@ -229,6 +232,9 @@ class KittyFileTransferService {
           break;
         case 'end':
           await sink.close();
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
           break;
       }
     });
@@ -238,9 +244,13 @@ class KittyFileTransferService {
       '\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\'
     );
 
-    // 等待传输完成 (超时 5 分钟)
+    // 等待传输完成或超时
     try {
-      await Future.delayed(const Duration(minutes: 5));
+      await completer.future.timeout(const Duration(minutes: 5));
+    } catch (e) {
+      // 超时
+      await sink.close();
+      rethrow;
     } finally {
       await subscription.cancel();
     }
