@@ -188,7 +188,7 @@ class KittyFileTransferService {
   /// [onProgress] - 进度回调（可选）
   Future<void> downloadFile(String remotePath, String localPath, {TransferProgressCallback? onProgress}) async {
     if (_session == null) {
-      throw Exception('未连接到终端');
+      throw Exception('未连接到终端，无法下载文件。请确保已建立 SSH 连接。');
     }
 
     final transferId = 'dl_${DateTime.now().millisecondsSinceEpoch}';
@@ -206,38 +206,46 @@ class KittyFileTransferService {
     final completer = Completer<void>();
 
     // 监听文件传输事件
-    final subscription = _session!.fileTransferStream.listen((event) async {
-      switch (event.type) {
-        case 'start':
-          totalSize = event.fileSize ?? 0;
-          break;
-        case 'chunk':
-          if (event.data != null) {
-            sink.add(event.data!);
-            transferred += event.data!.length;
+    final subscription = _session!.fileTransferStream.listen(
+      (event) async {
+        switch (event.type) {
+          case 'start':
+            totalSize = event.fileSize ?? 0;
+            break;
+          case 'chunk':
+            if (event.data != null) {
+              sink.add(event.data!);
+              transferred += event.data!.length;
 
-            if (onProgress != null) {
-              final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
-              final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
+              if (onProgress != null) {
+                final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+                final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
 
-              onProgress(TransferProgress(
-                fileName: fileName,
-                transferredBytes: transferred,
-                totalBytes: totalSize,
-                percent: totalSize > 0 ? transferred / totalSize * 100 : 0,
-                bytesPerSecond: speed,
-              ));
+                onProgress(TransferProgress(
+                  fileName: fileName,
+                  transferredBytes: transferred,
+                  totalBytes: totalSize,
+                  percent: totalSize > 0 ? transferred / totalSize * 100 : 0,
+                  bytesPerSecond: speed,
+                ));
+              }
             }
-          }
-          break;
-        case 'end':
-          await sink.close();
-          if (!completer.isCompleted) {
-            completer.complete();
-          }
-          break;
-      }
-    });
+            break;
+          case 'end':
+            await sink.close();
+            if (!completer.isCompleted) {
+              completer.complete();
+            }
+            break;
+        }
+      },
+      onError: (error) async {
+        await sink.close();
+        if (!completer.isCompleted) {
+          completer.completeError(error);
+        }
+      },
+    );
 
     // 发送接收会话请求
     _session!.writeRaw(
