@@ -182,9 +182,68 @@ class KittyFileTransferService {
   }
 
   /// 下载文件
-  Future<void> downloadFile(String remotePath, String localPath) async {
-    // TODO: 通过 Kitty 协议接收文件
-    throw UnimplementedError('下载文件功能待实现');
+  ///
+  /// [remotePath] - 远程文件路径
+  /// [localPath] - 本地保存路径
+  /// [onProgress] - 进度回调（可选）
+  Future<void> downloadFile(String remotePath, String localPath, {TransferProgressCallback? onProgress}) async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final transferId = 'dl_${DateTime.now().millisecondsSinceEpoch}';
+    final fileName = remotePath.split('/').last;
+
+    // 创建本地文件
+    final file = File(localPath);
+    final sink = file.openWrite();
+
+    int transferred = 0;
+    int totalSize = 0;
+    final startTime = DateTime.now().millisecondsSinceEpoch;
+
+    // 监听文件传输事件
+    final subscription = _session!.fileTransferStream.listen((event) async {
+      switch (event.type) {
+        case 'start':
+          totalSize = event.fileSize ?? 0;
+          break;
+        case 'chunk':
+          if (event.data != null) {
+            sink.add(event.data!);
+            transferred += event.data!.length;
+
+            if (onProgress != null) {
+              final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+              final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
+
+              onProgress(TransferProgress(
+                fileName: fileName,
+                transferredBytes: transferred,
+                totalBytes: totalSize,
+                percent: totalSize > 0 ? transferred / totalSize * 100 : 0,
+                bytesPerSecond: speed,
+              ));
+            }
+          }
+          break;
+        case 'end':
+          await sink.close();
+          break;
+      }
+    });
+
+    // 发送接收会话请求
+    _session!.writeRaw(
+      '\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\'
+    );
+
+    // 等待传输完成 (超时 5 分钟)
+    try {
+      await Future.delayed(const Duration(minutes: 5));
+    } finally {
+      await subscription.cancel();
+    }
   }
 
   /// 检查远程是否支持 Kitty 协议
