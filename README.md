@@ -199,19 +199,56 @@ lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输 | lbpSSH uses Kitty pr
 
 ---
 
-## 注意事项 | Notes
+## Kitty 协议支持 | Kitty Protocol Support
 
-### Kitty 协议文件传输 | Kitty Protocol File Transfer
+lbpSSH 全面支持 Kitty 终端协议，提供丰富的终端增强功能 | lbpSSH fully supports Kitty terminal protocol with rich terminal enhancement features
 
-lbpSSH 使用 Kitty 协议的 OSC 5113 实现文件传输，替代传统的 SFTP。
+### 已实现功能 | Implemented Features
 
-lbpSSH uses Kitty protocol OSC 5113 for file transfer, replacing traditional SFTP.
+| 功能 | Feature | 协议 | Protocol |
+|------|---------|------|----------|
+| 文件传输 | File Transfer | OSC 5113 | ✅ |
+| 桌面通知 | Desktop Notifications | OSC 99 | ✅ |
+| 图像显示 | Graphics Protocol | OSC 71 | ✅ |
+| Shell 集成 | Shell Integration | OSC 133 | ✅ |
+| 超链接 | Hyperlinks | OSC 8 | ✅ |
+| 鼠标指针 | Pointer Shapes | OSC 22 | ✅ |
+| 颜色栈 | Color Stack | OSC 4, 21 | ✅ |
+| 文本大小 | Text Sizing | - | ✅ |
+| 终端标记 | Marks | - | ✅ |
+| 窗口标题 | Window Title | OSC 0, 1, 2 | ✅ |
+| 提示符颜色 | Prompt Colors | OSC 10-132, 708 | ✅ |
+| 键盘协议 | Keyboard Protocol | OSC 1, 2, 200, 201 | ✅ |
+| 远程控制 | Remote Control | OSC 5xx | ✅ |
+| 终端模式 | Terminal Modes | SM/RM | ✅ |
+| 会话管理 | Session Management | - | ✅ |
+| 终端操作 | Actions | OSC 5 | ✅ |
+| 下划线样式 | Underline Styles | OSC 4:58 | ✅ |
+| 扩展搜索 | Extended Search | - | ✅ |
+| 程序启动 | Program Launch | OSC 6 | ✅ |
+| 多光标 | Multiple Cursors | OSC 6 > | ✅ |
+| 广色域 | Wide Gamut Colors | - | ✅ |
 
-**前置要求 | Requirements**:
-- 远程服务器需要安装 [Kitty](https://sw.kovidgoyal.net/kitty/) 终端工具
-- Remote server needs [Kitty](https://sw.kovidgoyal.net/kitty/) terminal tool installed
+### 文件传输增强 | File Transfer Enhanced
 
-**安装 ki 工具 | Install ki tool**:
+- ✅ 文件上传 (File Upload)
+- ✅ 拖拽上传 (Drag-and-drop upload)
+- ✅ 文件列表浏览 (File list browsing)
+- ✅ 文件下载 (File download)
+- ✅ 目录导航 (cd, cd ..)
+- ✅ 目录操作 (mkdir, rm, rmdir)
+- ✅ 压缩传输 (compression=zlib)
+- ✅ 符号链接 (symlink support)
+- ✅ 元数据保留 (metadata preservation)
+- ✅ 传输取消 (transfer cancel)
+- ✅ 静默模式 (quiet mode)
+- ✅ 密码授权 (password authorization)
+
+### 安装 ki 工具 | Install ki tool
+
+> **注意**: 远程服务器需要安装 Kitty 的 `ki` 工具才能使用文件传输功能
+> **Note**: Remote server needs Kitty's `ki` tool for file transfer
+
 ```bash
 # 方法一：从源码编译
 git clone https://github.com/kovidgoyal/kitty
@@ -221,14 +258,6 @@ python3 setup.py ki
 # 方法二：使用 pip
 pip3 install kitty-cli
 ```
-
-**已实现功能 | Implemented**:
-- ✅ 文件上传 (File Upload)
-- ✅ 拖拽上传 (Drag-and-drop upload)
-- ✅ 文件列表浏览 (File list browsing)
-- ✅ 文件下载 (File download)
-- ✅ 目录导航 (cd, cd ..)
-- ✅ 目录操作 (mkdir, rm, rmdir)
 
 ---
 
