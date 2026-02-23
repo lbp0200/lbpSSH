@@ -108,12 +108,12 @@ class KittyFileTransferService {
     final outputBuffer = StringBuffer();
 
     // 监听终端输出
-    final subscription = _session!.inputService.outputStream.listen((output) {
+    final subscription = _session.inputService.outputStream.listen((output) {
       outputBuffer.write(output);
     });
 
     // 执行 ls 命令
-    await _session!.executeCommand('ls -la --time-style=long-iso');
+    await _session.executeCommand('ls -la --time-style=long-iso');
 
     // 等待一段时间让输出完成
     await Future.delayed(const Duration(milliseconds: 500));
@@ -136,15 +136,18 @@ class KittyFileTransferService {
         ? path
         : (_currentPath == '/' ? '/$path' : '$_currentPath/$path');
 
-    await _session!.executeCommand('cd "$newPath"');
+    await _session.executeCommand('cd "$newPath"');
     _currentPath = newPath;
   }
 
   /// 返回上级目录
   Future<void> goUp() async {
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
     if (_currentPath == '/') return;
 
-    await _session!.executeCommand('cd ..');
+    await _session.executeCommand('cd ..');
     final parts = _currentPath.split('/');
     parts.removeLast();
     _currentPath = parts.isEmpty ? '/' : parts.join('/');
@@ -160,7 +163,7 @@ class KittyFileTransferService {
         ? '/$name'
         : '$_currentPath/$name';
 
-    await _session!.executeCommand('mkdir "$path"');
+    await _session.executeCommand('mkdir "$path"');
   }
 
   /// 删除文件
@@ -169,7 +172,7 @@ class KittyFileTransferService {
       throw Exception('未连接到终端');
     }
 
-    await _session!.executeCommand('rm "$path"');
+    await _session.executeCommand('rm "$path"');
   }
 
   /// 删除目录
@@ -178,7 +181,7 @@ class KittyFileTransferService {
       throw Exception('未连接到终端');
     }
 
-    await _session!.executeCommand('rmdir "$path"');
+    await _session.executeCommand('rmdir "$path"');
   }
 
   /// 下载文件
@@ -206,7 +209,7 @@ class KittyFileTransferService {
     final completer = Completer<void>();
 
     // 监听文件传输事件
-    final subscription = _session!.fileTransferStream.listen(
+    final subscription = _session.fileTransferStream.listen(
       (event) async {
         switch (event.type) {
           case 'start':
@@ -248,7 +251,7 @@ class KittyFileTransferService {
     );
 
     // 发送接收会话请求
-    _session!.writeRaw(
+    _session.writeRaw(
       '\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\'
     );
 
@@ -277,11 +280,11 @@ class KittyFileTransferService {
     // 如果不支持，将返回 "command not found" 或类似错误
     final outputBuffer = StringBuffer();
 
-    final subscription = _session!.inputService.outputStream.listen((output) {
+    final subscription = _session.inputService.outputStream.listen((output) {
       outputBuffer.write(output);
     });
 
-    _session!.executeCommand('ki version');
+    _session.executeCommand('ki version');
 
     // 等待响应
     await Future.delayed(const Duration(seconds: 2));

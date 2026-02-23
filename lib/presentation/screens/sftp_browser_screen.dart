@@ -364,7 +364,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
             item.isDirectory ? Icons.folder : _getFileIcon(item.name),
           ),
           title: Text(item.name),
-          subtitle: item.isDirectory ? null : Text(item.size != null ? _formatSize(item.size!) : '-'),
+          subtitle: item.isDirectory ? null : Text(_formatSize(item.size)),
           onTap: () => _onItemTap(item),
           onLongPress: () => _showItemMenu(item),
         );
