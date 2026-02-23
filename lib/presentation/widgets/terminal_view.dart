@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kterm/kterm.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:cross_file/cross_file.dart';
 
 import '../providers/app_config_provider.dart';
 import '../providers/connection_provider.dart';
@@ -13,6 +15,7 @@ import '../screens/app_settings_screen.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
+import '../../domain/services/kitty_file_transfer_service.dart';
 import 'error_dialog.dart';
 import 'graphics_overlay.dart';
 
@@ -29,6 +32,7 @@ class TerminalViewWidget extends StatefulWidget {
 class _TerminalViewWidgetState extends State<TerminalViewWidget> {
   StreamSubscription<({String title, String body})>? _notificationSubscription;
   String? _subscribedSessionId;
+  bool _isDragging = false;
 
   void _subscribeToNotifications(TerminalSession session) {
     if (_subscribedSessionId == session.id) return;
@@ -44,6 +48,50 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
         ),
       );
     });
+  }
+
+  Future<void> _handleFileDrop(List<XFile> files) async {
+    if (files.isEmpty) return;
+
+    // 获取 TerminalSession
+    final terminalProvider = context.read<TerminalProvider>();
+    final session = terminalProvider.getSession(widget.sessionId);
+
+    if (session == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('请先连接到服务器')),
+        );
+      }
+      return;
+    }
+
+    // 创建文件传输服务
+    final transferService = KittyFileTransferService(session: session);
+
+    // 上传每个文件
+    for (final file in files) {
+      try {
+        await transferService.sendFile(
+          localPath: file.path,
+          remoteFileName: file.name,
+          onProgress: (progress) {
+            // 可以在这里显示进度
+          },
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${file.name} 上传成功')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${file.name} 上传失败: $e')),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -79,14 +127,63 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            return SizedBox(
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              child: _TerminalViewWithSelection(
-                terminal: session.terminal,
-                controller: session.controller,
-                config: config,
-                parseColor: parseColor,
+            return DropTarget(
+              onDragEntered: (details) {
+                setState(() {
+                  _isDragging = true;
+                });
+              },
+              onDragExited: (details) {
+                setState(() {
+                  _isDragging = false;
+                });
+              },
+              onDragDone: (details) {
+                setState(() {
+                  _isDragging = false;
+                });
+                _handleFileDrop(details.files);
+              },
+              child: Stack(
+                children: [
+                  SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: _TerminalViewWithSelection(
+                      terminal: session.terminal,
+                      controller: session.controller,
+                      config: config,
+                      parseColor: parseColor,
+                    ),
+                  ),
+                  // 拖拽提示覆盖层
+                  if (_isDragging)
+                    Container(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.upload_file,
+                              size: 64,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '释放以上传文件到服务器',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             );
           },
