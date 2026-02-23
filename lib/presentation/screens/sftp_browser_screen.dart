@@ -41,7 +41,7 @@ class SftpBrowserScreen extends StatefulWidget {
 
 class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   KittyFileTransferService? _transferService;
-  List<dynamic> _items = [];
+  List<FileItem> _items = [];
   bool _loading = false;
   String _currentPath = '/';
   String? _error;
@@ -183,11 +183,44 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
       fileName: item.name,
     );
     if (result != null) {
+      // 创建进度流
+      final progressController = StreamController<TransferProgress>();
+
+      if (!mounted) return;
+
+      // 显示进度对话框
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => TransferProgressDialog(
+          fileName: item.name,
+          totalBytes: item.size,
+          progressStream: progressController.stream,
+          onCancel: () {
+            progressController.close();
+            Navigator.pop(context);
+          },
+        ),
+      );
+
       try {
-        await _transferService?.downloadFile(item.path, result);
-        _showMessage('下载成功');
+        await _transferService?.downloadFile(
+          item.path,
+          result,
+          onProgress: (progress) {
+            progressController.add(progress);
+          },
+        );
+
+        if (mounted) {
+          Navigator.pop(context); // 关闭进度对话框
+          _showMessage('下载成功');
+        }
       } catch (e) {
-        _showError(e.toString());
+        if (mounted) {
+          Navigator.pop(context);
+          _showError('下载失败: $e');
+        }
       }
     }
   }
