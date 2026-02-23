@@ -265,15 +265,34 @@ class KittyFileTransferService {
   }
 
   /// 检查远程是否支持 Kitty 协议
-  ///
-  /// 发送协议版本请求，等待终端响应
-  /// 如果终端不支持，将无法正确响应
-  Future<ProtocolSupportResult> checkProtocolSupport(String sessionId) async {
-    // 发送协议查询命令到终端
-    // 使用 Kitty 协议的版本查询功能
+  Future<ProtocolSupportResult> checkProtocolSupport() async {
+    if (_session == null) {
+      return ProtocolSupportResult(
+        isSupported: false,
+        errorMessage: '未连接到终端',
+      );
+    }
 
-    // 模拟检测逻辑 - 实际需要通过终端会话发送命令并等待响应
-    // 如果远程没有安装 ki 工具，将无法响应
+    // 尝试执行 ki version 命令
+    // 如果不支持，将返回 "command not found" 或类似错误
+    final outputBuffer = StringBuffer();
+
+    final subscription = _session!.inputService.outputStream.listen((output) {
+      outputBuffer.write(output);
+    });
+
+    _session!.executeCommand('ki version');
+
+    // 等待响应
+    await Future.delayed(const Duration(seconds: 2));
+    await subscription.cancel();
+
+    final output = outputBuffer.toString();
+
+    // 检查输出中是否包含版本信息
+    if (output.contains('ki version') || output.contains('kitty')) {
+      return ProtocolSupportResult(isSupported: true);
+    }
 
     return ProtocolSupportResult(
       isSupported: false,
