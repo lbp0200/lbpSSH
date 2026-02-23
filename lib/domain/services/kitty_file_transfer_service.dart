@@ -152,20 +152,33 @@ class KittyFileTransferService {
 
   /// 创建目录
   Future<void> createDirectory(String name) async {
-    // TODO: 通过终端命令创建目录
-    throw UnimplementedError('创建目录功能待实现');
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    final path = _currentPath == '/'
+        ? '/$name'
+        : '$_currentPath/$name';
+
+    await _session!.executeCommand('mkdir "$path"');
   }
 
   /// 删除文件
   Future<void> removeFile(String path) async {
-    // TODO: 通过终端命令删除文件
-    throw UnimplementedError('删除文件功能待实现');
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    await _session!.executeCommand('rm "$path"');
   }
 
   /// 删除目录
   Future<void> removeDirectory(String path) async {
-    // TODO: 通过终端命令删除目录
-    throw UnimplementedError('删除目录功能待实现');
+    if (_session == null) {
+      throw Exception('未连接到终端');
+    }
+
+    await _session!.executeCommand('rmdir "$path"');
   }
 
   /// 下载文件
