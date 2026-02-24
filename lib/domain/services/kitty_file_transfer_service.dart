@@ -649,8 +649,6 @@ class KittyFileTransferService {
     }
 
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
-    int totalFiles = 0;
-    int transferredFiles = 0;
 
     // 1. 开始发送会话
     _session.writeRaw(_encoder.createSendSession(
@@ -663,7 +661,6 @@ class KittyFileTransferService {
     // 递归发送文件和目录
     Future<void> sendEntity(FileSystemEntity entity, String remoteEntityPath) async {
       if (entity is File) {
-        totalFiles++;
         final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
         final fileSize = await entity.length();
 
@@ -685,7 +682,6 @@ class KittyFileTransferService {
           transferred = transferred + chunk.length;
         }
 
-        transferredFiles++;
         onProgress(TransferProgress(
           fileName: p.basename(remoteEntityPath),
           transferredBytes: transferred,
