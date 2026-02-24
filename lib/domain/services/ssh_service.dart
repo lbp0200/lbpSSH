@@ -133,7 +133,10 @@ Future<SSHSocket> connectViaSocks5Proxy(
       0x08: 'SOCKS5 错误：不支持的地址类型',
     };
     socket.destroy();
-    throw Exception(errorCodes[connectResponse[1]] ?? 'SOCKS5 错误：未知错误 (${connectResponse[1]})');
+    throw Exception(
+      errorCodes[connectResponse[1]] ??
+          'SOCKS5 错误：未知错误 (${connectResponse[1]})',
+    );
   }
 
   return _Socks5ProxySocket(socket);
@@ -158,6 +161,12 @@ class SshService implements TerminalInputService {
 
   // 是否已显示过 Last login 信息
   bool _hasShownLastLogin = false;
+
+  /// OS 类型: 'Linux', 'Darwin' (macOS), 'Windows' 等
+  String _osType = 'Linux';
+
+  /// 获取 OS 类型
+  String get osType => _osType;
 
   /// 输出流
   @override
@@ -322,7 +331,12 @@ class SshService implements TerminalInputService {
               configEntry.identityFiles!.isNotEmpty) {
             for (final identityFile in configEntry.identityFiles!) {
               try {
-                final keyFile = File(identityFile.replaceFirst('~', Platform.environment['HOME'] ?? ''));
+                final keyFile = File(
+                  identityFile.replaceFirst(
+                    '~',
+                    Platform.environment['HOME'] ?? '',
+                  ),
+                );
                 if (await keyFile.exists()) {
                   final keyContent = await keyFile.readAsString();
                   try {
