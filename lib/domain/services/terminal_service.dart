@@ -38,14 +38,26 @@ class TerminalSession {
   StreamSubscription<bool>? _stateSubscription;
 
   // 通知流控制器
-  final _notificationController = StreamController<({String title, String body})>.broadcast();
+  final _notificationController =
+      StreamController<({String title, String body})>.broadcast();
+
   /// 通知流，用于监听终端发出的桌面通知
-  Stream<({String title, String body})> get notificationStream => _notificationController.stream;
+  Stream<({String title, String body})> get notificationStream =>
+      _notificationController.stream;
 
   // 文件传输流控制器
-  final _fileTransferController = StreamController<FileTransferEvent>.broadcast();
+  final _fileTransferController =
+      StreamController<FileTransferEvent>.broadcast();
+
   /// 文件传输流，用于监听远程发送的文件
-  Stream<FileTransferEvent> get fileTransferStream => _fileTransferController.stream;
+  Stream<FileTransferEvent> get fileTransferStream =>
+      _fileTransferController.stream;
+
+  // OS 类型: 'Linux', 'Darwin' (macOS), 'Windows' 等
+  String osType = 'Linux';
+
+  // 当前工作目录
+  String workingDirectory = '/';
 
   TerminalSession({
     required this.id,
@@ -112,26 +124,29 @@ class TerminalSession {
     switch (action) {
       case 'send':
         // 远程请求发送文件给我们
-        _fileTransferController.add(FileTransferEvent(
-          type: 'start',
-          fileId: params['fid'],
-          fileName: _decodeBase64(params['n']),
-          fileSize: int.tryParse(params['size'] ?? ''),
-        ));
+        _fileTransferController.add(
+          FileTransferEvent(
+            type: 'start',
+            fileId: params['fid'],
+            fileName: _decodeBase64(params['n']),
+            fileSize: int.tryParse(params['size'] ?? ''),
+          ),
+        );
         break;
       case 'data':
-        _fileTransferController.add(FileTransferEvent(
-          type: 'chunk',
-          fileId: params['fid'],
-          offset: int.tryParse(params['offset'] ?? ''),
-          data: _decodeBase64Bytes(params['d']),
-        ));
+        _fileTransferController.add(
+          FileTransferEvent(
+            type: 'chunk',
+            fileId: params['fid'],
+            offset: int.tryParse(params['offset'] ?? ''),
+            data: _decodeBase64Bytes(params['d']),
+          ),
+        );
         break;
       case 'finish':
-        _fileTransferController.add(FileTransferEvent(
-          type: 'end',
-          fileId: params['fid'],
-        ));
+        _fileTransferController.add(
+          FileTransferEvent(type: 'end', fileId: params['fid']),
+        );
         break;
     }
   }
@@ -163,6 +178,16 @@ class TerminalSession {
   /// 发送原始字符到终端（用于发送 OSC 序列）
   void writeRaw(String data) {
     terminal.write(data);
+  }
+
+  /// 设置当前工作目录
+  void setWorkingDirectory(String path) {
+    workingDirectory = path;
+  }
+
+  /// 设置 OS 类型
+  void setOsType(String type) {
+    osType = type;
   }
 
   /// 初始化终端会话
