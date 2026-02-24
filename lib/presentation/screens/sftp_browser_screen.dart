@@ -30,10 +30,7 @@ class FileItem {
 class SftpBrowserScreen extends StatefulWidget {
   final SshConnection connection;
 
-  const SftpBrowserScreen({
-    super.key,
-    required this.connection,
-  });
+  const SftpBrowserScreen({super.key, required this.connection});
 
   @override
   State<SftpBrowserScreen> createState() => _SftpBrowserScreenState();
@@ -49,7 +46,9 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   @override
   void initState() {
     super.initState();
-    _connect();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _connect();
+    });
   }
 
   Future<void> _connect() async {
@@ -179,9 +178,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   }
 
   Future<void> _downloadFile(FileItem item) async {
-    final result = await FilePicker.platform.saveFile(
-      fileName: item.name,
-    );
+    final result = await FilePicker.platform.saveFile(fileName: item.name);
     if (result != null) {
       // 创建进度流
       final progressController = StreamController<TransferProgress>();
@@ -290,9 +287,9 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -306,15 +303,9 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
               onPressed: _currentPath != '/' ? _goUp : null,
             ),
             Expanded(
-              child: Text(
-                _currentPath,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(_currentPath, overflow: TextOverflow.ellipsis),
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _refresh,
-            ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
           ],
         ),
       ),
@@ -337,10 +328,7 @@ class _SftpBrowserScreenState extends State<SftpBrowserScreen> {
             const SizedBox(height: 16),
             Text(_error!, style: TextStyle(color: Colors.red[300])),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _connect,
-              child: const Text('重试'),
-            ),
+            ElevatedButton(onPressed: _connect, child: const Text('重试')),
           ],
         ),
       );

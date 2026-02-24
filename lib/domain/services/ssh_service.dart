@@ -199,6 +199,8 @@ class SshService implements TerminalInputService {
   void _scheduleOutputFlush() {
     _outputTimer?.cancel();
     _outputTimer = Timer(const Duration(milliseconds: 10), () {
+      if (_isDisposed || _outputController.isClosed) return;
+
       var output = _outputBuffer.toString();
       _outputBuffer.clear();
 
@@ -451,7 +453,7 @@ class SshService implements TerminalInputService {
 
   /// 执行命令（非交互式）
   @override
-  Future<String> executeCommand(String command) async {
+  Future<String> executeCommand(String command, {bool silent = false}) async {
     if (_client == null || _state != SshConnectionState.connected) {
       throw Exception('未连接到服务器');
     }
@@ -463,13 +465,13 @@ class SshService implements TerminalInputService {
         const Utf8Decoder(),
       )) {
         output.add(data);
-        if (!_isDisposed && !_outputController.isClosed) {
+        if (!silent && !_isDisposed && !_outputController.isClosed) {
           _outputController.add(data);
         }
       }
       return output.join();
     } catch (e) {
-      if (!_isDisposed && !_outputController.isClosed) {
+      if (!silent && !_isDisposed && !_outputController.isClosed) {
         _outputController.add('命令执行错误: $e\n');
       }
       rethrow;

@@ -34,26 +34,26 @@ class SyncConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'platform': platform.name,
-        'accessToken': accessToken,
-        'gistId': gistId,
-        'gistFileName': gistFileName,
-        'autoSync': autoSync,
-        'syncIntervalMinutes': syncIntervalMinutes,
-      };
+    'platform': platform.name,
+    'accessToken': accessToken,
+    'gistId': gistId,
+    'gistFileName': gistFileName,
+    'autoSync': autoSync,
+    'syncIntervalMinutes': syncIntervalMinutes,
+  };
 
   factory SyncConfig.fromJson(Map<String, dynamic> json) => SyncConfig(
-        platform: SyncPlatform.values.firstWhere(
-          (e) => e.name == json['platform'],
-          orElse: () => SyncPlatform.gist,
-        ),
-        accessToken: json['accessToken'],
-        gistId: json['gistId'],
-        gistFileName: json['gistFileName'],
-        autoSync: json['autoSync'] ?? false,
-        syncIntervalMinutes:
-            json['syncIntervalMinutes'] ?? AppConstants.defaultSyncIntervalMinutes,
-      );
+    platform: SyncPlatform.values.firstWhere(
+      (e) => e.name == json['platform'],
+      orElse: () => SyncPlatform.gist,
+    ),
+    accessToken: json['accessToken'],
+    gistId: json['gistId'],
+    gistFileName: json['gistFileName'],
+    autoSync: json['autoSync'] ?? false,
+    syncIntervalMinutes:
+        json['syncIntervalMinutes'] ?? AppConstants.defaultSyncIntervalMinutes,
+  );
 }
 
 /// 配置同步服务
@@ -135,7 +135,8 @@ class SyncService with ChangeNotifier {
   }
 
   /// 从远程仓库下载配置
-  Future<void> downloadConfig() async {
+  /// [skipConflictCheck] 是否跳过冲突检测（用于测试连接时）
+  Future<void> downloadConfig({bool skipConflictCheck = false}) async {
     if (_config == null || _config!.accessToken == null) {
       throw Exception('同步配置未设置或未授权');
     }
@@ -159,13 +160,15 @@ class SyncService with ChangeNotifier {
           .map((json) => SshConnection.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      // 检测冲突
-      final localConnections = _repository.getAllConnections();
-      final conflicts = _detectConflicts(localConnections, connections);
+      // 检测冲突（除非明确跳过）
+      if (!skipConflictCheck) {
+        final localConnections = _repository.getAllConnections();
+        final conflicts = _detectConflicts(localConnections, connections);
 
-      if (conflicts.isNotEmpty) {
-        // 有冲突，需要用户解决
-        throw SyncConflictException(conflicts);
+        if (conflicts.isNotEmpty) {
+          // 有冲突，需要用户解决
+          throw SyncConflictException(conflicts);
+        }
       }
 
       // 保存配置
@@ -181,8 +184,7 @@ class SyncService with ChangeNotifier {
 
   /// 上传到 GitHub Gist
   Future<void> _uploadToGitHubGist(String contentBase64) async {
-    final fileName =
-        _config!.gistFileName ?? AppConstants.defaultSyncFileName;
+    final fileName = _config!.gistFileName ?? AppConstants.defaultSyncFileName;
     final url = 'https://api.github.com/gists';
 
     if (_config!.gistId == null) {
@@ -293,8 +295,7 @@ class SyncService with ChangeNotifier {
 
   /// 上传到 Gitee Gist
   Future<void> _uploadToGiteeGist(String contentBase64) async {
-    final fileName =
-        _config!.gistFileName ?? AppConstants.defaultSyncFileName;
+    final fileName = _config!.gistFileName ?? AppConstants.defaultSyncFileName;
     final token = _config!.accessToken;
     final url = 'https://gitee.com/api/v5/gists?access_token=$token';
 
@@ -315,9 +316,7 @@ class SyncService with ChangeNotifier {
       final response = await _dio.post(
         url,
         data: data,
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
       // 检查响应格式
@@ -374,9 +373,7 @@ class SyncService with ChangeNotifier {
       await _dio.post(
         url,
         data: data,
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
     }
   }

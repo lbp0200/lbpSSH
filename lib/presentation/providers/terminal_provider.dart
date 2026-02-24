@@ -74,40 +74,37 @@ class TerminalProvider extends ChangeNotifier {
 
   /// 创建新的 SSH 终端会话
   Future<TerminalSession> createSession(SshConnection connection) async {
+    // 每次创建新的唯一会话 ID
+    final sessionId = _uuid.v4();
+
     final sshService = SshService();
-    _services[connection.id] = sshService;
+    _services[sessionId] = sshService;
 
     // 获取终端配置（用于设置字体）
     final terminalConfig = _appConfigService.terminal;
 
     final session = _terminalService.createSession(
-      id: connection.id,
+      id: sessionId,
       name: connection.name,
       inputService: sshService,
       terminalConfig: terminalConfig,
     );
 
-    _activeSessionId = connection.id;
+    _activeSessionId = sessionId;
     notifyListeners();
 
     // 自动连接 SSH
     try {
       await sshService.connect(connection);
 
-      // 获取 OS 类型和工作目录
-      final session = _terminalService.getSession(connection.id);
+      // 获取工作目录（静默执行，不显示在终端）
+      final session = _terminalService.getSession(sessionId);
       if (session != null) {
         try {
-          // 检测 OS 类型
-          final osResult = await sshService.executeCommand('uname -s');
-          session.setOsType(osResult.trim());
-        } catch (e) {
-          // 使用默认 OS 类型
-        }
-
-        try {
-          // 获取工作目录
-          final pwdResult = await sshService.executeCommand('pwd');
+          final pwdResult = await sshService.executeCommand(
+            'pwd',
+            silent: true,
+          );
           session.setWorkingDirectory(pwdResult.trim());
         } catch (e) {
           // 使用默认目录
@@ -115,7 +112,7 @@ class TerminalProvider extends ChangeNotifier {
       }
     } catch (e) {
       // 连接失败时关闭会话并抛出异常
-      closeSession(connection.id);
+      closeSession(sessionId);
       rethrow;
     }
 

@@ -35,4 +35,14 @@ class SyncProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// 测试连接（跳过冲突检测）
+  Future<void> testConnection() async {
+    notifyListeners();
+    try {
+      await _syncService.downloadConfig(skipConflictCheck: true);
+    } finally {
+      notifyListeners();
+    }
+  }
 }

@@ -2,31 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dartssh2/dartssh2.dart';
 import 'package:path/path.dart' as p;
 
 import 'file_list_parser.dart';
 import '../../presentation/screens/sftp_browser_screen.dart';
 import 'terminal_service.dart';
+import 'ssh_service.dart';
 
 /// 压缩类型
-enum CompressionType {
-  none,
-  zlib,
-}
+enum CompressionType { none, zlib }
 
 /// 文件类型
-enum FileType {
-  regular,
-  directory,
-  symlink,
-  link,
-}
+enum FileType { regular, directory, symlink, link }
 
 /// 传输类型
-enum TransmissionType {
-  simple,
-  rsync,
-}
+enum TransmissionType { simple, rsync }
 
 /// 文件元数据
 class FileMetadata {
@@ -89,10 +80,7 @@ class ProtocolSupportResult {
   final bool isSupported;
   final String? errorMessage;
 
-  ProtocolSupportResult({
-    required this.isSupported,
-    this.errorMessage,
-  });
+  ProtocolSupportResult({required this.isSupported, this.errorMessage});
 }
 
 /// Kitty 协议文件传输编码器
@@ -103,7 +91,12 @@ class KittyFileTransferEncoder {
   }
 
   /// 创建发送会话开始序列
-  String createSendSession(String sessionId, {CompressionType compression = CompressionType.none, String? bypass, int quiet = 0}) {
+  String createSendSession(
+    String sessionId, {
+    CompressionType compression = CompressionType.none,
+    String? bypass,
+    int quiet = 0,
+  }) {
     String cmd = '\x1b]5113;ac=send;id=$sessionId';
     if (compression == CompressionType.zlib) {
       cmd += ';zip=zlib';
@@ -119,7 +112,12 @@ class KittyFileTransferEncoder {
   }
 
   /// 创建接收会话开始序列
-  String createReceiveSession(String sessionId, {CompressionType compression = CompressionType.none, String? bypass, int quiet = 0}) {
+  String createReceiveSession(
+    String sessionId, {
+    CompressionType compression = CompressionType.none,
+    String? bypass,
+    int quiet = 0,
+  }) {
     String cmd = '\x1b]5113;ac=recv;id=$sessionId';
     if (compression == CompressionType.zlib) {
       cmd += ';zip=zlib';
@@ -147,7 +145,8 @@ class KittyFileTransferEncoder {
     String? linkTarget,
   }) {
     final encodedName = encodeFileName(fileName);
-    String cmd = '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize';
+    String cmd =
+        '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize';
 
     // 文件类型
     switch (fileType) {
@@ -197,7 +196,8 @@ class KittyFileTransferEncoder {
     int? mtime,
   }) {
     final encodedName = encodeFileName(dirName);
-    String cmd = '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;ft=directory';
+    String cmd =
+        '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;ft=directory';
 
     if (permissions != null) {
       cmd += ';prm=$permissions';
@@ -280,10 +280,13 @@ class KittyFileTransferEncoder {
 class KittyFileTransferService {
   final KittyFileTransferEncoder _encoder = KittyFileTransferEncoder();
   final TerminalSession? _session;
-  String _currentPath = '/';
+  String _currentPath;
+  SftpClient? _sftpClient;
 
   // ignore: prefer_const_constructors
-  KittyFileTransferService({TerminalSession? session}) : _session = session;
+  KittyFileTransferService({TerminalSession? session, String initialPath = '/'})
+    : _session = session,
+      _currentPath = initialPath;
 
   /// 当前路径
   String get currentPath => _currentPath;
@@ -294,32 +297,102 @@ class KittyFileTransferService {
   /// 是否支持 Kitty 协议
   bool get supportsKittyProtocol => false;
 
+  /// 获取 SFTP 客户端
+  Future<SftpClient?> _getSftpClient() async {
+    if (_sftpClient != null) return _sftpClient;
+
+    // 尝试从 inputService 获取 SFTP 客户端
+    final inputService = _session?.inputService;
+    if (inputService == null) return null;
+
+    // 检查是否是 SshService
+    if (inputService is SshService) {
+      _sftpClient = await inputService.getSftpClient();
+    }
+    return _sftpClient;
+  }
+
   /// 获取当前目录文件列表
   Future<List<FileItem>> listCurrentDirectory() async {
     if (_session == null) {
       throw Exception('未连接到终端');
     }
 
-    // 发送 ls 命令
-    final outputBuffer = StringBuffer();
+    // 尝试使用 SFTP 协议获取文件列表
+    final sftp = await _getSftpClient();
+    if (sftp != null) {
+      try {
+        final items = <FileItem>[];
+        final entries = await sftp.listdir(_currentPath);
+        for (final entry in entries) {
+          // 跳过 . 和 ..
+          if (entry.filename == '.' || entry.filename == '..') continue;
 
-    // 监听终端输出
-    final subscription = _session.inputService.outputStream.listen((output) {
-      outputBuffer.write(output);
-    });
+          final attr = entry.attr;
+          final isDir = attr.isDirectory;
 
-    // 执行 ls 命令
-    await _session.executeCommand('ls -la --time-style=long-iso');
+          items.add(
+            FileItem(
+              name: entry.filename,
+              path: _currentPath == '/'
+                  ? '/${entry.filename}'
+                  : '$_currentPath/${entry.filename}',
+              isDirectory: isDir,
+              size: attr.size ?? 0,
+              modified: attr.modifyTime != null
+                  ? DateTime.fromMillisecondsSinceEpoch(attr.modifyTime! * 1000)
+                  : null,
+              permissions: _formatPermissions(attr.mode?.value),
+            ),
+          );
+        }
+        return items;
+      } catch (e) {
+        // SFTP 失败，回退到 shell 命令
+      }
+    }
 
-    // 等待一段时间让输出完成
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // 取消订阅
-    await subscription.cancel();
+    // 使用 shell 命令作为回退方案
+    const lsCommand = 'ls -la';
+    final output = await _session.inputService.executeCommand(
+      'cd "$_currentPath" && $lsCommand',
+      silent: true,
+    );
 
     // 解析输出
-    final output = outputBuffer.toString();
-    return FileListParser.parse(output, _currentPath);
+    final items = FileListParser.parse(output, _currentPath, osType: 'linux');
+    return items;
+  }
+
+  String _formatPermissions(int? mode) {
+    if (mode == null) return '';
+    // 将 mode 转换为权限字符串（如 drwxr-xr-x）
+    final buffer = StringBuffer();
+
+    // 文件类型
+    if ((mode & 0x4000) != 0)
+      buffer.write('d');
+    else if ((mode & 0xA000) != 0)
+      buffer.write('l');
+    else
+      buffer.write('-');
+
+    // 所有者权限
+    buffer.write((mode & 0x100) != 0 ? 'r' : '-');
+    buffer.write((mode & 0x080) != 0 ? 'w' : '-');
+    buffer.write((mode & 0x040) != 0 ? 'x' : '-');
+
+    // 组权限
+    buffer.write((mode & 0x020) != 0 ? 'r' : '-');
+    buffer.write((mode & 0x010) != 0 ? 'w' : '-');
+    buffer.write((mode & 0x008) != 0 ? 'x' : '-');
+
+    // 其他用户权限
+    buffer.write((mode & 0x004) != 0 ? 'r' : '-');
+    buffer.write((mode & 0x002) != 0 ? 'w' : '-');
+    buffer.write((mode & 0x001) != 0 ? 'x' : '-');
+
+    return buffer.toString();
   }
 
   /// 进入目录
@@ -332,7 +405,8 @@ class KittyFileTransferService {
         ? path
         : (_currentPath == '/' ? '/$path' : '$_currentPath/$path');
 
-    await _session.executeCommand('cd "$newPath"');
+    // 直接更新路径，不需要执行 cd 命令
+    // 因为我们使用绝对路径来访问文件
     _currentPath = newPath;
   }
 
@@ -343,7 +417,7 @@ class KittyFileTransferService {
     }
     if (_currentPath == '/') return;
 
-    await _session.executeCommand('cd ..');
+    // 直接更新路径，不需要执行 cd 命令
     final parts = _currentPath.split('/');
     parts.removeLast();
     _currentPath = parts.isEmpty ? '/' : parts.join('/');
@@ -351,19 +425,31 @@ class KittyFileTransferService {
 
   /// 创建目录
   Future<void> createDirectory(String name) async {
+    final sftp = await _getSftpClient();
+    if (sftp != null) {
+      final path = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
+      await sftp.mkdir(path);
+      return;
+    }
+
+    // 回退到 shell 命令
     if (_session == null) {
       throw Exception('未连接到终端');
     }
 
-    final path = _currentPath == '/'
-        ? '/$name'
-        : '$_currentPath/$name';
-
+    final path = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
     await _session.executeCommand('mkdir "$path"');
   }
 
   /// 删除文件
   Future<void> removeFile(String path) async {
+    final sftp = await _getSftpClient();
+    if (sftp != null) {
+      await sftp.remove(path);
+      return;
+    }
+
+    // 回退到 shell 命令
     if (_session == null) {
       throw Exception('未连接到终端');
     }
@@ -373,6 +459,13 @@ class KittyFileTransferService {
 
   /// 删除目录
   Future<void> removeDirectory(String path) async {
+    final sftp = await _getSftpClient();
+    if (sftp != null) {
+      await sftp.rmdir(path);
+      return;
+    }
+
+    // 回退到 shell 命令
     if (_session == null) {
       throw Exception('未连接到终端');
     }
@@ -385,7 +478,11 @@ class KittyFileTransferService {
   /// [remotePath] - 远程文件路径
   /// [localPath] - 本地保存路径
   /// [onProgress] - 进度回调（可选）
-  Future<void> downloadFile(String remotePath, String localPath, {TransferProgressCallback? onProgress}) async {
+  Future<void> downloadFile(
+    String remotePath,
+    String localPath, {
+    TransferProgressCallback? onProgress,
+  }) async {
     if (_session == null) {
       throw Exception('未连接到终端，无法下载文件。请确保已建立 SSH 连接。');
     }
@@ -417,16 +514,19 @@ class KittyFileTransferService {
               transferred += event.data!.length;
 
               if (onProgress != null) {
-                final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+                final elapsed =
+                    (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
                 final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
 
-                onProgress(TransferProgress(
-                  fileName: fileName,
-                  transferredBytes: transferred,
-                  totalBytes: totalSize,
-                  percent: totalSize > 0 ? transferred / totalSize * 100 : 0,
-                  bytesPerSecond: speed,
-                ));
+                onProgress(
+                  TransferProgress(
+                    fileName: fileName,
+                    transferredBytes: transferred,
+                    totalBytes: totalSize,
+                    percent: totalSize > 0 ? transferred / totalSize * 100 : 0,
+                    bytesPerSecond: speed,
+                  ),
+                );
               }
             }
             break;
@@ -447,9 +547,7 @@ class KittyFileTransferService {
     );
 
     // 发送接收会话请求
-    _session.writeRaw(
-      '\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\'
-    );
+    _session.writeRaw('\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\');
 
     // 等待传输完成或超时
     try {
@@ -466,37 +564,32 @@ class KittyFileTransferService {
   /// 检查远程是否支持 Kitty 协议
   Future<ProtocolSupportResult> checkProtocolSupport() async {
     if (_session == null) {
-      return ProtocolSupportResult(
-        isSupported: false,
-        errorMessage: '未连接到终端',
-      );
+      return ProtocolSupportResult(isSupported: false, errorMessage: '未连接到终端');
     }
 
     // 尝试执行 ki version 命令
     // 如果不支持，将返回 "command not found" 或类似错误
-    final outputBuffer = StringBuffer();
+    try {
+      final output = await _session.inputService.executeCommand(
+        'ki version',
+        silent: true,
+      );
 
-    final subscription = _session.inputService.outputStream.listen((output) {
-      outputBuffer.write(output);
-    });
+      // 检查输出中是否包含版本信息
+      if (output.contains('ki version') || output.contains('kitty')) {
+        return ProtocolSupportResult(isSupported: true);
+      }
 
-    _session.executeCommand('ki version');
-
-    // 等待响应
-    await Future.delayed(const Duration(seconds: 2));
-    await subscription.cancel();
-
-    final output = outputBuffer.toString();
-
-    // 检查输出中是否包含版本信息
-    if (output.contains('ki version') || output.contains('kitty')) {
-      return ProtocolSupportResult(isSupported: true);
+      return ProtocolSupportResult(
+        isSupported: false,
+        errorMessage: '远程服务器不支持 Kitty 文件传输协议。请确保远程已安装 Kitty 的 ki 工具。',
+      );
+    } catch (e) {
+      return ProtocolSupportResult(
+        isSupported: false,
+        errorMessage: '远程服务器不支持 Kitty 文件传输协议。请确保远程已安装 Kitty 的 ki 工具。',
+      );
     }
-
-    return ProtocolSupportResult(
-      isSupported: false,
-      errorMessage: '远程服务器不支持 Kitty 文件传输协议。请确保远程已安装 Kitty 的 ki 工具。',
-    );
   }
 
   /// 发送文件到终端（发送模式）
@@ -519,6 +612,14 @@ class KittyFileTransferService {
       throw Exception('未连接到终端，无法发送文件。请确保已建立 SSH 连接。');
     }
 
+    // 检查远程是否支持 Kitty 协议
+    final support = await checkProtocolSupport();
+    if (!support.isSupported) {
+      throw Exception(
+        '远程服务器不支持 Kitty 文件传输协议。\n${support.errorMessage}\n\n请使用 SCP 命令手动上传文件。',
+      );
+    }
+
     final file = File(localPath);
     if (!await file.exists()) {
       throw Exception('文件不存在: $localPath');
@@ -530,20 +631,24 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(_encoder.createSendSession(
-      transferId,
-      compression: compression,
-      bypass: bypass,
-      quiet: quiet,
-    ));
+    _session.writeRaw(
+      _encoder.createSendSession(
+        transferId,
+        compression: compression,
+        bypass: bypass,
+        quiet: quiet,
+      ),
+    );
 
     // 2. 发送文件元数据
-    _session.writeRaw(_encoder.createFileMetadata(
-      sessionId: transferId,
-      fileId: fileId,
-      fileName: remoteFileName,
-      fileSize: fileSize,
-    ));
+    _session.writeRaw(
+      _encoder.createFileMetadata(
+        sessionId: transferId,
+        fileId: fileId,
+        fileName: remoteFileName,
+        fileSize: fileSize,
+      ),
+    );
 
     // 3. 分块发送数据
     final stream = file.openRead();
@@ -551,23 +656,28 @@ class KittyFileTransferService {
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
-      _session.writeRaw(_encoder.createDataChunk(
-        sessionId: transferId,
-        fileId: fileId,
-        data: chunk,
-      ));
+      _session.writeRaw(
+        _encoder.createDataChunk(
+          sessionId: transferId,
+          fileId: fileId,
+          data: chunk,
+        ),
+      );
 
       transferred += chunk.length;
-      final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+      final elapsed =
+          (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
       final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
 
-      onProgress(TransferProgress(
-        fileName: fileName,
-        transferredBytes: transferred,
-        totalBytes: fileSize,
-        percent: transferred / fileSize * 100,
-        bytesPerSecond: speed,
-      ));
+      onProgress(
+        TransferProgress(
+          fileName: fileName,
+          transferredBytes: transferred,
+          totalBytes: fileSize,
+          percent: transferred / fileSize * 100,
+          bytesPerSecond: speed,
+        ),
+      );
     }
 
     // 4. 结束会话
@@ -598,22 +708,26 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(_encoder.createSendSession(
-      transferId,
-      compression: compression,
-      bypass: bypass,
-      quiet: quiet,
-    ));
+    _session.writeRaw(
+      _encoder.createSendSession(
+        transferId,
+        compression: compression,
+        bypass: bypass,
+        quiet: quiet,
+      ),
+    );
 
     // 2. 发送符号链接元数据
-    _session.writeRaw(_encoder.createFileMetadata(
-      sessionId: transferId,
-      fileId: fileId,
-      fileName: remoteFileName,
-      fileSize: 0,
-      fileType: FileType.symlink,
-      linkTarget: target,
-    ));
+    _session.writeRaw(
+      _encoder.createFileMetadata(
+        sessionId: transferId,
+        fileId: fileId,
+        fileName: remoteFileName,
+        fileSize: 0,
+        fileType: FileType.symlink,
+        linkTarget: target,
+      ),
+    );
 
     // 3. 发送结束
     _session.writeRaw(_encoder.createEndData(transferId, fileId));
@@ -621,13 +735,15 @@ class KittyFileTransferService {
     // 4. 结束会话
     _session.writeRaw(_encoder.createFinishSession(transferId));
 
-    onProgress(TransferProgress(
-      fileName: fileName,
-      transferredBytes: 0,
-      totalBytes: 0,
-      percent: 100,
-      bytesPerSecond: 0,
-    ));
+    onProgress(
+      TransferProgress(
+        fileName: fileName,
+        transferredBytes: 0,
+        totalBytes: 0,
+        percent: 100,
+        bytesPerSecond: 0,
+      ),
+    );
   }
 
   /// 发送目录（递归）
@@ -651,51 +767,64 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(_encoder.createSendSession(
-      transferId,
-      compression: compression,
-      bypass: bypass,
-      quiet: quiet,
-    ));
+    _session.writeRaw(
+      _encoder.createSendSession(
+        transferId,
+        compression: compression,
+        bypass: bypass,
+        quiet: quiet,
+      ),
+    );
 
     // 递归发送文件和目录
-    Future<void> sendEntity(FileSystemEntity entity, String remoteEntityPath) async {
+    Future<void> sendEntity(
+      FileSystemEntity entity,
+      String remoteEntityPath,
+    ) async {
       if (entity is File) {
         final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
         final fileSize = await entity.length();
 
-        _session.writeRaw(_encoder.createFileMetadata(
-          sessionId: transferId,
-          fileId: fileId,
-          fileName: remoteEntityPath,
-          fileSize: fileSize,
-        ));
+        _session.writeRaw(
+          _encoder.createFileMetadata(
+            sessionId: transferId,
+            fileId: fileId,
+            fileName: remoteEntityPath,
+            fileSize: fileSize,
+          ),
+        );
 
         final stream = entity.openRead();
         int transferred = 0;
         await for (final chunk in stream) {
-          _session.writeRaw(_encoder.createDataChunk(
-            sessionId: transferId,
-            fileId: fileId,
-            data: chunk,
-          ));
+          _session.writeRaw(
+            _encoder.createDataChunk(
+              sessionId: transferId,
+              fileId: fileId,
+              data: chunk,
+            ),
+          );
           transferred = transferred + chunk.length;
         }
 
-        onProgress(TransferProgress(
-          fileName: p.basename(remoteEntityPath),
-          transferredBytes: transferred,
-          totalBytes: fileSize,
-          percent: 0, // 目录传输不计算百分比
-          bytesPerSecond: 0,
-        ));
+        onProgress(
+          TransferProgress(
+            fileName: p.basename(remoteEntityPath),
+            transferredBytes: transferred,
+            totalBytes: fileSize,
+            percent: 0, // 目录传输不计算百分比
+            bytesPerSecond: 0,
+          ),
+        );
       } else if (entity is Directory) {
         final dirId = 'd${DateTime.now().millisecondsSinceEpoch}';
-        _session.writeRaw(_encoder.createDirectoryMetadata(
-          sessionId: transferId,
-          fileId: dirId,
-          dirName: remoteEntityPath,
-        ));
+        _session.writeRaw(
+          _encoder.createDirectoryMetadata(
+            sessionId: transferId,
+            fileId: dirId,
+            dirName: remoteEntityPath,
+          ),
+        );
 
         // 递归处理子目录
         final children = entity.listSync();
@@ -707,24 +836,28 @@ class KittyFileTransferService {
       } else if (entity is Link) {
         final target = await entity.target();
         final linkId = 'l${DateTime.now().millisecondsSinceEpoch}';
-        _session.writeRaw(_encoder.createFileMetadata(
-          sessionId: transferId,
-          fileId: linkId,
-          fileName: remoteEntityPath,
-          fileSize: 0,
-          fileType: FileType.symlink,
-          linkTarget: target,
-        ));
+        _session.writeRaw(
+          _encoder.createFileMetadata(
+            sessionId: transferId,
+            fileId: linkId,
+            fileName: remoteEntityPath,
+            fileSize: 0,
+            fileType: FileType.symlink,
+            linkTarget: target,
+          ),
+        );
       }
     }
 
     // 发送根目录
     final dirName = p.basename(localPath);
-    _session.writeRaw(_encoder.createDirectoryMetadata(
-      sessionId: transferId,
-      fileId: 'root',
-      dirName: remotePath,
-    ));
+    _session.writeRaw(
+      _encoder.createDirectoryMetadata(
+        sessionId: transferId,
+        fileId: 'root',
+        dirName: remotePath,
+      ),
+    );
 
     // 发送所有内容
     final children = dir.listSync();
@@ -737,13 +870,15 @@ class KittyFileTransferService {
     // 结束会话
     _session.writeRaw(_encoder.createFinishSession(transferId));
 
-    onProgress(TransferProgress(
-      fileName: dirName,
-      transferredBytes: 0,
-      totalBytes: 0,
-      percent: 100,
-      bytesPerSecond: 0,
-    ));
+    onProgress(
+      TransferProgress(
+        fileName: dirName,
+        transferredBytes: 0,
+        totalBytes: 0,
+        percent: 100,
+        bytesPerSecond: 0,
+      ),
+    );
   }
 
   /// 发送文件带元数据
@@ -773,23 +908,27 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 开始发送会话
-    _session.writeRaw(_encoder.createSendSession(
-      transferId,
-      compression: compression,
-      bypass: bypass,
-      quiet: quiet,
-    ));
+    _session.writeRaw(
+      _encoder.createSendSession(
+        transferId,
+        compression: compression,
+        bypass: bypass,
+        quiet: quiet,
+      ),
+    );
 
     // 发送文件元数据（带权限和时间）
-    _session.writeRaw(_encoder.createFileMetadata(
-      sessionId: transferId,
-      fileId: fileId,
-      fileName: remoteFileName,
-      fileSize: fileSize,
-      transmissionType: transmissionType,
-      permissions: permissions,
-      mtime: mtime,
-    ));
+    _session.writeRaw(
+      _encoder.createFileMetadata(
+        sessionId: transferId,
+        fileId: fileId,
+        fileName: remoteFileName,
+        fileSize: fileSize,
+        transmissionType: transmissionType,
+        permissions: permissions,
+        mtime: mtime,
+      ),
+    );
 
     // 分块发送数据
     final stream = file.openRead();
@@ -797,23 +936,28 @@ class KittyFileTransferService {
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
-      _session.writeRaw(_encoder.createDataChunk(
-        sessionId: transferId,
-        fileId: fileId,
-        data: chunk,
-      ));
+      _session.writeRaw(
+        _encoder.createDataChunk(
+          sessionId: transferId,
+          fileId: fileId,
+          data: chunk,
+        ),
+      );
 
       transferred += chunk.length;
-      final elapsed = (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
+      final elapsed =
+          (DateTime.now().millisecondsSinceEpoch - startTime) / 1000;
       final speed = elapsed > 0 ? (transferred / elapsed).round() : 0;
 
-      onProgress(TransferProgress(
-        fileName: fileName,
-        transferredBytes: transferred,
-        totalBytes: fileSize,
-        percent: transferred / fileSize * 100,
-        bytesPerSecond: speed,
-      ));
+      onProgress(
+        TransferProgress(
+          fileName: fileName,
+          transferredBytes: transferred,
+          totalBytes: fileSize,
+          percent: transferred / fileSize * 100,
+          bytesPerSecond: speed,
+        ),
+      );
     }
 
     // 结束会话

@@ -58,7 +58,8 @@ class LocalTerminalService implements TerminalInputService {
           shell = _shellPath;
         } else {
           // 使用系统配置的默认 shell（从环境变量 SHELL 获取）
-          shell = Platform.environment['SHELL'] ??
+          shell =
+              Platform.environment['SHELL'] ??
               (Platform.isMacOS ? '/bin/zsh' : '/bin/bash');
         }
         arguments = ['-l']; // 登录shell
@@ -151,7 +152,7 @@ class LocalTerminalService implements TerminalInputService {
 
   /// 执行命令（非交互式）
   @override
-  Future<String> executeCommand(String command) async {
+  Future<String> executeCommand(String command, {bool silent = false}) async {
     if (_pty == null || _isShuttingDown) {
       throw Exception('本地终端未启动');
     }

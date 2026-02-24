@@ -111,7 +111,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
     try {
       // 尝试下载配置来测试连接
-      await provider.downloadConfig();
+      await provider.testConnection();
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -180,10 +180,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     Text(
                       _platform == SyncPlatform.giteeGist
                           ? '请输入 Gitee Personal Access Token，'
-                              '需要在 Gitee 设置 → 安全设置 → 个人访问令牌 中创建。'
+                                '需要在 Gitee 设置 → 安全设置 → 个人访问令牌 中创建。'
                           : '请输入 GitHub Personal Access Token，'
-                              '需要在 GitHub Settings → Developer settings → Personal access tokens 中创建，'
-                              '并勾选 gist 权限。',
+                                '需要在 GitHub Settings → Developer settings → Personal access tokens 中创建，'
+                                '并勾选 gist 权限。',
                       style: const TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 16),
@@ -226,9 +226,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       onPressed: () async {
                         final url = _platform == SyncPlatform.giteeGist
                             ? Uri.parse(
-                                'https://gitee.com/profile/personal_access_tokens')
+                                'https://gitee.com/profile/personal_access_tokens',
+                              )
                             : Uri.parse(
-                                'https://github.com/settings/tokens/new?scopes=gist');
+                                'https://github.com/settings/tokens/new?scopes=gist',
+                              );
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url);
                         }

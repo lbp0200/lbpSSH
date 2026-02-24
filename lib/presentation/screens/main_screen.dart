@@ -38,12 +38,19 @@ class _MainScreenState extends State<MainScreen> {
                 context,
                 listen: false,
               );
+              // 每次点击都创建新的终端会话（即使已存在也创建新的）
               await terminalProvider.createSession(connection);
             },
             onSftpTap: (connection) async {
               final terminalProvider = context.read<TerminalProvider>();
-              // 先创建终端会话
-              await terminalProvider.createSession(connection);
+              // 检查是否已经存在终端会话
+              final existingSession = terminalProvider.getSession(
+                connection.id,
+              );
+              if (existingSession == null) {
+                // 不存在会话，创建新的终端会话
+                await terminalProvider.createSession(connection);
+              }
               // 然后打开 SFTP 页面
               if (context.mounted) {
                 Navigator.push(

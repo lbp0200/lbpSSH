@@ -75,10 +75,7 @@ class CompactConnectionList extends StatelessWidget {
               iconSize: 22,
               tooltip: '新建连接',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 36,
-                minHeight: 36,
-              ),
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 4),
@@ -94,7 +91,8 @@ class CompactConnectionList extends StatelessWidget {
                       onConnectionTap?.call(connection);
                     },
                     onEdit: () => _showConnectionForm(context, connection),
-                    onDelete: () => _deleteConnection(context, provider, connection),
+                    onDelete: () =>
+                        _deleteConnection(context, provider, connection),
                   );
                 },
               ),
@@ -216,6 +214,8 @@ class _CompactConnectionItem extends StatelessWidget {
             }
           },
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
             onLongPress: onEdit,
             child: Container(
               width: double.infinity,

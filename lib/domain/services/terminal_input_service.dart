@@ -13,7 +13,7 @@ abstract class TerminalInputService {
   void sendInput(String input);
 
   /// 执行命令
-  Future<String> executeCommand(String command);
+  Future<String> executeCommand(String command, {bool silent = false});
 
   /// 清理资源
   void dispose();
