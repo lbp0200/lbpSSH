@@ -2,7 +2,7 @@
 
 This document provides guidelines and commands for agentic coding agents working in the lbpSSH Flutter project.
 
-## 🏗️ Build, Lint, and Test Commands
+## Build, Lint, and Test Commands
 
 ### Essential Commands
 ```bash
@@ -17,6 +17,9 @@ flutter clean
 
 # Analyze code
 flutter analyze --no-fatal-infos
+
+# Format code
+dart format .
 
 # Run all tests
 flutter test
@@ -34,40 +37,38 @@ flutter build windows --debug
 
 # Run application
 flutter run -d macos
-flutter run -d linux  
+flutter run -d linux
 flutter run -d windows
 ```
 
 ### Development Workflow
 1. Make code changes
 2. Run `flutter analyze` to check for issues
-3. Run relevant tests with `flutter test test/path/to/specific_test.dart`
-4. Run code generation if needed: `dart run build_runner build --delete-conflicting-outputs`
-5. Build and test: `flutter build macos --debug --no-tree-shake-icons`
+3. Run relevant tests: `flutter test test/path/to/specific_test.dart`
+4. Run code generation if needed
+5. Build and test
 
-## 📝 Code Style Guidelines
-
-### Project Structure
+## Project Structure
 ```
 lib/
-├── core/                    # Core configuration, constants, theme
-├── data/                    # Data models, repositories
-├── domain/                  # Business logic, services
-├── presentation/            # UI screens, widgets, providers
-└── utils/                   # Utility classes
-test/                       # Test files
+├── main.dart              # App entry point, DI setup via MultiProvider
+├── core/                  # Constants, theme configuration
+├── data/                  # Models (JSON-serializable), repositories
+├── domain/                # Services, use cases
+├── presentation/          # Screens, widgets, ChangeNotifier providers
+└── utils/                 # Utilities (encryption, etc.)
+test/                      # Test files
 ```
 
+## Code Style Guidelines
+
 ### Import Organization
-- **Dart/Flutter imports first**, sorted alphabetically
-- **Third-party package imports** second, sorted alphabetically
-- **Project imports** last, with relative paths
-- Use explicit imports, avoid `import 'package:/*/**`
+1. Dart/Flutter imports (alphabetical)
+2. Third-party package imports (alphabetical)
+3. Project imports with relative paths (alphabetical)
 
 ```dart
-// Good import order
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -79,108 +80,48 @@ import '../providers/connection_provider.dart';
 ```
 
 ### Naming Conventions
-- **Files**: `snake_case.dart`
-- **Classes**: `PascalCase`
-- **Variables/Methods**: `camelCase`
-- **Constants**: `SCREAMING_SNAKE_CASE`
-- **Private members**: Leading underscore (`_privateMethod`)
+- Files: `snake_case.dart`
+- Classes: `PascalCase`
+- Variables/Methods: `camelCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Private members: Leading underscore (`_privateMethod`)
 
 ### Type Guidelines
-- **Always specify return types** for methods
-- **Use `final`** by default, `var` only when necessary
-- **Prefer concrete types** over `dynamic`
-- **Use `required`** for required named parameters
+- Always specify return types for methods
+- Use `final` by default, `var` only when necessary
+- Prefer concrete types over `dynamic`
+- Use `required` for required named parameters
 
-```dart
-// Good
-class SshConnection {
-  final String id;
-  final String name;
-  final int port;
-  
-  const SshConnection({
-    required this.id,
-    required this.name,
-    this.port = 22,
-  });
-  
-  void connect() {
-    // Implementation
-  }
-}
-```
+### Model Pattern
+Models use `@JsonSerializable()` with `part '*.g.dart'` and include:
+- `copyWith()` method
+- `fromJson()` and `toJson()` factories
 
-### Widget Construction
-- **Use const constructors** when possible
-- **Break long widgets** into smaller components
-- **Extract widgets** to separate files when >100 lines
-- **Use named parameters** for better readability
-
-```dart
-// Good
-class ConnectionList extends StatelessWidget {
-  const ConnectionList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SSH Connections'),
-      ),
-      body: const ConnectionListView(),
-    );
-  }
-}
-```
+### Widget Guidelines
+- Use `const` constructors when possible
+- Extract widgets >100 lines to separate files
+- Always specify `Key` parameter
+- Break long widgets into smaller components
 
 ### Error Handling
-- **Use try-catch** for async operations
-- **Provide user-friendly error messages**
-- **Log errors appropriately** (avoid sensitive data)
-- **Handle null states** in UI
+- Use try-catch for async operations
+- Check `mounted`/`context.mounted` in async callbacks
+- Provide user-friendly error messages
+- Log errors appropriately (avoid sensitive data)
+
+## State Management
+Providers use `ChangeNotifier` via `MultiProvider` in `main.dart`:
+- Check `mounted` before context operations after await
+- Use `if (context.mounted)` guard pattern
+
+## Testing Guidelines
+- Unit tests: `test/models/`, `test/utils/`, `test/repositories/`
+- Widget tests: `test/widgets/`
+- Naming: `*_test.dart`
+- Group tests by functionality with `group()`
+- Mock external dependencies
 
 ```dart
-// Good
-Future<void> _saveConnection() async {
-  try {
-    await provider.saveConnection(connection);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connection saved')),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Save failed: $e')),
-      );
-    }
-  }
-}
-```
-
-### Code Generation
-- **Run build_runner** after modifying model classes
-- **Use `part`** and `part of** for generated files
-- **Add `json_annotation`** for JSON serialization
-- **Always run with `--delete-conflicting-outputs`**
-
-### Flutter-Specific Guidelines
-- **Use `Key` parameters** for widgets
-- **Implement `Disposable`** for services
-- **Use `ChangeNotifier`** for state management
-- **Always check `mounted`** in async callbacks
-- **Use proper `BuildContext` usage** (no across async gaps)
-
-### Testing Guidelines
-- **Unit tests**: test/models/, test/utils/, test/repositories/
-- **Widget tests**: test/widgets/
-- **Naming**: `*_test.dart`
-- **Group tests** by functionality
-- **Mock external dependencies**
-
-```dart
-// Good test structure
 void main() {
   group('SshConnection', () {
     late SshConnection connection;
@@ -188,63 +129,51 @@ void main() {
     setUp(() {
       connection = SshConnection(
         id: 'test-id',
-        name: 'Test Connection',
+        name: 'Test',
         host: 'localhost',
         username: 'test',
         authType: AuthType.password,
       );
     });
     
-    test('should create connection with default port', () {
+    test('should create with default port', () {
       expect(connection.port, equals(22));
     });
   });
 }
 ```
 
-## 🔧 Development Configuration
-
-### Analysis Options
-- Uses Flutter's standard `flutter.yaml` lints
-- Fatal infos excluded to focus on critical issues
-- Custom rules can be added in `analysis_options.yaml`
-
-### Build Configuration
-- **Flutter 3.10.7+** required
-- **Dart 3.10.7+** required
-- **Desktop platforms**: Windows, Linux, macOS
-- **No mobile platforms** supported
-
-### Dependencies
-- **Core**: Flutter SDK, dart language
-- **UI**: Material/Cupertino icons
+## Dependencies
 - **SSH**: dartssh2
-- **Terminal**: xterm, Process API
-- **State**: Provider pattern
-- **Networking**: Dio
-- **Storage**: JSON files, SharedPreferences
-- **Development**: build_runner, json_serializable
+- **Terminal**: kterm, flutter_pty
+- **State**: provider
+- **Routing**: go_router
+- **Networking**: dio
+- **Encryption**: encrypt
 
-## 🚨 Critical Development Rules
+## Critical Rules
 
 1. **Never commit secrets** (passwords, tokens, keys) in code
 2. **Always run `flutter analyze`** before committing
 3. **Test on multiple platforms** before pushing
-4. **Update documentation** for new features
-5. **Use semantic versioning** for releases
-6. **Follow Material Design** guidelines for UI
-7. **Implement proper error boundaries** for critical operations
-8. **Use consistent code formatting** (automatic via dart format)
+4. **Follow Material Design** guidelines for UI
+5. **Use consistent code formatting** (`dart format .`)
 
-## 📋 Quick Reference
+## Release Process
+```bash
+# 1. Update version in pubspec.yaml
+# 2. Commit: git add pubspec.yaml && git commit -m "release: bump version to X.Y.Z"
+# 3. Tag: git tag vX.Y.Z
+# 4. Push: git push && git push origin vX.Y.Z
+```
+
+## Quick Reference
 
 | Task | Command |
 |------|---------|
 | Install deps | `flutter pub get` |
-| Analyze code | `flutter analyze` |
-| Format code | `dart format .` |
-| Run tests | `flutter test` |
-| Build project | `flutter build macos --debug` |
-| Generate code | `dart run build_runner build --delete-conflicting-outputs` |
-
-When working in this repository, always prioritize code quality, user experience, and platform compatibility.
+| Analyze | `flutter analyze` |
+| Format | `dart format .` |
+| Test | `flutter test` |
+| Build | `flutter build macos --debug` |
+| Generate | `dart run build_runner build --delete-conflicting-outputs` |
