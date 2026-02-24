@@ -93,6 +93,26 @@ class TerminalProvider extends ChangeNotifier {
     // 自动连接 SSH
     try {
       await sshService.connect(connection);
+
+      // 获取 OS 类型和工作目录
+      final session = _terminalService.getSession(connection.id);
+      if (session != null) {
+        try {
+          // 检测 OS 类型
+          final osResult = await sshService.executeCommand('uname -s');
+          session.setOsType(osResult.trim());
+        } catch (e) {
+          // 使用默认 OS 类型
+        }
+
+        try {
+          // 获取工作目录
+          final pwdResult = await sshService.executeCommand('pwd');
+          session.setWorkingDirectory(pwdResult.trim());
+        } catch (e) {
+          // 使用默认目录
+        }
+      }
     } catch (e) {
       // 连接失败时关闭会话并抛出异常
       closeSession(connection.id);
