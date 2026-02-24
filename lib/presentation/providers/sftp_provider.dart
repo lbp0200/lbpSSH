@@ -40,11 +40,16 @@ class SftpProvider extends ChangeNotifier {
     // 创建 KittyFileTransferService
     final transferService = KittyFileTransferService(session: session);
 
+    // 使用终端当前工作目录作为初始目录
+    final initialPath = session.workingDirectory.isNotEmpty
+        ? session.workingDirectory
+        : '/';
+
     final tab = SftpTab(
       id: tabId,
       connection: connection,
       service: transferService,
-      currentPath: '/',
+      currentPath: initialPath,
     );
 
     _tabs[tabId] = tab;
