@@ -40,20 +40,25 @@ class _MainScreenState extends State<MainScreen> {
               );
               await terminalProvider.createSession(connection);
             },
-            onSftpTap: (connection) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SftpBrowserScreen(connection: connection),
-                ),
-              );
+            onSftpTap: (connection) async {
+              final terminalProvider = context.read<TerminalProvider>();
+              // 先创建终端会话
+              await terminalProvider.createSession(connection);
+              // 然后打开 SFTP 页面
+              if (context.mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        SftpBrowserScreen(connection: connection),
+                  ),
+                );
+              }
             },
           ),
           const VerticalDivider(width: 1),
           // Terminal view
-          const Expanded(
-            child: TerminalTabsView(),
-          ),
+          const Expanded(child: TerminalTabsView()),
         ],
       ),
     );
