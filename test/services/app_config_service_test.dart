@@ -8,7 +8,7 @@ void main() {
     test('should create with default values', () {
       final config = AppConfig();
 
-      expect(config.terminal.fontFamily, 'Menlo');
+      expect(config.terminal.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(config.defaultTerminal.execMac, TerminalType.iterm2);
     });
 
@@ -31,7 +31,7 @@ void main() {
 
       expect(json.containsKey('terminal'), true);
       expect(json.containsKey('defaultTerminal'), true);
-      expect(json['terminal']['fontFamily'], 'Menlo');
+      expect(json['terminal']['fontFamily'], 'JetBrainsMonoNerdFontMono');
     });
 
     test('should deserialize from JSON', () {

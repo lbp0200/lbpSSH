@@ -11,7 +11,6 @@ import 'package:cross_file/cross_file.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/terminal_provider.dart';
-import '../screens/app_settings_screen.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../../domain/services/terminal_service.dart';
@@ -469,31 +468,6 @@ class TerminalTabsView extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // 设置按钮
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AppSettingsScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Icon(
-                          Icons.settings,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
                   // 标签列表
                   Expanded(
                     child: ListView.builder(

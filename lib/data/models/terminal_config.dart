@@ -19,7 +19,7 @@ class TerminalConfig {
   final bool enableKittyProtocol;
 
   TerminalConfig({
-    this.fontFamily = 'Menlo',
+    this.fontFamily = 'JetBrainsMonoNerdFontMono',
     this.fontSize = 13.0,
     this.fontWeight = 400,
     this.letterSpacing = 0.0,

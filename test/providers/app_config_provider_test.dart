@@ -7,7 +7,7 @@ void main() {
     test('should create with default values', () {
       final config = TerminalConfig();
 
-      expect(config.fontFamily, 'Menlo');
+      expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(config.fontSize, 13.0);
       expect(config.fontWeight, 400);
       expect(config.backgroundColor, '#1E1E1E');
@@ -54,7 +54,7 @@ void main() {
 
     test('should deserialize from JSON', () {
       final json = {
-        'fontFamily': 'JetBrains Mono',
+        'fontFamily': 'JetBrainsMonoNerdFontMono',
         'fontSize': 15.0,
         'fontWeight': 500,
         'letterSpacing': 0.0,
@@ -70,7 +70,7 @@ void main() {
 
       final config = TerminalConfig.fromJson(json);
 
-      expect(config.fontFamily, 'JetBrains Mono');
+      expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(config.fontSize, 15.0);
       expect(config.shellPath, '/usr/bin/fish');
     });
@@ -112,7 +112,7 @@ void main() {
     test('should provide defaultConfig', () {
       final defaultConfig = TerminalConfig.defaultConfig;
 
-      expect(defaultConfig.fontFamily, 'Menlo');
+      expect(defaultConfig.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(defaultConfig.fontSize, 13.0);
     });
   });

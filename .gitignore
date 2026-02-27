@@ -105,3 +105,4 @@ pubspec.lock  # 建议保留 (对于 Application 项目建议提交，确保团�
               # 除非你正在开发一个 Package 库项目，则可以忽略。
 .claude
 .worktrees
+.opencode

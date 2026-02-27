@@ -8,7 +8,7 @@ part of 'terminal_config.dart';
 
 TerminalConfig _$TerminalConfigFromJson(Map<String, dynamic> json) =>
     TerminalConfig(
-      fontFamily: json['fontFamily'] as String? ?? 'Menlo',
+      fontFamily: json['fontFamily'] as String? ?? 'JetBrainsMonoNerdFontMono',
       fontSize: (json['fontSize'] as num?)?.toDouble() ?? 13.0,
       fontWeight: (json['fontWeight'] as num?)?.toInt() ?? 400,
       letterSpacing: (json['letterSpacing'] as num?)?.toDouble() ?? 0.0,

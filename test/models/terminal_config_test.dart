@@ -6,7 +6,7 @@ void main() {
     test('should create config with default values', () {
       final config = TerminalConfig();
 
-      expect(config.fontFamily, 'Menlo');
+      expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(config.fontSize, 13.0);
       expect(config.fontWeight, 400);
       expect(config.letterSpacing, 0.0);
@@ -52,7 +52,7 @@ void main() {
 
     test('should serialize to JSON', () {
       final config = TerminalConfig(
-        fontFamily: 'Menlo',
+        fontFamily: 'JetBrainsMonoNerdFontMono',
         fontSize: 14.0,
         fontWeight: 400,
         letterSpacing: 0.5,
@@ -68,7 +68,7 @@ void main() {
 
       final json = config.toJson();
 
-      expect(json['fontFamily'], 'Menlo');
+      expect(json['fontFamily'], 'JetBrainsMonoNerdFontMono');
       expect(json['fontSize'], 14.0);
       expect(json['fontWeight'], 400);
       expect(json['letterSpacing'], 0.5);
@@ -175,7 +175,7 @@ void main() {
       final defaultConfig = TerminalConfig.defaultConfig;
 
       expect(defaultConfig, isA<TerminalConfig>());
-      expect(defaultConfig.fontFamily, 'Menlo');
+      expect(defaultConfig.fontFamily, 'JetBrainsMonoNerdFontMono');
       expect(defaultConfig.fontSize, 13.0);
       expect(defaultConfig.backgroundColor, '#1E1E1E');
     });

@@ -96,9 +96,13 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
 
   // 扩展常用字体列表（跨平台支持）
   final List<String> _popularFonts = [
+    // Nerd Fonts（内置，支持 eza --icons 等图标显示）
+    'JetBrainsMonoNerdFontMono',
+    'JetBrainsMonoNerdFont',
     // 等宽编程字体
     'JetBrains Mono',
     'Fira Code',
+    'Source Code Pro',
     'Source Code Pro',
     'Ubuntu Mono',
     'Hack',
