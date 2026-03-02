@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../domain/services/terminal_service.dart';
@@ -51,13 +52,25 @@ class TerminalProvider extends ChangeNotifier {
 
     _services[sessionId] = localService;
 
+    // 获取初始工作目录
+    final initialDir = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        Directory.current.path;
+
+    // 根据工作目录生成初始名称
+    final initialFolderName = initialDir.split('/').last;
+    final initialName = 'local $initialFolderName';
+
     // 先创建会话（这会调用 initialize，设置终端引用）
     final session = _terminalService.createSession(
       id: sessionId,
-      name: '本地终端',
+      name: initialName,
       inputService: localService,
       terminalConfig: terminalConfig,
     );
+
+    // 设置工作目录并更新名称
+    session.setWorkingDirectoryAndUpdateName(initialDir);
 
     // 然后启动 PTY（此时终端引用已设置）
     try {
@@ -66,10 +79,46 @@ class TerminalProvider extends ChangeNotifier {
       rethrow;
     }
 
+    // 启动目录变化监听
+    _startDirectoryWatch(sessionId, localService, session);
+
     _activeSessionId = sessionId;
     notifyListeners();
 
     return session;
+  }
+
+  /// 启动目录变化监听
+  void _startDirectoryWatch(
+    String sessionId,
+    LocalTerminalService localService,
+    TerminalSession session,
+  ) {
+    // 定期检查工作目录（每2秒）
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 2));
+
+      // 检查会话是否还存在
+      if (_services[sessionId] == null) {
+        return false; // 停止监听
+      }
+
+      try {
+        // 执行 pwd 命令获取当前目录
+        final pwdResult = await localService.executeCommand('pwd', silent: true);
+        final currentDir = pwdResult.trim();
+
+        // 如果目录变化了，更新名称
+        if (currentDir != session.workingDirectory) {
+          session.setWorkingDirectoryAndUpdateName(currentDir);
+          notifyListeners();
+        }
+      } catch (e) {
+        // 静默处理错误，继续监听
+      }
+
+      return true; // 继续监听
+    });
   }
 
   /// 创建新的 SSH 终端会话

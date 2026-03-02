@@ -30,7 +30,7 @@ class FileTransferEvent {
 /// 终端会话
 class TerminalSession {
   final String id;
-  final String name;
+  String _name;
   final TerminalInputService inputService;
   final Terminal terminal;
   final TerminalController controller;
@@ -61,10 +61,11 @@ class TerminalSession {
 
   TerminalSession({
     required this.id,
-    required this.name,
+    required String name,
     required this.inputService,
     TerminalConfig? terminalConfig,
-  }) : terminal = Terminal(maxLines: 10000),
+  }) : _name = name,
+       terminal = Terminal(maxLines: 10000),
        controller = TerminalController() {
     // 禁用 Kitty 键盘模式，使用传统终端序列
     // 这样可以确保与所有 SSH 服务器兼容
@@ -178,6 +179,32 @@ class TerminalSession {
   /// 发送原始字符到终端（用于发送 OSC 序列）
   void writeRaw(String data) {
     terminal.write(data);
+  }
+
+  /// 获取会话名称
+  String get name => _name;
+
+  /// 设置会话名称
+  void setName(String newName) {
+    _name = newName;
+  }
+
+  /// 根据工作目录更新本地终端名称
+  /// 格式: local {文件夹名称}
+  void updateLocalTerminalName() {
+    if (workingDirectory.isEmpty || workingDirectory == '/') {
+      _name = 'local /';
+      return;
+    }
+    // 获取路径的最后一个部分作为文件夹名称
+    final folderName = workingDirectory.split('/').last;
+    _name = 'local $folderName';
+  }
+
+  /// 设置当前工作目录并自动更新名称（仅用于本地终端）
+  void setWorkingDirectoryAndUpdateName(String path) {
+    workingDirectory = path;
+    updateLocalTerminalName();
   }
 
   /// 设置当前工作目录

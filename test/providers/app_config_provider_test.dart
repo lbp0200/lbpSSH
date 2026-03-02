@@ -8,7 +8,7 @@ void main() {
       final config = TerminalConfig();
 
       expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(config.fontSize, 13.0);
+      expect(config.fontSize, 17.0);
       expect(config.fontWeight, 400);
       expect(config.backgroundColor, '#1E1E1E');
       expect(config.foregroundColor, '#FFFFFF');
@@ -101,19 +101,19 @@ void main() {
     });
 
     test('should create copy with modified fields', () {
-      final original = TerminalConfig(fontSize: 13.0);
+      final original = TerminalConfig(fontSize: 17.0);
       final modified = original.copyWith(fontSize: 18.0, backgroundColor: '#000000');
 
       expect(modified.fontSize, 18.0);
       expect(modified.backgroundColor, '#000000');
-      expect(original.fontSize, 13.0);
+      expect(original.fontSize, 17.0);
     });
 
     test('should provide defaultConfig', () {
       final defaultConfig = TerminalConfig.defaultConfig;
 
       expect(defaultConfig.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(defaultConfig.fontSize, 13.0);
+      expect(defaultConfig.fontSize, 17.0);
     });
   });
 

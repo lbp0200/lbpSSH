@@ -20,10 +20,10 @@ class TerminalConfig {
 
   TerminalConfig({
     this.fontFamily = 'JetBrainsMonoNerdFontMono',
-    this.fontSize = 13.0,
+    this.fontSize = 17.0,
     this.fontWeight = 400,
     this.letterSpacing = 0.0,
-    this.lineHeight = 1.0,
+    this.lineHeight = 1.2,
     this.backgroundColor = '#1E1E1E',
     this.foregroundColor = '#FFFFFF',
     this.cursorColor = '#FFFFFF',

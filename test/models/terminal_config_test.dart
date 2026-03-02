@@ -7,10 +7,10 @@ void main() {
       final config = TerminalConfig();
 
       expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(config.fontSize, 13.0);
+      expect(config.fontSize, 17.0);
       expect(config.fontWeight, 400);
       expect(config.letterSpacing, 0.0);
-      expect(config.lineHeight, 1.0);
+      expect(config.lineHeight, 1.2);
       expect(config.backgroundColor, '#1E1E1E');
       expect(config.foregroundColor, '#FFFFFF');
       expect(config.cursorColor, '#FFFFFF');
@@ -176,8 +176,16 @@ void main() {
 
       expect(defaultConfig, isA<TerminalConfig>());
       expect(defaultConfig.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(defaultConfig.fontSize, 13.0);
+      expect(defaultConfig.fontSize, 17.0);
+      expect(defaultConfig.lineHeight, 1.2);
       expect(defaultConfig.backgroundColor, '#1E1E1E');
+    });
+
+    test('should have default fontSize of 17 and lineHeight of 1.2', () {
+      final config = TerminalConfig();
+
+      expect(config.fontSize, 17.0);
+      expect(config.lineHeight, 1.2);
     });
   });
 }
