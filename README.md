@@ -88,6 +88,12 @@ chmod +x lbpSSH
 
 ---
 
+## Screenshots
+
+![lbpSSH Terminal](docs/screen/截屏ll.jpg)
+
+---
+
 ## Quick Start
 
 ### Requirements

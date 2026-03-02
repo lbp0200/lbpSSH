@@ -88,6 +88,12 @@ chmod +x lbpSSH
 
 ---
 
+## 截图
+
+![lbpSSH 终端](docs/screen/截屏ll.jpg)
+
+---
+
 ## 快速开始
 
 ### 前置要求
