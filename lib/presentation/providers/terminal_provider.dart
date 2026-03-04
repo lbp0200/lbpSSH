@@ -72,6 +72,9 @@ class TerminalProvider extends ChangeNotifier {
     // 设置工作目录并更新名称
     session.setWorkingDirectoryAndUpdateName(initialDir);
 
+    // 初始化 LocalTerminalService 的工作目录
+    localService.initWorkingDirectory(initialDir);
+
     // 然后启动 PTY（此时终端引用已设置）
     try {
       await localService.start();
@@ -79,8 +82,19 @@ class TerminalProvider extends ChangeNotifier {
       rethrow;
     }
 
-    // 启动目录变化监听
-    _startDirectoryWatch(sessionId, localService, session);
+    // 设置目录变化回调（当检测到 cd 命令时）
+    localService.onDirectoryChange = (String newDir) {
+      // 直接使用解析后的目录更新标签名称
+      session.setWorkingDirectoryAndUpdateName(newDir);
+      notifyListeners();
+    };
+
+    // 设置实际目录变化回调（用于校正 Tab 补全后的目录名）
+    localService.onActualDirectoryChange = (String actualDir) {
+      // 用实际目录校正标签名称
+      session.setWorkingDirectoryAndUpdateName(actualDir);
+      notifyListeners();
+    };
 
     _activeSessionId = sessionId;
     notifyListeners();
@@ -88,7 +102,7 @@ class TerminalProvider extends ChangeNotifier {
     return session;
   }
 
-  /// 启动目录变化监听
+  /// 启动目录变化监听（保留作为备用方案）
   void _startDirectoryWatch(
     String sessionId,
     LocalTerminalService localService,
@@ -104,9 +118,8 @@ class TerminalProvider extends ChangeNotifier {
       }
 
       try {
-        // 执行 pwd 命令获取当前目录
-        final pwdResult = await localService.executeCommand('pwd', silent: true);
-        final currentDir = pwdResult.trim();
+        // 使用独立进程获取当前目录，不影响主终端
+        final currentDir = await localService.getWorkingDirectory();
 
         // 如果目录变化了，更新名称
         if (currentDir != session.workingDirectory) {
