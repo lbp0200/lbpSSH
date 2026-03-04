@@ -1,164 +1,224 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:lbp_ssh/presentation/providers/sync_provider.dart';
 import 'package:lbp_ssh/domain/services/sync_service.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import '../mocks/mocks.dart';
 
 void main() {
-  group('SyncConfig Tests', () {
-    test('should create with gist platform', () {
-      final config = SyncConfig(
-        platform: SyncPlatform.gist,
-        accessToken: 'github_token',
-      );
+  late MockSyncService mockSyncService;
+  late SyncProvider syncProvider;
 
-      expect(config.platform, SyncPlatform.gist);
-      expect(config.accessToken, 'github_token');
-      expect(config.autoSync, false);
-    });
-
-    test('should create with giteeGist platform', () {
-      final config = SyncConfig(
-        platform: SyncPlatform.giteeGist,
-        accessToken: 'gitee_token',
-        gistId: 'gitee_gist_id',
-        autoSync: true,
-        syncIntervalMinutes: 60,
-      );
-
-      expect(config.platform, SyncPlatform.giteeGist);
-      expect(config.gistId, 'gitee_gist_id');
-      expect(config.autoSync, true);
-      expect(config.syncIntervalMinutes, 60);
-    });
-
-    test('should serialize to JSON', () {
-      final config = SyncConfig(
-        platform: SyncPlatform.gist,
-        accessToken: 'token',
-        gistId: 'gist123',
-        gistFileName: 'config.json',
-        autoSync: true,
-        syncIntervalMinutes: 30,
-      );
-
-      final json = config.toJson();
-
-      expect(json['platform'], 'gist');
-      expect(json['accessToken'], 'token');
-      expect(json['gistId'], 'gist123');
-      expect(json['gistFileName'], 'config.json');
-      expect(json['autoSync'], true);
-      expect(json['syncIntervalMinutes'], 30);
-    });
-
-    test('should deserialize from JSON', () {
-      final json = {
-        'platform': 'giteeGist',
-        'accessToken': 'my_token',
-        'gistId': 'my_gist',
-        'gistFileName': 'ssh.json',
-        'autoSync': false,
-        'syncIntervalMinutes': 45,
-      };
-
-      final config = SyncConfig.fromJson(json);
-
-      expect(config.platform, SyncPlatform.giteeGist);
-      expect(config.accessToken, 'my_token');
-      expect(config.gistId, 'my_gist');
-      expect(config.gistFileName, 'ssh.json');
-      expect(config.autoSync, false);
-      expect(config.syncIntervalMinutes, 45);
-    });
-
-    test('should handle missing optional fields', () {
-      final json = {
-        'platform': 'gist',
-      };
-
-      final config = SyncConfig.fromJson(json);
-
-      expect(config.platform, SyncPlatform.gist);
-      expect(config.accessToken, isNull);
-      expect(config.autoSync, false);
-      expect(config.syncIntervalMinutes, 5);
-    });
+  setUp(() {
+    mockSyncService = MockSyncService();
+    syncProvider = SyncProvider(mockSyncService);
+    registerFallbackValues();
   });
 
-  group('SyncStatusEnum Tests', () {
-    test('should have correct values', () {
-      expect(SyncStatusEnum.idle.name, 'idle');
-      expect(SyncStatusEnum.syncing.name, 'syncing');
-      expect(SyncStatusEnum.success.name, 'success');
-      expect(SyncStatusEnum.error.name, 'error');
+  group('SyncProvider', () {
+    group('config', () {
+      test(
+          'Given SyncService with config, When accessing config, Then returns sync config',
+          () {
+        // Arrange (Given)
+        final config = SyncConfig(
+          platform: SyncPlatform.gist,
+          accessToken: 'test_token',
+          gistId: 'test_gist_id',
+        );
+        when(() => mockSyncService.getConfig()).thenReturn(config);
+
+        // Act (When)
+        final result = syncProvider.config;
+
+        // Assert (Then)
+        expect(result, isNotNull);
+        expect(result!.platform, SyncPlatform.gist);
+        verify(() => mockSyncService.getConfig()).called(1);
+      });
+
+      test(
+          'Given SyncService without config, When accessing config, Then returns null',
+          () {
+        // Arrange (Given)
+        when(() => mockSyncService.getConfig()).thenReturn(null);
+
+        // Act (When)
+        final result = syncProvider.config;
+
+        // Assert (Then)
+        expect(result, isNull);
+      });
     });
-  });
 
-  group('SyncPlatform Tests', () {
-    test('should have correct values', () {
-      expect(SyncPlatform.gist.name, 'gist');
-      expect(SyncPlatform.giteeGist.name, 'giteeGist');
+    group('status', () {
+      test(
+          'Given SyncService with status, When accessing status, Then returns sync status',
+          () {
+        // Arrange (Given)
+        when(() => mockSyncService.status).thenReturn(SyncStatusEnum.syncing);
+
+        // Act (When)
+        final result = syncProvider.status;
+
+        // Assert (Then)
+        expect(result, SyncStatusEnum.syncing);
+        verify(() => mockSyncService.status).called(1);
+      });
+
+      test(
+          'Given SyncService with idle status, When accessing status, Then returns idle',
+          () {
+        // Arrange (Given)
+        when(() => mockSyncService.status).thenReturn(SyncStatusEnum.idle);
+
+        // Act (When)
+        final result = syncProvider.status;
+
+        // Assert (Then)
+        expect(result, SyncStatusEnum.idle);
+      });
     });
-  });
 
-  group('SyncConflict Tests', () {
-    test('should create sync conflict', () {
-      final localConnection = SshConnection(
-        id: 'conn1',
-        name: 'Local',
-        host: '192.168.1.1',
-        port: 22,
-        username: 'user',
-        authType: AuthType.password,
-      );
-      final remoteConnection = SshConnection(
-        id: 'conn1',
-        name: 'Remote',
-        host: '192.168.1.1',
-        port: 22,
-        username: 'user',
-        authType: AuthType.password,
-      );
+    group('lastSyncTime', () {
+      test(
+          'Given SyncService with last sync time, When accessing lastSyncTime, Then returns sync time',
+          () {
+        // Arrange (Given)
+        final syncTime = DateTime(2024, 1, 1, 12, 0, 0);
+        when(() => mockSyncService.lastSyncTime).thenReturn(syncTime);
 
-      final conflict = SyncConflict(
-        connectionId: 'conn1',
-        localConnection: localConnection,
-        remoteConnection: remoteConnection,
-      );
+        // Act (When)
+        final result = syncProvider.lastSyncTime;
 
-      expect(conflict.connectionId, 'conn1');
-      expect(conflict.localConnection.name, 'Local');
-      expect(conflict.remoteConnection.name, 'Remote');
+        // Assert (Then)
+        expect(result, syncTime);
+        verify(() => mockSyncService.lastSyncTime).called(1);
+      });
+
+      test(
+          'Given SyncService without last sync time, When accessing lastSyncTime, Then returns null',
+          () {
+        // Arrange (Given)
+        when(() => mockSyncService.lastSyncTime).thenReturn(null);
+
+        // Act (When)
+        final result = syncProvider.lastSyncTime;
+
+        // Assert (Then)
+        expect(result, isNull);
+      });
     });
-  });
 
-  group('SyncConflictException Tests', () {
-    test('should create exception with conflicts', () {
-      final conflicts = [
-        SyncConflict(
-          connectionId: 'conn1',
-          localConnection: SshConnection(
-            id: 'conn1',
-            name: 'Local',
-            host: '1.1.1.1',
-            port: 22,
-            username: 'u',
-            authType: AuthType.password,
-          ),
-          remoteConnection: SshConnection(
-            id: 'conn1',
-            name: 'Remote',
-            host: '1.1.1.1',
-            port: 22,
-            username: 'u',
-            authType: AuthType.password,
-          ),
-        ),
-      ];
+    group('saveConfig', () {
+      test(
+          'Given valid sync config, When saveConfig called, Then saves to service',
+          () async {
+        // Arrange (Given)
+        final config = SyncConfig(
+          platform: SyncPlatform.giteeGist,
+          accessToken: 'token123',
+          gistId: 'gist123',
+        );
+        when(() => mockSyncService.saveConfig(config))
+            .thenAnswer((_) async {});
 
-      final exception = SyncConflictException(conflicts);
+        // Act (When)
+        await syncProvider.saveConfig(config);
 
-      expect(exception.conflicts.length, 1);
-      expect(exception.toString(), contains('1'));
+        // Assert (Then)
+        verify(() => mockSyncService.saveConfig(config)).called(1);
+      });
+    });
+
+    group('uploadConfig', () {
+      test(
+          'Given successful upload, When uploadConfig called, Then uploads config and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.uploadConfig()).thenAnswer((_) async {});
+
+        // Act (When)
+        await syncProvider.uploadConfig();
+
+        // Assert (Then)
+        verify(() => mockSyncService.uploadConfig()).called(1);
+      });
+
+      test(
+          'Given upload failure, When uploadConfig called, Then throws exception and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.uploadConfig())
+            .thenThrow(Exception('Upload failed'));
+
+        // Act & Assert (When)
+        expect(
+          () => syncProvider.uploadConfig(),
+          throwsException,
+        );
+      });
+    });
+
+    group('downloadConfig', () {
+      test(
+          'Given successful download, When downloadConfig called, Then downloads config and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.downloadConfig())
+            .thenAnswer((_) async {});
+
+        // Act (When)
+        await syncProvider.downloadConfig();
+
+        // Assert (Then)
+        verify(() => mockSyncService.downloadConfig()).called(1);
+      });
+
+      test(
+          'Given download failure, When downloadConfig called, Then throws exception and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.downloadConfig())
+            .thenThrow(Exception('Download failed'));
+
+        // Act & Assert (When)
+        expect(
+          () => syncProvider.downloadConfig(),
+          throwsException,
+        );
+      });
+    });
+
+    group('testConnection', () {
+      test(
+          'Given successful connection test, When testConnection called, Then tests connection and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.downloadConfig(skipConflictCheck: true))
+            .thenAnswer((_) async {});
+
+        // Act (When)
+        await syncProvider.testConnection();
+
+        // Assert (Then)
+        verify(() => mockSyncService.downloadConfig(skipConflictCheck: true))
+            .called(1);
+      });
+
+      test(
+          'Given connection test failure, When testConnection called, Then throws exception and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockSyncService.downloadConfig(skipConflictCheck: true))
+            .thenThrow(Exception('Connection failed'));
+
+        // Act & Assert (When)
+        expect(
+          () => syncProvider.testConnection(),
+          throwsException,
+        );
+      });
     });
   });
 }

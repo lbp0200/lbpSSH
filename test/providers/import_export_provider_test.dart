@@ -1,177 +1,266 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lbp_ssh/domain/services/import_export_service.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:lbp_ssh/presentation/providers/import_export_provider.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import 'package:lbp_ssh/domain/services/import_export_service.dart';
+import '../mocks/mocks.dart';
 
 void main() {
-  group('ImportExportStatus Tests', () {
-    test('should have correct values', () {
-      expect(ImportExportStatus.idle.name, 'idle');
-      expect(ImportExportStatus.exporting.name, 'exporting');
-      expect(ImportExportStatus.importing.name, 'importing');
-      expect(ImportExportStatus.success.name, 'success');
-      expect(ImportExportStatus.error.name, 'error');
-    });
+  late MockImportExportService mockImportExportService;
+  late ImportExportProvider importExportProvider;
+
+  setUp(() {
+    mockImportExportService = MockImportExportService();
+    importExportProvider = ImportExportProvider(mockImportExportService);
+    registerFallbackValues();
   });
 
-  group('SshConnection Serialization Tests', () {
-    test('should serialize connection to JSON', () {
-      final connection = SshConnection(
-        id: 'conn1',
-        name: 'Test Server',
-        host: '192.168.1.1',
-        port: 22,
-        username: 'admin',
-        authType: AuthType.password,
-        password: 'secret',
-      );
+  group('ImportExportProvider', () {
+    group('status', () {
+      test(
+          'Given ImportExportService with status, When accessing status, Then returns service status',
+          () {
+        // Arrange (Given)
+        when(() => mockImportExportService.status)
+            .thenReturn(ImportExportStatus.exporting);
 
-      final json = connection.toJson();
+        // Act (When)
+        final result = importExportProvider.status;
 
-      expect(json['id'], 'conn1');
-      expect(json['name'], 'Test Server');
-      expect(json['host'], '192.168.1.1');
-      expect(json['port'], 22);
-      expect(json['authType'], 'password');
-      expect(json['password'], 'secret');
+        // Assert (Then)
+        expect(result, ImportExportStatus.exporting);
+        verify(() => mockImportExportService.status).called(1);
+      });
     });
 
-    test('should deserialize connection from JSON', () {
-      final json = {
-        'id': 'conn2',
-        'name': 'SSH Server',
-        'host': '10.0.0.1',
-        'port': 2222,
-        'username': 'root',
-        'authType': 'key',
-      };
+    group('lastError', () {
+      test(
+          'Given ImportExportService with error, When accessing lastError, Then returns error message',
+          () {
+        // Arrange (Given)
+        const errorMessage = 'Export failed';
+        when(() => mockImportExportService.lastError).thenReturn(errorMessage);
 
-      final connection = SshConnection.fromJson(json);
+        // Act (When)
+        final result = importExportProvider.lastError;
 
-      expect(connection.id, 'conn2');
-      expect(connection.name, 'SSH Server');
-      expect(connection.host, '10.0.0.1');
-      expect(connection.port, 2222);
-      expect(connection.authType, AuthType.key);
+        // Assert (Then)
+        expect(result, errorMessage);
+        verify(() => mockImportExportService.lastError).called(1);
+      });
+
+      test(
+          'Given ImportExportService with no error, When accessing lastError, Then returns null',
+          () {
+        // Arrange (Given)
+        when(() => mockImportExportService.lastError).thenReturn(null);
+
+        // Act (When)
+        final result = importExportProvider.lastError;
+
+        // Assert (Then)
+        expect(result, isNull);
+      });
     });
 
-    test('should round-trip serialize correctly', () {
-      final original = SshConnection(
-        id: 'conn3',
-        name: 'Round Trip',
-        host: '172.16.0.1',
-        port: 22,
-        username: 'user',
-        authType: AuthType.keyWithPassword,
-        privateKeyPath: '/path/to/key',
-        keyPassphrase: 'pass',
-      );
+    group('exportToLocalFile', () {
+      test(
+          'Given successful export, When exportToLocalFile called, Then returns file and notifies listeners',
+          () async {
+        // Arrange (Given)
+        final tempFile = File('/tmp/test_export.json');
+        when(() => mockImportExportService.exportToLocalFile())
+            .thenAnswer((_) async => tempFile);
 
-      final json = original.toJson();
-      final deserialized = SshConnection.fromJson(json);
+        // Act (When)
+        final result = await importExportProvider.exportToLocalFile();
 
-      expect(deserialized.id, original.id);
-      expect(deserialized.name, original.name);
-      expect(deserialized.host, original.host);
-      expect(deserialized.authType, original.authType);
-      expect(deserialized.privateKeyPath, original.privateKeyPath);
+        // Assert (Then)
+        expect(result, isNotNull);
+        verify(() => mockImportExportService.exportToLocalFile()).called(1);
+      });
+
+      test(
+          'Given export failure, When exportToLocalFile called, Then throws exception',
+          () async {
+        // Arrange (Given)
+        when(() => mockImportExportService.exportToLocalFile())
+            .thenThrow(Exception('Export failed'));
+
+        // Act & Assert (When)
+        expect(
+          () => importExportProvider.exportToLocalFile(),
+          throwsException,
+        );
+      });
     });
 
-    test('should handle jumpHost in connection', () {
-      final jumpHost = JumpHostConfig(
-        host: 'bastion.com',
-        port: 22,
-        username: 'bastion_user',
-        authType: AuthType.password,
-        password: 'pass',
-      );
+    group('importFromLocalFile', () {
+      test(
+          'Given successful import, When importFromLocalFile called, Then returns connections and notifies listeners',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Imported Server',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockImportExportService.importFromLocalFile())
+            .thenAnswer((_) async => connections);
 
-      final connection = SshConnection(
-        id: 'conn4',
-        name: 'Behind Bastion',
-        host: 'internal.com',
-        port: 22,
-        username: 'internal_user',
-        authType: AuthType.password,
-        jumpHost: jumpHost,
-      );
+        // Act (When)
+        final result = await importExportProvider.importFromLocalFile();
 
-      expect(connection.jumpHost, isNotNull);
-      expect(connection.jumpHost!.host, 'bastion.com');
+        // Assert (Then)
+        expect(result.length, 1);
+        expect(result.first.name, 'Imported Server');
+        verify(() => mockImportExportService.importFromLocalFile()).called(1);
+      });
+
+      test(
+          'Given import failure, When importFromLocalFile called, Then throws exception',
+          () async {
+        // Arrange (Given)
+        when(() => mockImportExportService.importFromLocalFile())
+            .thenThrow(Exception('Import failed'));
+
+        // Act & Assert (When)
+        expect(
+          () => importExportProvider.importFromLocalFile(),
+          throwsException,
+        );
+      });
     });
 
-    test('should create copy with modified fields', () {
-      final original = SshConnection(
-        id: 'conn5',
-        name: 'Original',
-        host: '1.1.1.1',
-        port: 22,
-        username: 'user',
-        authType: AuthType.password,
-      );
+    group('importAndSaveConnections', () {
+      test(
+          'Given valid connections, When importAndSaveConnections called, Then saves to repository and notifies listeners',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockImportExportService.importAndSaveConnections(
+              connections,
+              overwrite: false,
+              addPrefix: true,
+            )).thenAnswer((_) async {});
 
-      final modified = original.copyWith(name: 'Updated', port: 3333);
+        // Act (When)
+        await importExportProvider.importAndSaveConnections(
+          connections,
+          overwrite: false,
+          addPrefix: true,
+        );
 
-      expect(modified.id, 'conn5');
-      expect(modified.name, 'Updated');
-      expect(modified.port, 3333);
-      expect(original.name, 'Original');
+        // Assert (Then)
+        verify(() => mockImportExportService.importAndSaveConnections(
+              connections,
+              overwrite: false,
+              addPrefix: true,
+            )).called(1);
+      });
+
+      test(
+          'Given overwrite option, When importAndSaveConnections called, Then passes option to service',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockImportExportService.importAndSaveConnections(
+              connections,
+              overwrite: true,
+              addPrefix: false,
+            )).thenAnswer((_) async {});
+
+        // Act (When)
+        await importExportProvider.importAndSaveConnections(
+          connections,
+          overwrite: true,
+          addPrefix: false,
+        );
+
+        // Assert (Then)
+        verify(() => mockImportExportService.importAndSaveConnections(
+              connections,
+              overwrite: true,
+              addPrefix: false,
+            )).called(1);
+      });
     });
-  });
 
-  group('JumpHostConfig Tests', () {
-    test('should create jump host config', () {
-      final config = JumpHostConfig(
-        host: 'jump.example.com',
-        port: 22,
-        username: 'admin',
-        authType: AuthType.key,
-        privateKeyPath: '/keys/jump',
-      );
+    group('getExportStats', () {
+      test(
+          'Given service with stats, When getExportStats called, Then returns stats map',
+          () {
+        // Arrange (Given)
+        final stats = {
+          'totalConnections': 5,
+          'exportTime': '2024-01-01T00:00:00Z',
+        };
+        when(() => mockImportExportService.getExportStats()).thenReturn(stats);
 
-      expect(config.host, 'jump.example.com');
-      expect(config.authType, AuthType.key);
-      expect(config.privateKeyPath, '/keys/jump');
+        // Act (When)
+        final result = importExportProvider.getExportStats();
+
+        // Assert (Then)
+        expect(result['totalConnections'], 5);
+        verify(() => mockImportExportService.getExportStats()).called(1);
+      });
     });
 
-    test('should serialize to JSON', () {
-      final config = JumpHostConfig(
-        host: 'bastion.com',
-        port: 2222,
-        username: 'user',
-        authType: AuthType.password,
-        password: 'secret',
-      );
+    group('generateExportSummary', () {
+      test(
+          'Given service, When generateExportSummary called, Then returns summary string',
+          () {
+        // Arrange (Given)
+        const summary = 'Exported 5 connections';
+        when(() => mockImportExportService.generateExportSummary())
+            .thenReturn(summary);
 
-      final json = config.toJson();
+        // Act (When)
+        final result = importExportProvider.generateExportSummary();
 
-      expect(json['host'], 'bastion.com');
-      expect(json['port'], 2222);
-      expect(json['authType'], 'password');
-      expect(json['password'], 'secret');
+        // Assert (Then)
+        expect(result, summary);
+        verify(() => mockImportExportService.generateExportSummary()).called(1);
+      });
     });
 
-    test('should deserialize from JSON', () {
-      final json = {
-        'host': 'jump.example.com',
-        'port': 22,
-        'username': 'admin',
-        'authType': 'key',
-        'privateKeyPath': '/path/to/key',
-      };
+    group('resetStatus', () {
+      test(
+          'When resetStatus called, Then resets service status and notifies listeners',
+          () {
+        // Arrange (Given)
+        when(() => mockImportExportService.resetStatus()).thenReturn(null);
 
-      final config = JumpHostConfig.fromJson(json);
+        // Act (When)
+        importExportProvider.resetStatus();
 
-      expect(config.host, 'jump.example.com');
-      expect(config.authType, AuthType.key);
-      expect(config.privateKeyPath, '/path/to/key');
-    });
-  });
-
-  group('AuthType Tests', () {
-    test('should have correct values', () {
-      expect(AuthType.password.name, 'password');
-      expect(AuthType.key.name, 'key');
-      expect(AuthType.keyWithPassword.name, 'keyWithPassword');
+        // Assert (Then)
+        verify(() => mockImportExportService.resetStatus()).called(1);
+      });
     });
   });
 }

@@ -1,49 +1,260 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lbp_ssh/main.dart';
+import 'package:provider/provider.dart';
+import 'package:lbp_ssh/domain/services/sync_service.dart';
+import 'package:lbp_ssh/presentation/providers/sync_provider.dart';
+import 'package:lbp_ssh/presentation/widgets/sync_status.dart';
+import 'package:lbp_ssh/presentation/widgets/error_dialog.dart';
 
 void main() {
-  group('lbpSSH Simple Widget Tests', () {
-    testWidgets('MyApp widget should be rendered without errors', (
-      WidgetTester tester,
-    ) async {
-      // Test that MyApp can be instantiated
-      const app = MyApp();
-      expect(app, isNotNull);
+  group('Widget Tests', () {
+    group('SyncStatus Widget', () {
+      testWidgets('Given SyncStatus idle, When rendered, Then shows sync icon', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider<SyncProvider>(
+              create: (_) => _TestSyncProvider(status: SyncStatusEnum.idle),
+              child: const Scaffold(
+                body: SyncStatus(),
+              ),
+            ),
+          ),
+        );
+
+        // Assert
+        expect(find.byKey(const Key('sync_status_container')), findsOneWidget);
+        expect(find.byKey(const Key('sync_status_icon')), findsOneWidget);
+        expect(find.byKey(const Key('sync_status_text')), findsOneWidget);
+        expect(find.text('未同步'), findsOneWidget);
+      });
+
+      testWidgets('Given SyncStatus syncing, When rendered, Then shows progress indicator', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider<SyncProvider>(
+              create: (_) => _TestSyncProvider(status: SyncStatusEnum.syncing),
+              child: const Scaffold(
+                body: SyncStatus(),
+              ),
+            ),
+          ),
+        );
+
+        // Assert
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.text('同步中...'), findsOneWidget);
+      });
+
+      testWidgets('Given SyncStatus success, When rendered, Then shows check icon', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider<SyncProvider>(
+              create: (_) => _TestSyncProvider(status: SyncStatusEnum.success),
+              child: const Scaffold(
+                body: SyncStatus(),
+              ),
+            ),
+          ),
+        );
+
+        // Assert
+        expect(find.byKey(const Key('sync_status_icon')), findsOneWidget);
+        expect(find.text('同步成功'), findsOneWidget);
+      });
+
+      testWidgets('Given SyncStatus error, When rendered, Then shows error icon', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider<SyncProvider>(
+              create: (_) => _TestSyncProvider(status: SyncStatusEnum.error),
+              child: const Scaffold(
+                body: SyncStatus(),
+              ),
+            ),
+          ),
+        );
+
+        // Assert
+        expect(find.byKey(const Key('sync_status_icon')), findsOneWidget);
+        expect(find.text('同步失败'), findsOneWidget);
+      });
     });
 
-    testWidgets('MyApp should have MaterialApp properties', (
-      WidgetTester tester,
-    ) async {
-      // Build a minimal MaterialApp to test structure
-      final testApp = MaterialApp(
-        title: 'SSH Manager',
-        home: Scaffold(),
-        darkTheme: ThemeData.dark(),
-        themeMode: ThemeMode.system,
-      );
+    group('ErrorDialog Widget', () {
+      testWidgets('Given ErrorDialog, When rendered, Then shows all buttons', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      await tester.pumpWidget(testApp);
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ErrorDialog(
+                title: 'Test Error',
+                error: 'Test error message',
+                appVersion: '1.0.0',
+              ),
+            ),
+          ),
+        );
 
-      expect(find.byType(MaterialApp), findsOneWidget);
-      expect(find.byType(Material), findsOneWidget);
-      expect(find.byType(Scaffold), findsOneWidget);
-    });
+        // Assert - verify all buttons have Keys
+        expect(find.byKey(const Key('error_dialog_copy_button')), findsOneWidget);
+        expect(find.byKey(const Key('error_dialog_feedback_button')), findsOneWidget);
+        expect(find.byKey(const Key('error_dialog_close_button')), findsOneWidget);
 
-    testWidgets('MaterialApp should have correct configuration', (
-      WidgetTester tester,
-    ) async {
-      const testApp = MaterialApp(
-        title: 'SSH Manager',
-        home: Scaffold(body: Center(child: Text('Test'))),
-        debugShowCheckedModeBanner: false,
-      );
+        // Verify button text
+        expect(find.text('复制报告'), findsOneWidget);
+        expect(find.text('反馈问题'), findsOneWidget);
+        expect(find.text('关闭'), findsOneWidget);
+      });
 
-      await tester.pumpWidget(testApp);
+      testWidgets('Given ErrorDialog, When close button tapped, Then dialog closes', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      final materialAppWidget = find.byType(MaterialApp).evaluate().first.widget as MaterialApp;
-      expect(materialAppWidget.title, 'SSH Manager');
-      expect(materialAppWidget.debugShowCheckedModeBanner, false);
+        // Arrange
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => ErrorDialog(
+                        title: 'Test Error',
+                        error: 'Test error message',
+                        appVersion: '1.0.0',
+                      ),
+                    );
+                  },
+                  child: const Text('Show Dialog'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Act - tap button to show dialog
+        await tester.tap(find.text('Show Dialog'));
+        await tester.pumpAndSettle();
+
+        // Verify dialog is shown
+        expect(find.byType(ErrorDialog), findsOneWidget);
+
+        // Tap close button
+        await tester.tap(find.byKey(const Key('error_dialog_close_button')));
+        await tester.pumpAndSettle();
+
+        // Assert - dialog should be closed
+        expect(find.byType(ErrorDialog), findsNothing);
+      });
     });
   });
+}
+
+/// Test helper: Mock SyncProvider for testing SyncProvider widget
+class _TestSyncProvider extends ChangeNotifier implements SyncProvider {
+  @override
+  final SyncStatusEnum status;
+
+  @override
+  final DateTime? lastSyncTime;
+
+  _TestSyncProvider({required this.status, this.lastSyncTime});
+
+  @override
+  bool get isEnabled => true;
+
+  @override
+  bool get hasConflict => false;
+
+  @override
+  List<SyncConflict> get conflicts => [];
+
+  @override
+  SyncConfig? get config => null;
+
+  @override
+  String? get errorMessage => null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> sync() async {}
+
+  @override
+  Future<void> resolveConflict(SyncConflict conflict, bool useLocal) async {}
+
+  @override
+  Future<void> saveConfig(SyncConfig config) async {}
+
+  @override
+  Future<void> uploadConfig() async {}
+
+  @override
+  Future<void> downloadConfig() async {}
+
+  @override
+  Future<void> testConnection() async {}
 }

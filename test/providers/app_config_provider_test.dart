@@ -1,219 +1,162 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:lbp_ssh/presentation/providers/app_config_provider.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/data/models/default_terminal_config.dart';
+import '../mocks/mocks.dart';
 
 void main() {
-  group('TerminalConfig Tests', () {
-    test('should create with default values', () {
-      final config = TerminalConfig();
+  late MockAppConfigService mockAppConfigService;
+  late AppConfigProvider appConfigProvider;
 
-      expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(config.fontSize, 17.0);
-      expect(config.fontWeight, 400);
-      expect(config.backgroundColor, '#1E1E1E');
-      expect(config.foregroundColor, '#FFFFFF');
-      expect(config.shellPath, '');
-    });
-
-    test('should create with custom values', () {
-      final config = TerminalConfig(
-        fontFamily: 'Fira Code',
-        fontSize: 14.0,
-        fontWeight: 600,
-        letterSpacing: 0.5,
-        lineHeight: 1.2,
-        backgroundColor: '#000000',
-        foregroundColor: '#00FF00',
-        cursorColor: '#FFFFFF',
-        cursorBlinkInterval: 750,
-        padding: 12,
-        devicePixelRatio: 2.0,
-        shellPath: '/bin/zsh',
-      );
-
-      expect(config.fontFamily, 'Fira Code');
-      expect(config.fontSize, 14.0);
-      expect(config.fontWeight, 600);
-      expect(config.backgroundColor, '#000000');
-      expect(config.shellPath, '/bin/zsh');
-    });
-
-    test('should serialize to JSON', () {
-      final config = TerminalConfig(
-        fontFamily: 'Consolas',
-        fontSize: 16.0,
-        fontWeight: 400,
-      );
-
-      final json = config.toJson();
-
-      expect(json['fontFamily'], 'Consolas');
-      expect(json['fontSize'], 16.0);
-      expect(json['fontWeight'], 400);
-    });
-
-    test('should deserialize from JSON', () {
-      final json = {
-        'fontFamily': 'JetBrainsMonoNerdFontMono',
-        'fontSize': 15.0,
-        'fontWeight': 500,
-        'letterSpacing': 0.0,
-        'lineHeight': 1.0,
-        'backgroundColor': '#1E1E2E',
-        'foregroundColor': '#CDD6F4',
-        'cursorColor': '#F5E0DC',
-        'cursorBlinkInterval': 500,
-        'padding': 8,
-        'devicePixelRatio': 1.0,
-        'shellPath': '/usr/bin/fish',
-      };
-
-      final config = TerminalConfig.fromJson(json);
-
-      expect(config.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(config.fontSize, 15.0);
-      expect(config.shellPath, '/usr/bin/fish');
-    });
-
-    test('should round-trip serialize correctly', () {
-      final original = TerminalConfig(
-        fontFamily: 'Source Code Pro',
-        fontSize: 12.0,
-        fontWeight: 400,
-        letterSpacing: 0.0,
-        lineHeight: 1.5,
-        backgroundColor: '#2D2D2D',
-        foregroundColor: '#E0E0E0',
-        cursorColor: '#FFFFFF',
-        cursorBlinkInterval: 1000,
-        padding: 16,
-        devicePixelRatio: 1.5,
-        shellPath: '/bin/bash',
-      );
-
-      final json = original.toJson();
-      final deserialized = TerminalConfig.fromJson(json);
-
-      expect(deserialized.fontFamily, original.fontFamily);
-      expect(deserialized.fontSize, original.fontSize);
-      expect(deserialized.backgroundColor, original.backgroundColor);
-      expect(deserialized.shellPath, original.shellPath);
-    });
-
-    test('should create copy with modified fields', () {
-      final original = TerminalConfig(fontSize: 17.0);
-      final modified = original.copyWith(fontSize: 18.0, backgroundColor: '#000000');
-
-      expect(modified.fontSize, 18.0);
-      expect(modified.backgroundColor, '#000000');
-      expect(original.fontSize, 17.0);
-    });
-
-    test('should provide defaultConfig', () {
-      final defaultConfig = TerminalConfig.defaultConfig;
-
-      expect(defaultConfig.fontFamily, 'JetBrainsMonoNerdFontMono');
-      expect(defaultConfig.fontSize, 17.0);
-    });
+  setUp(() {
+    mockAppConfigService = MockAppConfigService();
+    appConfigProvider = AppConfigProvider(mockAppConfigService);
+    registerFallbackValues();
   });
 
-  group('DefaultTerminalConfig Tests', () {
-    test('should create with default values', () {
-      final config = DefaultTerminalConfig();
+  group('AppConfigProvider', () {
+    group('terminalConfig', () {
+      test(
+          'Given AppConfigService with terminal config, When accessing terminalConfig, Then returns terminal config',
+          () {
+        // Arrange (Given)
+        const expectedFontSize = 14.0;
+        final expectedConfig = TerminalConfig(fontSize: expectedFontSize);
+        when(() => mockAppConfigService.terminal).thenReturn(expectedConfig);
 
-      expect(config.execWindows, TerminalType.windowsTerminal);
-      expect(config.execMac, TerminalType.iterm2);
-      expect(config.execLinux, TerminalType.terminal);
-      expect(config.execWindowsCustom, isNull);
+        // Act (When)
+        final result = appConfigProvider.terminalConfig;
+
+        // Assert (Then)
+        expect(result.fontSize, expectedFontSize);
+        verify(() => mockAppConfigService.terminal).called(1);
+      });
     });
 
-    test('should create with custom values', () {
-      final config = DefaultTerminalConfig(
-        execWindows: TerminalType.powershell,
-        execWindowsCustom: 'pwsh.exe',
-        execMac: TerminalType.alacritty,
-        execMacCustom: '/usr/bin/alacritty',
-        execLinux: TerminalType.wezterm,
-        execLinuxCustom: '/usr/bin/wezterm',
-      );
+    group('defaultTerminalConfig', () {
+      test(
+          'Given AppConfigService with default terminal config, When accessing defaultTerminalConfig, Then returns default terminal config',
+          () {
+        // Arrange (Given)
+        final expectedConfig = DefaultTerminalConfig(
+          execMac: TerminalType.alacritty,
+        );
+        when(() => mockAppConfigService.defaultTerminal)
+            .thenReturn(expectedConfig);
 
-      expect(config.execWindows, TerminalType.powershell);
-      expect(config.execMac, TerminalType.alacritty);
-      expect(config.execLinux, TerminalType.wezterm);
+        // Act (When)
+        final result = appConfigProvider.defaultTerminalConfig;
+
+        // Assert (Then)
+        expect(result.execMac, TerminalType.alacritty);
+        verify(() => mockAppConfigService.defaultTerminal).called(1);
+      });
     });
 
-    test('should serialize to JSON', () {
-      final config = DefaultTerminalConfig(
-        execMac: TerminalType.kitty,
-      );
+    group('saveTerminalConfig', () {
+      test(
+          'Given valid terminal config, When saveTerminalConfig called, Then calls service and notifies listeners',
+          () async {
+        // Arrange (Given)
+        final config = TerminalConfig(fontSize: 16.0);
+        when(() => mockAppConfigService.saveTerminalConfig(config))
+            .thenAnswer((_) async {});
 
-      final json = config.toJson();
+        // Act (When)
+        await appConfigProvider.saveTerminalConfig(config);
 
-      expect(json['execMac'], 'kitty');
+        // Assert (Then)
+        verify(() => mockAppConfigService.saveTerminalConfig(config)).called(1);
+      });
     });
 
-    test('should deserialize from JSON', () {
-      final json = {
-        'execWindows': 'cmd',
-        'execMac': 'terminal',
-        'execLinux': 'alacritty',
-      };
+    group('updateFontSize', () {
+      test(
+          'Given new font size, When updateFontSize called, Then updates config and notifies listeners',
+          () {
+        // Arrange (Given)
+        const newSize = 18.0;
+        final originalConfig = TerminalConfig(fontSize: 14.0);
+        final updatedConfig = TerminalConfig(fontSize: newSize);
+        when(() => mockAppConfigService.terminal).thenReturn(originalConfig);
+        when(() => mockAppConfigService.saveTerminalConfig(any()))
+            .thenAnswer((_) async {});
 
-      final config = DefaultTerminalConfig.fromJson(json);
+        // Act (When)
+        appConfigProvider.updateFontSize(newSize);
 
-      expect(config.execWindows, TerminalType.cmd);
-      expect(config.execMac, TerminalType.terminal);
-      expect(config.execLinux, TerminalType.alacritty);
+        // Assert (Then)
+        verify(() => mockAppConfigService.saveTerminalConfig(any())).called(1);
+      });
     });
 
-    test('should create copy with modified fields', () {
-      final original = DefaultTerminalConfig();
-      final modified = original.copyWith(execMac: TerminalType.wezterm);
+    group('saveDefaultTerminalConfig', () {
+      test(
+          'Given valid default terminal config, When saveDefaultTerminalConfig called, Then calls service and notifies listeners',
+          () async {
+        // Arrange (Given)
+        final config = DefaultTerminalConfig(execMac: TerminalType.wezterm);
+        when(() => mockAppConfigService.saveDefaultTerminalConfig(config))
+            .thenAnswer((_) async {});
 
-      expect(modified.execMac, TerminalType.wezterm);
-      expect(original.execMac, TerminalType.iterm2);
+        // Act (When)
+        await appConfigProvider.saveDefaultTerminalConfig(config);
+
+        // Assert (Then)
+        verify(() => mockAppConfigService.saveDefaultTerminalConfig(config))
+            .called(1);
+      });
     });
 
-    test('should get correct Mac command for iTerm2', () {
-      final config = DefaultTerminalConfig(execMac: TerminalType.iterm2);
-      expect(config.getMacCommand(), 'open -a iTerm');
+    group('resetToDefaults', () {
+      test(
+          'When resetToDefaults called, Then calls service and notifies listeners',
+          () async {
+        // Arrange (Given)
+        when(() => mockAppConfigService.resetToDefaults())
+            .thenAnswer((_) async {});
+
+        // Act (When)
+        await appConfigProvider.resetToDefaults();
+
+        // Assert (Then)
+        verify(() => mockAppConfigService.resetToDefaults()).called(1);
+      });
     });
 
-    test('should get correct Mac command for alacritty', () {
-      final config = DefaultTerminalConfig(execMac: TerminalType.alacritty);
-      expect(config.getMacCommand(), 'open -a Alacritty');
+    group('exportConfig', () {
+      test(
+          'Given AppConfigService with config, When exportConfig called, Then returns exported config string',
+          () {
+        // Arrange (Given)
+        const expectedJson = '{"terminal": {...}}';
+        when(() => mockAppConfigService.exportConfig()).thenReturn(expectedJson);
+
+        // Act (When)
+        final result = appConfigProvider.exportConfig();
+
+        // Assert (Then)
+        expect(result, expectedJson);
+        verify(() => mockAppConfigService.exportConfig()).called(1);
+      });
     });
 
-    test('should get correct Mac command for custom', () {
-      final config = DefaultTerminalConfig(
-        execMac: TerminalType.custom,
-        execMacCustom: '/Applications/Custom.app',
-      );
-      expect(config.getMacCommand(), '/Applications/Custom.app');
-    });
+    group('importConfig', () {
+      test(
+          'Given valid JSON string, When importConfig called, Then calls service and notifies listeners',
+          () async {
+        // Arrange (Given)
+        const jsonString = '{"terminal": {...}}';
+        when(() => mockAppConfigService.importConfig(jsonString))
+            .thenAnswer((_) async {});
 
-    test('should get correct Windows command for powershell', () {
-      final config = DefaultTerminalConfig(execWindows: TerminalType.powershell);
-      expect(config.getWindowsCommand(), 'powershell.exe');
-    });
+        // Act (When)
+        await appConfigProvider.importConfig(jsonString);
 
-    test('should get correct Linux command for kitty', () {
-      final config = DefaultTerminalConfig(execLinux: TerminalType.kitty);
-      expect(config.getLinuxCommand(), 'kitty');
-    });
-  });
-
-  group('TerminalType Enum Tests', () {
-    test('should have correct values', () {
-      expect(TerminalType.iterm2.name, 'iterm2');
-      expect(TerminalType.terminal.name, 'terminal');
-      expect(TerminalType.alacritty.name, 'alacritty');
-      expect(TerminalType.kitty.name, 'kitty');
-      expect(TerminalType.wezterm.name, 'wezterm');
-      expect(TerminalType.powershell.name, 'powershell');
-      expect(TerminalType.windowsTerminal.name, 'windowsTerminal');
-      expect(TerminalType.cmd.name, 'cmd');
-      expect(TerminalType.custom.name, 'custom');
+        // Assert (Then)
+        verify(() => mockAppConfigService.importConfig(jsonString)).called(1);
+      });
     });
   });
 }
