@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/file_list_parser.dart';
-import 'package:lbp_ssh/presentation/screens/sftp_browser_screen.dart';
 
 void main() {
   group('FileListParser', () {
@@ -207,6 +206,86 @@ drwxr-xr-x  2 root root 4096 Feb 24 20:08 etc''';
 
         // Assert (Then)
         expect(items[0].modified, isNull);
+      });
+    });
+
+    group('parse with special cases', () {
+      test(
+          'Given file with sticky bit permissions, When parse called, Then parses correctly',
+          () {
+        // Arrange (Given)
+        const output = '''total 8
+drwxrwxrwt  5 root root 4096 Feb 24 20:08 tmp''';
+
+        // Act (When)
+        final items = FileListParser.parse(output, '/tmp');
+
+        // Assert (Then)
+        expect(items.length, 1);
+        expect(items[0].name, 'tmp');
+        expect(items[0].isDirectory, true);
+      });
+
+      test(
+          'Given file with setuid/setgid permissions, When parse called, Then parses correctly',
+          () {
+        // Arrange (Given)
+        const output = '''total 8
+-rwsr-sr-x  1 root root 1234 Feb 24 20:08 privileged''';
+
+        // Act (When)
+        final items = FileListParser.parse(output, '/usr/bin');
+
+        // Assert (Then)
+        expect(items.length, 1);
+        expect(items[0].name, 'privileged');
+        expect(items[0].isDirectory, false);
+      });
+
+      test(
+          'Given hidden file starting with dot, When parse called, Then includes in list',
+          () {
+        // Arrange (Given)
+        const output = '''total 8
+-rw-r--r--  1 user user 1234 Feb 24 20:08 .hidden''';
+
+        // Act (When)
+        final items = FileListParser.parse(output, '/home/user');
+
+        // Assert (Then)
+        expect(items.length, 1);
+        expect(items[0].name, '.hidden');
+      });
+
+      test(
+          'Given file with very long name, When parse called, Then preserves full name',
+          () {
+        // Arrange (Given)
+        final longName = 'a' * 200;
+        final output = '''total 8
+-rw-r--r--  1 user user 1234 Feb 24 20:08 $longName''';
+
+        // Act (When)
+        final items = FileListParser.parse(output, '/home/user');
+
+        // Assert (Then)
+        expect(items.length, 1);
+        expect(items[0].name, longName);
+      });
+
+      test(
+          'Given file with zero size, When parse called, Then size is 0',
+          () {
+        // Arrange (Given)
+        const output = '''total 0
+-rw-r--r--  1 user user 0 Feb 24 20:08 empty''';
+
+        // Act (When)
+        final items = FileListParser.parse(output, '/home/user');
+
+        // Assert (Then)
+        expect(items.length, 1);
+        expect(items[0].size, 0);
       });
     });
   });

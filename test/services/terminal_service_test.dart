@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
 import 'package:lbp_ssh/domain/services/local_terminal_service.dart';
-import 'package:lbp_ssh/data/models/terminal_config.dart';
 
 // Mock TerminalInputService for testing
 class MockTerminalInputService implements TerminalInputService {
@@ -205,31 +204,6 @@ void main() {
       session.setWorkingDirectoryAndUpdateName('/');
 
       expect(session.name, 'local /');
-    });
-
-    test(
-        'Given various paths, When extracting folder name, Then extracts correct name',
-        () {
-      final paths = [
-        '/Users/lbp/Projects/lbpSSH',
-        '/home/user/documents',
-        '/var/log',
-        '/',
-      ];
-
-      final expectedFolders = [
-        'lbpSSH',
-        'documents',
-        'log',
-        '', // Root directory has no folder name
-      ];
-
-      for (var i = 0; i < paths.length; i++) {
-        final path = paths[i];
-        final parts = path.split('/');
-        final folderName = parts.last;
-        expect(folderName, expectedFolders[i]);
-      }
     });
   });
 }

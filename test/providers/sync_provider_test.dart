@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:lbp_ssh/presentation/providers/sync_provider.dart';
 import 'package:lbp_ssh/domain/services/sync_service.dart';
-import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import '../mocks/mocks.dart';
 
 void main() {

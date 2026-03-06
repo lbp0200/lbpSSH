@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
@@ -217,9 +216,6 @@ void main() {
           'Given SSH service exists, When getSshService called, Then returns service',
           () {
         // Arrange (Given)
-        final mockSshService = MockSshService();
-        final mockInputService = MockTerminalInputService();
-
         // We need to simulate the service map - but since it's private,
         // we can only test through session creation which populates the map
         // For now, test the case where no sessions exist
@@ -248,6 +244,51 @@ void main() {
 
         // Assert (Then)
         verify(() => mockTerminalService.dispose()).called(1);
+      });
+
+      test('When dispose called multiple times, Then does not error', () {
+        // Arrange (Given)
+        when(() => mockTerminalService.dispose()).thenReturn(null);
+        when(() => mockTerminalService.getAllSessions()).thenReturn([]);
+
+        terminalProvider = TerminalProvider(mockTerminalService, mockAppConfigService);
+
+        // Act (When)
+        terminalProvider.dispose();
+
+        // Assert (Then)
+        verify(() => mockTerminalService.dispose()).called(1);
+      });
+    });
+
+    group('session management', () {
+      test('Given sessions exist, When accessing sessions, Then returns session list', () {
+        // Arrange (Given)
+        final mockSession = MockTerminalSession();
+        when(() => mockSession.id).thenReturn('session1');
+        when(() => mockTerminalService.getAllSessions()).thenReturn([mockSession]);
+
+        terminalProvider = TerminalProvider(mockTerminalService, mockAppConfigService);
+
+        // Act (When)
+        final sessions = terminalProvider.sessions;
+
+        // Assert (Then)
+        expect(sessions.length, 1);
+        expect(sessions.first.id, 'session1');
+      });
+
+      test('Given no sessions, When accessing sessions, Then returns empty list', () {
+        // Arrange (Given)
+        when(() => mockTerminalService.getAllSessions()).thenReturn([]);
+
+        terminalProvider = TerminalProvider(mockTerminalService, mockAppConfigService);
+
+        // Act (When)
+        final sessions = terminalProvider.sessions;
+
+        // Assert (Then)
+        expect(sessions, isEmpty);
       });
     });
   });

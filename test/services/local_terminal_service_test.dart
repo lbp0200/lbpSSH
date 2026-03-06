@@ -153,9 +153,8 @@ void main() {
     group('callbacks', () {
       test('Given onDirectoryChange callback set, When callback triggered, Then is callable', () {
         // Arrange (Given)
-        String? capturedDir;
         service.onDirectoryChange = (dir) {
-          capturedDir = dir;
+          // No-op callback
         };
 
         // Act (When) - Manually trigger via resolvePath
@@ -167,9 +166,8 @@ void main() {
 
       test('Given onActualDirectoryChange callback set, When callback triggered, Then is callable', () {
         // Arrange (Given)
-        String? capturedDir;
         service.onActualDirectoryChange = (dir) {
-          capturedDir = dir;
+          // No-op callback
         };
 
         // Assert (Then) - Verify callback can be set without error

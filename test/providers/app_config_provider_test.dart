@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:lbp_ssh/presentation/providers/app_config_provider.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/data/models/default_terminal_config.dart';
@@ -78,7 +77,6 @@ void main() {
         // Arrange (Given)
         const newSize = 18.0;
         final originalConfig = TerminalConfig(fontSize: 14.0);
-        final updatedConfig = TerminalConfig(fontSize: newSize);
         when(() => mockAppConfigService.terminal).thenReturn(originalConfig);
         when(() => mockAppConfigService.saveTerminalConfig(any()))
             .thenAnswer((_) async {});

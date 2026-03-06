@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import '../mocks/mocks.dart';
@@ -280,8 +279,29 @@ void main() {
       });
 
       test(
-          'Given search query matching name, When filteredConnections accessed, Then returns matching connections',
+          'Given search query, When filteredConnections accessed with empty connections, Then returns empty list',
           () {
+        // Arrange (Given) - Set search query with no connections loaded
+        connectionProvider.setSearchQuery('prod');
+
+        // Assert (Then) - Should return empty when no connections
+        expect(connectionProvider.filteredConnections, isEmpty);
+      });
+
+      test(
+          'Given clearSearch called, When called, Then clears search query',
+          () {
+        // Act (When)
+        connectionProvider.setSearchQuery('test');
+        connectionProvider.clearSearch();
+
+        // Assert (Then)
+        expect(connectionProvider.searchQuery, '');
+      });
+
+      test(
+          'Given search query matching host, When filteredConnections accessed, Then returns matching connections',
+          () async {
         // Arrange (Given)
         final connections = [
           SshConnection(
@@ -295,32 +315,141 @@ void main() {
           SshConnection(
             id: 'conn2',
             name: 'Development Server',
-            host: '192.168.1.2',
+            host: '192.168.2.2',
             port: 22,
             username: 'user2',
             authType: AuthType.password,
           ),
         ];
-        // Directly set connections for filtering test
-        connectionProvider.setSearchQuery('prod');
+        when(() => mockRepository.getAllConnections()).thenReturn(connections);
+        await connectionProvider.loadConnections();
 
-        // Manually inject connections to test filtering
-        // Since filteredConnections depends on _connections which is private,
-        // we need to test through the provider's logic
+        // Act (When)
+        connectionProvider.setSearchQuery('192.168.1');
 
-        // For now, test the getter with empty list
-        expect(connectionProvider.filteredConnections, isEmpty);
+        // Assert (Then)
+        expect(connectionProvider.filteredConnections.length, 1);
+        expect(connectionProvider.filteredConnections.first.name, 'Production Server');
       });
 
       test(
-          'Given clearSearch called, When called, Then clears search query',
-          () {
+          'Given search query matching username, When filteredConnections accessed, Then returns matching connections',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'admin',
+            authType: AuthType.password,
+          ),
+          SshConnection(
+            id: 'conn2',
+            name: 'Server 2',
+            host: '192.168.2.2',
+            port: 22,
+            username: 'user',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockRepository.getAllConnections()).thenReturn(connections);
+        await connectionProvider.loadConnections();
+
         // Act (When)
-        connectionProvider.setSearchQuery('test');
-        connectionProvider.clearSearch();
+        connectionProvider.setSearchQuery('admin');
 
         // Assert (Then)
-        expect(connectionProvider.searchQuery, '');
+        expect(connectionProvider.filteredConnections.length, 1);
+        expect(connectionProvider.filteredConnections.first.username, 'admin');
+      });
+
+      test(
+          'Given case insensitive search, When filteredConnections accessed, Then returns matching connections',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Production Server',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockRepository.getAllConnections()).thenReturn(connections);
+        await connectionProvider.loadConnections();
+
+        // Act (When)
+        connectionProvider.setSearchQuery('PRODUCTION');
+
+        // Assert (Then)
+        expect(connectionProvider.filteredConnections.length, 1);
+      });
+
+      test(
+          'Given search query with no match, When filteredConnections accessed, Then returns empty list',
+          () async {
+        // Arrange (Given)
+        final connections = [
+          SshConnection(
+            id: 'conn1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            port: 22,
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+        when(() => mockRepository.getAllConnections()).thenReturn(connections);
+        await connectionProvider.loadConnections();
+
+        // Act (When)
+        connectionProvider.setSearchQuery('nonexistent');
+
+        // Assert (Then)
+        expect(connectionProvider.filteredConnections, isEmpty);
+      });
+    });
+
+    group('duplicate connection handling', () {
+      test(
+          'Given duplicate connection name, When adding, Then allows duplicate names',
+          () async {
+        // Arrange (Given)
+        final connection1 = SshConnection(
+          id: 'conn1',
+          name: 'Server',
+          host: '192.168.1.1',
+          port: 22,
+          username: 'user1',
+          authType: AuthType.password,
+        );
+        final connection2 = SshConnection(
+          id: 'conn2',
+          name: 'Server',
+          host: '192.168.1.2',
+          port: 22,
+          username: 'user2',
+          authType: AuthType.password,
+        );
+        when(() => mockRepository.saveConnection(connection1))
+            .thenAnswer((_) async {});
+        when(() => mockRepository.getAllConnections()).thenReturn([connection1]);
+
+        await connectionProvider.addConnection(connection1);
+
+        when(() => mockRepository.saveConnection(connection2))
+            .thenAnswer((_) async {});
+        when(() => mockRepository.getAllConnections()).thenReturn([connection1, connection2]);
+
+        // Act (When)
+        await connectionProvider.addConnection(connection2);
+
+        // Assert (Then)
+        verify(() => mockRepository.saveConnection(connection2)).called(1);
       });
     });
   });

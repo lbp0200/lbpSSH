@@ -71,7 +71,7 @@ void main() {
 
         expect(
           () => EncryptionUtil.encrypt(original, password),
-          throwsException,
+          throwsA(isA<Exception>()),
         );
       });
 

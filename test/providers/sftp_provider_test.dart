@@ -6,7 +6,6 @@ import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
 import 'package:lbp_ssh/presentation/providers/terminal_provider.dart';
-import 'package:kterm/kterm.dart';
 
 // Mock classes
 class MockTerminalProvider extends Mock implements TerminalProvider {}
