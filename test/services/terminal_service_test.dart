@@ -18,10 +18,15 @@ class MockTerminalInputService implements TerminalInputService {
   void sendInput(String input) {}
 
   @override
+  void resize(int rows, int columns) {}
+
+  @override
   void dispose() {}
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('TerminalService', () {
     late TerminalService terminalService;
 

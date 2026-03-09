@@ -102,38 +102,6 @@ class TerminalProvider extends ChangeNotifier {
     return session;
   }
 
-  /// 启动目录变化监听（保留作为备用方案）
-  void _startDirectoryWatch(
-    String sessionId,
-    LocalTerminalService localService,
-    TerminalSession session,
-  ) {
-    // 定期检查工作目录（每2秒）
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 2));
-
-      // 检查会话是否还存在
-      if (_services[sessionId] == null) {
-        return false; // 停止监听
-      }
-
-      try {
-        // 使用独立进程获取当前目录，不影响主终端
-        final currentDir = await localService.getWorkingDirectory();
-
-        // 如果目录变化了，更新名称
-        if (currentDir != session.workingDirectory) {
-          session.setWorkingDirectoryAndUpdateName(currentDir);
-          notifyListeners();
-        }
-      } catch (e) {
-        // 静默处理错误，继续监听
-      }
-
-      return true; // 继续监听
-    });
-  }
-
   /// 创建新的 SSH 终端会话
   Future<TerminalSession> createSession(SshConnection connection) async {
     // 每次创建新的唯一会话 ID

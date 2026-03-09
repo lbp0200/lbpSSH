@@ -350,9 +350,6 @@ class LocalTerminalService implements TerminalInputService {
     }
   }
 
-  /// 输出订阅（用于一次性命令）
-  StreamSubscription<String>? _outputSubscription;
-
   /// 执行命令（非交互式）
   @override
   Future<String> executeCommand(String command, {bool silent = false}) async {
@@ -380,6 +377,7 @@ class LocalTerminalService implements TerminalInputService {
   }
 
   /// 调整终端尺寸
+  @override
   void resize(int rows, int columns) {
     if (_pty != null && !_isShuttingDown) {
       try {
