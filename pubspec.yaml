@@ -31,6 +31,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # 国际化
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
   # UI
   cupertino_icons: ^1.0.8
 
