@@ -560,7 +560,7 @@ class TerminalTabsView extends StatelessWidget {
 }
 
 /// 终端标签页
-class _TerminalTab extends StatelessWidget {
+class _TerminalTab extends StatefulWidget {
   final TerminalSession session;
   final bool isActive;
   final VoidCallback onTap;
@@ -574,72 +574,105 @@ class _TerminalTab extends StatelessWidget {
   });
 
   @override
+  State<_TerminalTab> createState() => _TerminalTabState();
+}
+
+class _TerminalTabState extends State<_TerminalTab> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: '终端标签页: ${session.name}${isActive ? ", 当前激活" : ""}',
-      button: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Theme.of(context).colorScheme.surface
-                  : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-              border: Border(
-                bottom: BorderSide(
-                  color: isActive
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 200),
-                  child: Text(
-                    session.name,
-                    style: TextStyle(
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          // Enter to select tab
+          if (event.logicalKey == LogicalKeyboardKey.enter) {
+            widget.onTap();
+            return KeyEventResult.handled;
+          }
+          // Escape or W with Ctrl to close
+          if (event.logicalKey == LogicalKeyboardKey.escape ||
+              (event.logicalKey == LogicalKeyboardKey.keyW &&
+                  HardwareKeyboard.instance.isControlPressed)) {
+            widget.onClose();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(
+        label: '终端标签页: ${widget.session.name}${widget.isActive ? ", 当前激活" : ""}',
+        button: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? Theme.of(context).colorScheme.surface
+                    : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+                border: Border(
+                  bottom: BorderSide(
+                    color: widget.isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.transparent,
+                    width: 2,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Semantics(
-                  label: '关闭标签页 ${session.name}',
-                  button: true,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        // 阻止事件冒泡，避免触发父级的 onTap
-                        onClose();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.transparent,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          size: 16,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 200),
+                    child: Text(
+                      widget.session.name,
+                      style: TextStyle(
+                        fontWeight: widget.isActive ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Semantics(
+                    label: '关闭标签页 ${widget.session.name}',
+                    button: true,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          // 阻止事件冒泡，避免触发父级的 onTap
+                          widget.onClose();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.transparent,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            size: 16,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
