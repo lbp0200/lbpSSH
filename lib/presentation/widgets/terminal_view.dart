@@ -102,8 +102,9 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<TerminalProvider, AppConfigProvider>(
-      builder: (context, terminalProvider, configProvider, child) {
+    // 先监听 TerminalProvider 获取 session
+    return Consumer<TerminalProvider>(
+      builder: (context, terminalProvider, child) {
         final session = terminalProvider.activeSession;
 
         if (session == null) {
@@ -113,68 +114,72 @@ class _TerminalViewWidgetState extends State<TerminalViewWidget> {
         // Subscribe to notification stream for the active session
         _subscribeToNotifications(session);
 
-        // 获取终端配置
-        final config = configProvider.terminalConfig;
+        // 再监听 AppConfigProvider 获取配置
+        return Consumer<AppConfigProvider>(
+          builder: (context, configProvider, child) {
+            final config = configProvider.terminalConfig;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return DropTarget(
-              onDragEntered: (details) {
-                setState(() {
-                  _isDragging = true;
-                });
-              },
-              onDragExited: (details) {
-                setState(() {
-                  _isDragging = false;
-                });
-              },
-              onDragDone: (details) {
-                setState(() {
-                  _isDragging = false;
-                });
-                _handleFileDrop(details.files);
-              },
-              child: Stack(
-                children: [
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: _TerminalViewWithSelection(
-                      terminal: session.terminal,
-                      controller: session.controller,
-                      config: config,
-                    ),
-                  ),
-                  // 拖拽提示覆盖层
-                  if (_isDragging)
-                    Container(
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.upload_file,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '释放以上传文件到服务器',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return DropTarget(
+                  onDragEntered: (details) {
+                    setState(() {
+                      _isDragging = true;
+                    });
+                  },
+                  onDragExited: (details) {
+                    setState(() {
+                      _isDragging = false;
+                    });
+                  },
+                  onDragDone: (details) {
+                    setState(() {
+                      _isDragging = false;
+                    });
+                    _handleFileDrop(details.files);
+                  },
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        child: _TerminalViewWithSelection(
+                          terminal: session.terminal,
+                          controller: session.controller,
+                          config: config,
                         ),
                       ),
-                    ),
-                ],
-              ),
+                      // 拖拽提示覆盖层
+                      if (_isDragging)
+                        Container(
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.upload_file,
+                                  size: 64,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '释放以上传文件到服务器',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         );
