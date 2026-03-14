@@ -30,6 +30,9 @@ jobs:
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
 
+      - name: Code Quality Check
+        run: flutter analyze --no-fatal-infos
+
       - name: Run tests
         run: flutter test
 
