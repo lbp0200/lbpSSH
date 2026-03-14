@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/services/app_config_service.dart';
+
 import '../../data/models/terminal_config.dart';
+import '../../domain/services/app_config_service.dart';
 
 /// AppConfigService singleton provider
 final appConfigServiceProvider = Provider<AppConfigService>((ref) {

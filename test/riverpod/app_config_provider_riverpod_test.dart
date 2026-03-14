@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/app_config_provider_riverpod.dart';
-import 'package:lbp_ssh/domain/services/app_config_service.dart';
+
 import 'package:lbp_ssh/data/models/terminal_config.dart';
+import 'package:lbp_ssh/domain/services/app_config_service.dart';
+import 'package:lbp_ssh/presentation/providers_riverpod/app_config_provider_riverpod.dart';
 
 class MockAppConfigService extends Mock implements AppConfigService {}
 
