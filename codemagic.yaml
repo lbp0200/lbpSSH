@@ -1,0 +1,27 @@
+workflows:
+  desktop:
+    name: Desktop CI
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      dart: stable
+    scripts:
+      - name: Get dependencies
+        script: |
+          flutter pub get
+      - name: Run tests
+        script: |
+          flutter test
+      - name: Build Linux
+        script: |
+          flutter build linux --release
+      - name: Build macOS
+        script: |
+          flutter build macos --release
+      - name: Build Windows
+        script: |
+          flutter build windows --release
+    artifacts:
+      - build/linux/**/release/bundle/*
+      - build/macos/Build/Products/Release/*
+      - build/windows/runner/Release/*
