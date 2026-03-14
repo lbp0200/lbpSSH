@@ -49,6 +49,7 @@ class AppTheme {
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Colors.white,
+      surfaceContainerHighest: Color(0xFF1E293B),
     ),
     appBarTheme: const AppBarTheme(
       centerTitle: false,
@@ -56,6 +57,7 @@ class AppTheme {
       scrolledUnderElevation: 1,
       backgroundColor: backgroundDark,
       surfaceTintColor: Colors.transparent,
+      foregroundColor: Colors.white,
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -81,6 +83,8 @@ class AppTheme {
         borderSide: const BorderSide(color: accentGreen, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      labelStyle: const TextStyle(color: Colors.white70),
+      hintStyle: const TextStyle(color: Colors.white38),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -100,10 +104,39 @@ class AppTheme {
         fontWeight: FontWeight.w600,
         color: Colors.white,
       ),
+      headlineMedium: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
+      headlineSmall: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
       titleLarge: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+      titleMedium: TextStyle(fontWeight: FontWeight.w500, color: Colors.white),
+      titleSmall: TextStyle(fontWeight: FontWeight.w500, color: Colors.white),
       bodyLarge: TextStyle(color: Colors.white),
       bodyMedium: TextStyle(color: Colors.white70),
       bodySmall: TextStyle(color: Colors.white54),
+      labelLarge: TextStyle(color: Colors.white70),
+      labelMedium: TextStyle(color: Colors.white54),
+      labelSmall: TextStyle(color: Colors.white38),
+    ),
+    listTileTheme: const ListTileThemeData(
+      textColor: Colors.white,
+      iconColor: Colors.white70,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: surfaceDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: secondaryDark,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 
