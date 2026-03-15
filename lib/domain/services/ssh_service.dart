@@ -488,6 +488,18 @@ class SshService implements TerminalInputService {
     }
   }
 
+  /// 调整终端尺寸
+  @override
+  void resize(int rows, int columns) {
+    if (_session != null && _state == SshConnectionState.connected) {
+      try {
+        _session!.resizeTerminal(columns, rows);
+      } catch (e) {
+        // 调整终端尺寸失败，静默处理
+      }
+    }
+  }
+
   bool _isDisposed = false;
 
   /// 断开连接

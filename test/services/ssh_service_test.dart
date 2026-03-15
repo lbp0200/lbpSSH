@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/ssh_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
@@ -98,6 +97,18 @@ void main() {
         // Expected to fail
       }
       // If we get here, the silent parameter was accepted
+    });
+
+    test('Given service, When resize called without connection, Then does not error', () {
+      // Should not throw even when not connected
+      service.resize(24, 80);
+    });
+
+    test('Given service, When resize called with dimensions, Then accepts parameters', () {
+      // Test that resize method accepts rows and columns
+      // Without actual connection, it should not throw
+      service.resize(40, 120);
+      service.resize(10, 40);
     });
   });
 

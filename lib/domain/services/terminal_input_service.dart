@@ -15,6 +15,9 @@ abstract class TerminalInputService {
   /// 执行命令
   Future<String> executeCommand(String command, {bool silent = false});
 
+  /// 调整终端尺寸
+  void resize(int rows, int columns);
+
   /// 清理资源
   void dispose();
 }
