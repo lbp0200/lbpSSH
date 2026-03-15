@@ -1,5 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/local_terminal_service.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:flutter_pty/flutter_pty.dart';
+
+// Mock Pty class
+class MockPty extends Mock implements Pty {}
 
 void main() {
   group('LocalTerminalService', () {
@@ -172,6 +177,31 @@ void main() {
 
         // Assert (Then) - Verify callback can be set without error
         expect(service.onActualDirectoryChange, isNotNull);
+      });
+    });
+
+    group('resize', () {
+      test('Given service not started, When resize called, Then does not throw', () {
+        // Act (When) & Assert (Then) - Should not throw even when PTY is null
+        expect(() => service.resize(24, 80), returnsNormally);
+      });
+
+      test('Given service with dimensions, When resize called with different sizes, Then accepts parameters', () {
+        // Act (When) - Multiple resize calls with different sizes
+        service.resize(24, 80);
+        service.resize(40, 120);
+        service.resize(10, 40);
+
+        // Assert (Then) - Should not throw
+        expect(service.isConnected, false); // Still not connected
+      });
+
+      test('Given service with zero dimensions, When resize called, Then handles gracefully', () {
+        // Act (When) - Edge case with zero dimensions
+        service.resize(0, 0);
+
+        // Assert (Then) - Should not throw
+        expect(service.isConnected, false);
       });
     });
   });

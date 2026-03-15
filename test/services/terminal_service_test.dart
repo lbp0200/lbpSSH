@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
 import 'package:lbp_ssh/domain/services/local_terminal_service.dart';
+import 'package:lbp_ssh/domain/services/ssh_service.dart';
 
 // Mock TerminalInputService for testing
 class MockTerminalInputService implements TerminalInputService {
@@ -209,6 +210,79 @@ void main() {
       session.setWorkingDirectoryAndUpdateName('/');
 
       expect(session.name, 'local /');
+    });
+  });
+
+  group('TerminalSession Connection State Fields', () {
+    test('Given SSH session, When created with serverInfo, Then stores serverInfo', () {
+      // Arrange (Given)
+      final mockService = MockTerminalInputService();
+
+      // Act (When)
+      final session = TerminalSession(
+        id: 'ssh-session',
+        name: 'SSH Session',
+        inputService: mockService,
+        isLocal: false,
+        serverInfo: 'user@192.168.1.1',
+      );
+
+      // Assert (Then)
+      expect(session.isLocal, false);
+      expect(session.serverInfo, 'user@192.168.1.1');
+      expect(session.connectionState, SshConnectionState.disconnected);
+    });
+
+    test('Given local session, When created, Then isLocal is true and serverInfo is null', () {
+      // Arrange (Given)
+      final localService = LocalTerminalService();
+
+      // Act (When)
+      final session = TerminalSession(
+        id: 'local-session',
+        name: 'Local Session',
+        inputService: localService,
+        isLocal: true,
+      );
+
+      // Assert (Then)
+      expect(session.isLocal, true);
+      expect(session.serverInfo, isNull);
+      expect(session.connectionState, SshConnectionState.disconnected);
+    });
+
+    test('Given session, When created without optional params, Then has default values', () {
+      // Arrange (Given)
+      final mockService = MockTerminalInputService();
+
+      // Act (When)
+      final session = TerminalSession(
+        id: 'default-session',
+        name: 'Default Session',
+        inputService: mockService,
+      );
+
+      // Assert (Then)
+      expect(session.isLocal, false); // Default is false
+      expect(session.serverInfo, isNull);
+      expect(session.connectionStartTime, isNull);
+    });
+
+    test('Given session, When connectionStartTime set, Then stores the time', () {
+      // Arrange (Given)
+      final mockService = MockTerminalInputService();
+      final session = TerminalSession(
+        id: 'session-test',
+        name: 'Test',
+        inputService: mockService,
+      );
+
+      // Act (When)
+      final connectionTime = DateTime.now();
+      session.connectionStartTime = connectionTime;
+
+      // Assert (Then)
+      expect(session.connectionStartTime, connectionTime);
     });
   });
 }
