@@ -282,20 +282,15 @@ class TerminalSession {
     // 监听终端尺寸变化
     terminal.onResize = (width, height, pixelWidth, pixelHeight) {
       // 对所有终端输入服务（包括 SSH 和本地）调整尺寸
+      // 注意：这里直接使用回调参数，确保尺寸正确
       inputService.resize(height, width);
     };
 
-    // 全屏启动时，SSH 连接建立后需要同步当前终端尺寸
-    // 延迟一帧让 kterm 完成布局，然后调用 resize 同步尺寸
+    // 首次布局后确保同步终端尺寸
+    // 使用更可靠的方式：在下一帧立即同步，不延迟
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        // 使用 kterm 的 viewWidth 和 viewHeight 获取当前终端尺寸
-        final cols = terminal.viewWidth;
-        final rows = terminal.viewHeight;
-        if (rows > 0 && cols > 0) {
-          inputService.resize(rows, cols);
-        }
-      });
+      // 重新触发一次 resize，使用回调参数保证正确
+      terminal.onResize?.call(terminal.viewWidth, terminal.viewHeight, 0, 0);
     });
   }
 
