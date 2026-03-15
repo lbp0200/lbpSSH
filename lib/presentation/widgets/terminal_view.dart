@@ -18,6 +18,7 @@ import '../../domain/services/kitty_file_transfer_service.dart';
 import '../../utils/color_utils.dart';
 import 'error_dialog.dart';
 import 'graphics_overlay.dart';
+import 'terminal_status_bar.dart';
 
 /// 终端视图组件
 class TerminalViewWidget extends StatefulWidget {
@@ -552,6 +553,25 @@ class TerminalTabsView extends StatelessWidget {
                   ? TerminalViewWidget(sessionId: activeSessionId)
                   : const SizedBox.shrink(),
             ),
+            // 状态栏
+            if (activeSessionId != null)
+              Builder(
+                builder: (context) {
+                  final session = sessions.firstWhere(
+                    (s) => s.id == activeSessionId,
+                    orElse: () => sessions.first,
+                  );
+                  return TerminalStatusBar(
+                    session: session,
+                    onReconnect: () {
+                      // TODO: 实现重连功能
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Reconnecting...')),
+                      );
+                    },
+                  );
+                },
+              ),
           ],
         );
       },
