@@ -5,5 +5,9 @@
   "disconnect": "Disconnect",
   "noConnection": "No saved connections",
   "createLocalTerminal": "Create Local Terminal",
-  "clickToConnect": "Click a connection on the left to open terminal"
+  "clickToConnect": "Click a connection on the left to open terminal",
+  "disconnected": "Disconnected",
+  "reconnect": "Reconnect",
+  "reconnecting": "Reconnecting...",
+  "connectionLost": "Connection lost"
 }
