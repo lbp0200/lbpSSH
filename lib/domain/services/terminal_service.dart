@@ -280,17 +280,23 @@ class TerminalSession {
     };
 
     // 监听终端尺寸变化
+    // 使用一个变量保存当前尺寸，确保可以同步到远程
+    int _currentCols = 80;
+    int _currentRows = 24;
+
     terminal.onResize = (width, height, pixelWidth, pixelHeight) {
+      _currentCols = width;
+      _currentRows = height;
       // 对所有终端输入服务（包括 SSH 和本地）调整尺寸
-      // 注意：这里直接使用回调参数，确保尺寸正确
       inputService.resize(height, width);
     };
 
     // 首次布局后确保同步终端尺寸
-    // 使用更可靠的方式：在下一帧立即同步，不延迟
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 重新触发一次 resize，使用回调参数保证正确
-      terminal.onResize?.call(terminal.viewWidth, terminal.viewHeight, 0, 0);
+      // 使用保存的尺寸变量，确保一致性
+      if (_currentRows > 0 && _currentCols > 0) {
+        inputService.resize(_currentRows, _currentCols);
+      }
     });
   }
 
