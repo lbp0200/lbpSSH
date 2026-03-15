@@ -381,7 +381,7 @@ class LocalTerminalService implements TerminalInputService {
   void resize(int rows, int columns) {
     if (_pty != null && !_isShuttingDown) {
       try {
-        _pty!.resize(columns, rows);
+        _pty!.resize(rows, columns);
       } catch (e) {
         // 调整终端尺寸失败，静默处理
       }
