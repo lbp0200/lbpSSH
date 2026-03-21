@@ -43,7 +43,7 @@ dependencies:
   package_info_plus: ^9.0.0
 
   # SSH 客户端
-  dartssh2: ^2.13.0
+  dartssh2: ^2.14.0
 
   # 数据存储（已迁移到 JSON 文件）
 
