@@ -4,20 +4,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/terminal_config.dart';
 import '../../data/models/default_terminal_config.dart';
+import '../../data/models/ssh_config.dart';
 
 class AppConfig {
   TerminalConfig terminal;
   DefaultTerminalConfig defaultTerminal;
+  SshConfig ssh;
 
   AppConfig({
     TerminalConfig? terminal,
     DefaultTerminalConfig? defaultTerminal,
+    SshConfig? ssh,
   })  : terminal = terminal ?? TerminalConfig.defaultConfig,
-        defaultTerminal = defaultTerminal ?? DefaultTerminalConfig.defaultConfig;
+        defaultTerminal = defaultTerminal ?? DefaultTerminalConfig.defaultConfig,
+        ssh = ssh ?? SshConfig.defaultConfig;
 
   Map<String, dynamic> toJson() => {
         'terminal': terminal.toJson(),
         'defaultTerminal': defaultTerminal.toJson(),
+        'ssh': ssh.toJson(),
       };
 
   factory AppConfig.fromJson(Map<String, dynamic> json) => AppConfig(
@@ -29,6 +34,9 @@ class AppConfig {
                 json['defaultTerminal'] as Map<String, dynamic>,
               )
             : null,
+        ssh: json['ssh'] != null
+            ? SshConfig.fromJson(json['ssh'] as Map<String, dynamic>)
+            : null,
       );
 }
 
@@ -37,6 +45,7 @@ class AppConfigService with ChangeNotifier {
   static bool _initialized = false;
   TerminalConfig _terminal = TerminalConfig.defaultConfig;
   DefaultTerminalConfig _defaultTerminal = DefaultTerminalConfig.defaultConfig;
+  SshConfig _ssh = SshConfig.defaultConfig;
 
   AppConfigService._internal();
 
@@ -51,6 +60,7 @@ class AppConfigService with ChangeNotifier {
 
   TerminalConfig get terminal => _terminal;
   DefaultTerminalConfig get defaultTerminal => _defaultTerminal;
+  SshConfig get ssh => _ssh;
 
   Future<void> saveTerminalConfig(TerminalConfig config) async {
     _terminal = config;
@@ -64,6 +74,12 @@ class AppConfigService with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> saveSshConfig(SshConfig config) async {
+    _ssh = config;
+    await _saveToPrefs();
+    notifyListeners();
+  }
+
   static Future<void> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final configJson = prefs.getString(AppConstants.appConfigKey);
@@ -73,6 +89,7 @@ class AppConfigService with ChangeNotifier {
         final config = AppConfig.fromJson(json);
         _instance!._terminal = config.terminal;
         _instance!._defaultTerminal = config.defaultTerminal;
+        _instance!._ssh = config.ssh;
       } catch (e) {
         // Use defaults if parsing fails
       }
@@ -84,6 +101,7 @@ class AppConfigService with ChangeNotifier {
     final config = AppConfig(
       terminal: _terminal,
       defaultTerminal: _defaultTerminal,
+      ssh: _ssh,
     );
     await prefs.setString(
       AppConstants.appConfigKey,
@@ -94,6 +112,7 @@ class AppConfigService with ChangeNotifier {
   Future<void> resetToDefaults() async {
     _terminal = TerminalConfig.defaultConfig;
     _defaultTerminal = DefaultTerminalConfig.defaultConfig;
+    _ssh = SshConfig.defaultConfig;
     await _saveToPrefs();
     notifyListeners();
   }
@@ -102,6 +121,7 @@ class AppConfigService with ChangeNotifier {
     final config = AppConfig(
       terminal: _terminal,
       defaultTerminal: _defaultTerminal,
+      ssh: _ssh,
     );
     return jsonEncode(config.toJson());
   }
@@ -111,6 +131,7 @@ class AppConfigService with ChangeNotifier {
     final config = AppConfig.fromJson(json);
     _terminal = config.terminal;
     _defaultTerminal = config.defaultTerminal;
+    _ssh = config.ssh;
     await _saveToPrefs();
     notifyListeners();
   }

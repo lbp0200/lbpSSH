@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../data/models/terminal_config.dart';
 import '../../data/models/default_terminal_config.dart';
+import '../../data/models/ssh_config.dart';
 import '../../domain/services/app_config_service.dart';
 
 class AppConfigProvider extends ChangeNotifier {
@@ -11,6 +12,7 @@ class AppConfigProvider extends ChangeNotifier {
   TerminalConfig get terminalConfig => _configService.terminal;
   DefaultTerminalConfig get defaultTerminalConfig =>
       _configService.defaultTerminal;
+  SshConfig get sshConfig => _configService.ssh;
 
   Future<void> saveTerminalConfig(TerminalConfig config) async {
     await _configService.saveTerminalConfig(config);
@@ -25,6 +27,11 @@ class AppConfigProvider extends ChangeNotifier {
 
   Future<void> saveDefaultTerminalConfig(DefaultTerminalConfig config) async {
     await _configService.saveDefaultTerminalConfig(config);
+    notifyListeners();
+  }
+
+  Future<void> saveSshConfig(SshConfig config) async {
+    await _configService.saveSshConfig(config);
     notifyListeners();
   }
 

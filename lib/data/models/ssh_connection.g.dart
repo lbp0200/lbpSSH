@@ -35,6 +35,8 @@ SshConnection _$SshConnectionFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['updatedAt'] as String),
       version: (json['version'] as num?)?.toInt() ?? 1,
+      connectTimeout: (json['connectTimeout'] as num?)?.toInt() ?? 30000,
+      keepaliveInterval: (json['keepaliveInterval'] as num?)?.toInt() ?? 30000,
     );
 
 Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
@@ -56,6 +58,8 @@ Map<String, dynamic> _$SshConnectionToJson(SshConnection instance) =>
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
       'version': instance.version,
+      'connectTimeout': instance.connectTimeout,
+      'keepaliveInterval': instance.keepaliveInterval,
     };
 
 const _$AuthTypeEnumMap = {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/ssh_connection.dart';
 import '../providers/terminal_provider.dart';
 import '../screens/sftp_browser_screen.dart';
 import '../widgets/collapsible_sidebar.dart';
@@ -26,6 +27,21 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  /// 显示错误详情对话框
+  void _showErrorDialog(
+    BuildContext context,
+    SshConnection connection,
+    String errorMessage,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => ErrorDetailDialog(
+        connection: connection,
+        errorMessage: errorMessage,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,7 +55,13 @@ class _MainScreenState extends State<MainScreen> {
                 listen: false,
               );
               // 每次点击都创建新的终端会话（即使已存在也创建新的）
-              await terminalProvider.createSession(connection);
+              try {
+                await terminalProvider.createSession(connection);
+              } catch (e) {
+                if (context.mounted) {
+                  _showErrorDialog(context, connection, e.toString());
+                }
+              }
             },
             onSftpTap: (connection) async {
               final terminalProvider = context.read<TerminalProvider>();

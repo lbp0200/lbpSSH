@@ -3,32 +3,49 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
+import 'package:socks5_proxy/socks_client.dart';
 import '../../data/models/ssh_connection.dart';
+import 'app_config_service.dart';
 import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
 
-/// SOCKS5 代理 Socket 实现（实现 SSHSocket 接口）
+/// 将任何 Socket 适配为 SSHSocket
 class _Socks5ProxySocket implements SSHSocket {
   final Socket _socket;
+  late final Stream<Uint8List> _stream;
+  late final StreamController<Uint8List> _controller;
+  StreamSubscription? _subscription;
 
-  _Socks5ProxySocket(this._socket);
+  _Socks5ProxySocket(Socket socket) : _socket = socket {
+    _controller = StreamController<Uint8List>.broadcast();
+    _stream = _controller.stream;
+    _subscription = _socket.listen(
+      (data) => _controller.add(data),
+      onError: (e) => _controller.addError(e),
+      onDone: () => _controller.close(),
+    );
+  }
 
   @override
-  Stream<Uint8List> get stream => _socket.cast<Uint8List>();
+  Stream<Uint8List> get stream => _stream;
 
   @override
   StreamSink<List<int>> get sink => _socket;
 
   @override
+  Future<void> get done => _socket.done;
+
+  @override
   Future<void> close() async {
+    await _subscription?.cancel();
+    await _controller.close();
     await _socket.close();
   }
 
   @override
-  Future<void> get done => _socket.done;
-
-  @override
   void destroy() {
+    _subscription?.cancel();
+    _controller.close();
     _socket.destroy();
   }
 
@@ -40,6 +57,8 @@ class _Socks5ProxySocket implements SSHSocket {
 }
 
 /// 连接到 SOCKS5 代理并返回 SSHSocket
+///
+/// 使用 socks5_proxy 包实现，支持远程 DNS 解析。
 Future<SSHSocket> connectViaSocks5Proxy(
   String proxyHost,
   int proxyPort,
@@ -47,99 +66,26 @@ Future<SSHSocket> connectViaSocks5Proxy(
   int targetPort, {
   String? username,
   String? password,
+  Duration? timeout,
 }) async {
-  // 连接到 SOCKS5 代理服务器
-  final socket = await Socket.connect(proxyHost, proxyPort);
+  // 创建代理配置
+  final proxy = ProxySettings(
+    InternetAddress(proxyHost, type: InternetAddressType.IPv4),
+    proxyPort,
+    username: username,
+    password: password,
+  );
 
-  // SOCKS5 握手
-  // 1. 发送认证方法列表
-  final authMethods = <int>[];
-  if (username != null && password != null) {
-    authMethods.add(0x02); // 用户名密码认证
-  }
-  authMethods.add(0x00); // 无认证
+  // 使用 socks5_proxy 包连接到目标
+  // InternetAddressType.unix 会让代理进行远程 DNS 解析
+  final socksSocket = await SocksTCPClient.connect(
+    [proxy],
+    InternetAddress(targetHost, type: InternetAddressType.unix),
+    targetPort,
+  );
 
-  final handshake = <int>[
-    0x05, // SOCKS 版本
-    authMethods.length,
-    ...authMethods,
-  ];
-  socket.add(handshake);
-
-  // 读取服务器选择的认证方法
-  final handshakeResponse = await socket.first;
-  if (handshakeResponse[0] != 0x05) {
-    socket.destroy();
-    throw Exception('SOCKS5 握手失败：无效的协议版本');
-  }
-
-  // 如果需要用户名密码认证
-  if (handshakeResponse[1] == 0x02) {
-    if (username == null || password == null) {
-      socket.destroy();
-      throw Exception('SOCKS5 代理需要用户名密码认证');
-    }
-
-    // 发送用户名密码认证
-    final authRequest = <int>[
-      0x01, // 子协议版本
-      username.length,
-      ...utf8.encode(username),
-      password.length,
-      ...utf8.encode(password),
-    ];
-    socket.add(authRequest);
-
-    // 读取认证结果
-    final authResponse = await socket.first;
-    if (authResponse[1] != 0x00) {
-      socket.destroy();
-      throw Exception('SOCKS5 用户名密码认证失败');
-    }
-  } else if (handshakeResponse[1] != 0x00) {
-    socket.destroy();
-    throw Exception('SOCKS5 代理不支持所选的认证方式');
-  }
-
-  // 发送连接请求
-  final connectRequest = <int>[
-    0x05, // SOCKS 版本
-    0x01, // CONNECT 命令
-    0x00, // 保留字段
-    0x03, // 地址类型：域名
-    targetHost.length,
-    ...utf8.encode(targetHost),
-    (targetPort >> 8) & 0xFF, // 端口高字节
-    targetPort & 0xFF, // 端口低字节
-  ];
-  socket.add(connectRequest);
-
-  // 读取连接响应
-  final connectResponse = await socket.first;
-  if (connectResponse[0] != 0x05) {
-    socket.destroy();
-    throw Exception('SOCKS5 连接失败：无效的协议版本');
-  }
-
-  if (connectResponse[1] != 0x00) {
-    final errorCodes = {
-      0x01: 'SOCKS5 错误：一般性失败',
-      0x02: 'SOCKS5 错误：连接被拒绝',
-      0x03: 'SOCKS5 错误：网络不可达',
-      0x04: 'SOCKS5 错误：主机不可达',
-      0x05: 'SOCKS5 错误：连接被拒绝',
-      0x06: 'SOCKS5 错误：TTL 过期',
-      0x07: 'SOCKS5 错误：不支持的命令',
-      0x08: 'SOCKS5 错误：不支持的地址类型',
-    };
-    socket.destroy();
-    throw Exception(
-      errorCodes[connectResponse[1]] ??
-          'SOCKS5 错误：未知错误 (${connectResponse[1]})',
-    );
-  }
-
-  return _Socks5ProxySocket(socket);
+  // 包装为 SSHSocket
+  return _Socks5ProxySocket(socksSocket as Socket);
 }
 
 /// SSH 连接状态
@@ -147,6 +93,13 @@ enum SshConnectionState { disconnected, connecting, connected, error }
 
 /// SSH 连接服务
 class SshService implements TerminalInputService {
+  final AppConfigService? _appConfigService;
+
+  SshService({AppConfigService? appConfigService})
+      : _appConfigService = appConfigService;
+
+  AppConfigService get _config => _appConfigService ?? AppConfigService.getInstance();
+
   SSHClient? _client;
   final _stateController = StreamController<SshConnectionState>.broadcast();
   final _outputController = StreamController<String>.broadcast();
@@ -240,6 +193,7 @@ class SshService implements TerminalInputService {
       _updateState(SshConnectionState.connecting);
 
       // 通过 SOCKS5 代理连接（如果配置了）
+      final timeout = Duration(milliseconds: connection.connectTimeout);
       SSHSocket socket;
       if (connection.socks5Proxy != null) {
         final proxy = connection.socks5Proxy!;
@@ -250,9 +204,14 @@ class SshService implements TerminalInputService {
           connection.port,
           username: proxy.username,
           password: proxy.password,
+          timeout: timeout,
         );
       } else {
-        socket = await SSHSocket.connect(connection.host, connection.port);
+        socket = await SSHSocket.connect(
+          connection.host,
+          connection.port,
+          timeout: timeout,
+        );
       }
 
       // 根据认证方式准备认证信息
@@ -323,9 +282,14 @@ class SshService implements TerminalInputService {
               targetPort,
               username: proxy.username,
               password: proxy.password,
+              timeout: timeout,
             );
           } else {
-            socket = await SSHSocket.connect(targetHost, targetPort);
+            socket = await SSHSocket.connect(
+              targetHost,
+              targetPort,
+              timeout: timeout,
+            );
           }
 
           // 处理身份文件
@@ -383,6 +347,7 @@ class SshService implements TerminalInputService {
               ? () => password!
               : null,
           identities: identities,
+          keepAliveInterval: Duration(milliseconds: _config.ssh.keepaliveInterval),
         );
       }
 

@@ -56,6 +56,12 @@ class SshConnection {
   /// 版本号（用于同步冲突检测）
   final int version;
 
+  /// 连接超时时间（毫秒）
+  final int connectTimeout;
+
+  /// Keepalive 间隔时间（毫秒），默认 30000（30秒）
+  final int keepaliveInterval;
+
   SshConnection({
     required this.id,
     required this.name,
@@ -74,6 +80,8 @@ class SshConnection {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.version = 1,
+    this.connectTimeout = 30000,
+    this.keepaliveInterval = 30000,
   }) : createdAt = createdAt ?? DateTime.now(),
        updatedAt = updatedAt ?? DateTime.now();
 
@@ -103,6 +111,8 @@ class SshConnection {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? version,
+    int? connectTimeout,
+    int? keepaliveInterval,
   }) {
     return SshConnection(
       id: id ?? this.id,
@@ -122,6 +132,8 @@ class SshConnection {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       version: version ?? this.version,
+      connectTimeout: connectTimeout ?? this.connectTimeout,
+      keepaliveInterval: keepaliveInterval ?? this.keepaliveInterval,
     );
   }
 }

@@ -9,10 +9,10 @@ part of 'terminal_config.dart';
 TerminalConfig _$TerminalConfigFromJson(Map<String, dynamic> json) =>
     TerminalConfig(
       fontFamily: json['fontFamily'] as String? ?? 'JetBrainsMonoNerdFontMono',
-      fontSize: (json['fontSize'] as num?)?.toDouble() ?? 13.0,
+      fontSize: (json['fontSize'] as num?)?.toDouble() ?? 17.0,
       fontWeight: (json['fontWeight'] as num?)?.toInt() ?? 400,
       letterSpacing: (json['letterSpacing'] as num?)?.toDouble() ?? 0.0,
-      lineHeight: (json['lineHeight'] as num?)?.toDouble() ?? 1.0,
+      lineHeight: (json['lineHeight'] as num?)?.toDouble() ?? 1.2,
       backgroundColor: json['backgroundColor'] as String? ?? '#1E1E1E',
       foregroundColor: json['foregroundColor'] as String? ?? '#FFFFFF',
       cursorColor: json['cursorColor'] as String? ?? '#FFFFFF',

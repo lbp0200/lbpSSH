@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/ssh_config.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';
 import '../providers/app_config_provider.dart';
@@ -84,12 +85,14 @@ class TerminalSettingsPage extends StatefulWidget {
 
 class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
   late TerminalConfig _config;
+  late SshConfig _sshConfig;
   final _fontSizeController = TextEditingController();
   final _fontWeightController = TextEditingController();
   final _letterSpacingController = TextEditingController();
   final _lineHeightController = TextEditingController();
   final _paddingController = TextEditingController();
   final _fontFamilyController = TextEditingController();
+  final _keepaliveController = TextEditingController();
 
   // 预设字体大小
   final List<int> _presetFontSizes = [10, 12, 14, 16, 18, 20, 24, 28, 32];
@@ -143,12 +146,14 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
   void _loadConfig() {
     final provider = Provider.of<AppConfigProvider>(context, listen: false);
     _config = provider.terminalConfig;
+    _sshConfig = provider.sshConfig;
     _fontSizeController.text = _config.fontSize.toInt().toString();
     _fontWeightController.text = _config.fontWeight.toString();
     _letterSpacingController.text = _config.letterSpacing.toString();
     _lineHeightController.text = _config.lineHeight.toString();
     _paddingController.text = _config.padding.toString();
     _fontFamilyController.text = _config.fontFamily;
+    _keepaliveController.text = (_sshConfig.keepaliveInterval ~/ 1000).toString();
   }
 
   void _onFontSizeChanged(double value) {
@@ -166,6 +171,7 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
     _lineHeightController.dispose();
     _paddingController.dispose();
     _fontFamilyController.dispose();
+    _keepaliveController.dispose();
     super.dispose();
   }
 
@@ -418,6 +424,78 @@ class _TerminalSettingsPageState extends State<TerminalSettingsPage> {
           ),
           const SizedBox(height: 16),
           _buildDefaultTerminalSettings(),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 24),
+          const Text(
+            'SSH 连接设置',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _keepaliveController,
+                  decoration: const InputDecoration(
+                    labelText: 'Keepalive 间隔',
+                    suffixText: '秒',
+                    helperText: '定期发送保活数据包，防止连接因空闲断开',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (value) {
+                    final seconds = int.tryParse(value);
+                    if (seconds != null && seconds > 0) {
+                      _sshConfig = _sshConfig.copyWith(
+                        keepaliveInterval: seconds * 1000,
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              OutlinedButton(
+                onPressed: () {
+                  _loadConfig();
+                  setState(() {});
+                },
+                child: const Text('重置'),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final scaffoldMessenger = ScaffoldMessenger.maybeOf(
+                      context,
+                    );
+                    if (scaffoldMessenger == null) return;
+
+                    try {
+                      final provider = Provider.of<AppConfigProvider>(
+                        context,
+                        listen: false,
+                      );
+                      await provider.saveSshConfig(_sshConfig);
+
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(content: Text('SSH 设置已保存')),
+                      );
+                    } catch (e) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(content: Text('保存失败: $e')),
+                      );
+                    }
+                  },
+                  child: const Text('保存 SSH 设置'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
