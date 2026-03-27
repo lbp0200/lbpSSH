@@ -19,8 +19,6 @@ class ConnectionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Consumer<ConnectionProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
@@ -46,71 +44,58 @@ class ConnectionList extends StatelessWidget {
                 Icon(
                   Icons.dns_outlined,
                   size: 56,
-                  color: isDark ? Colors.white24 : Colors.black12,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppTheme.spacingLg),
                 Text(
                   '暂无连接配置',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: isDark ? Colors.white54 : Colors.black54,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppTheme.spacingLg),
                 FilledButton.icon(
                   onPressed: () => _showConnectionForm(context, null),
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('添加连接'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark ? AppTheme.accentGreen : null,
-                  ),
                 ),
               ],
             ),
           );
         }
 
-        final bottomPadding = isCompact ? 8.0 : 60.0;
+        final bottomPadding = isCompact ? AppTheme.spacingSm : AppTheme.spacingXl + AppTheme.spacingMd;
         return Stack(
           children: [
             ListView.builder(
-              padding: EdgeInsets.only(top: 8, bottom: bottomPadding),
+              padding: EdgeInsets.only(top: AppTheme.spacingSm, bottom: bottomPadding),
               itemCount: connections.length,
               itemBuilder: (context, index) {
                 final connection = connections[index];
                 if (isCompact) {
                   return _CompactConnectionItem(
                     connection: connection,
-                    onTap: () {
-                      onConnectionTap?.call(connection);
-                    },
-                    onSftpTap: onSftpTap != null
-                        ? () => onSftpTap!(connection)
-                        : null,
+                    onTap: () => onConnectionTap?.call(connection),
+                    onSftpTap: onSftpTap != null ? () => onSftpTap!(connection) : null,
                   );
                 }
                 return _ConnectionListItem(
                   connection: connection,
-                  onTap: () {
-                    onConnectionTap?.call(connection);
-                  },
+                  onTap: () => onConnectionTap?.call(connection),
                   onEdit: () => _showConnectionForm(context, connection),
-                  onDelete: () =>
-                      _deleteConnection(context, provider, connection),
-                  onSftpTap: onSftpTap != null
-                      ? () => onSftpTap!(connection)
-                      : null,
+                  onDelete: () => _deleteConnection(context, provider, connection),
+                  onSftpTap: onSftpTap != null ? () => onSftpTap!(connection) : null,
                 );
               },
             ),
             if (!isCompact)
               Positioned(
-                bottom: 8,
-                right: 8,
+                bottom: AppTheme.spacingSm,
+                right: AppTheme.spacingSm,
                 child: FloatingActionButton.small(
                   heroTag: 'add_connection',
                   onPressed: () => _showConnectionForm(context, null),
                   tooltip: '添加连接',
-                  backgroundColor: isDark ? AppTheme.accentGreen : null,
                   child: const Icon(Icons.add),
                 ),
               ),
@@ -155,9 +140,9 @@ class ConnectionList extends StatelessWidget {
     if (confirmed == true) {
       await provider.deleteConnection(connection.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('连接已删除')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('连接已删除')),
+        );
       }
     }
   }
@@ -180,26 +165,29 @@ class _ConnectionListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingSm,
+        vertical: 3,
+      ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          hoverColor: isDark
-              ? AppTheme.accentGreen.withValues(alpha: 0.08)
-              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: colorScheme.primary.withValues(alpha: 0.08),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingMd,
+              vertical: AppTheme.spacingSm + 2,
+            ),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark ? AppTheme.secondaryDark : Colors.grey.shade200,
-              ),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.dividerColor),
             ),
             child: Row(
               children: [
@@ -207,29 +195,24 @@ class _ConnectionListItem extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                        : Colors.green.shade50,
+                    color: colorScheme.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.terminal,
-                    color: isDark
-                        ? AppTheme.accentGreen
-                        : Colors.green.shade600,
+                    color: colorScheme.primary,
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppTheme.spacingMd),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         connection.name,
-                        style: TextStyle(
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white : Colors.black87,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -237,9 +220,7 @@ class _ConnectionListItem extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '${connection.username}@${connection.host}:${connection.port}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white54 : Colors.black45,
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontFamily: 'monospace',
                         ),
                         maxLines: 1,
@@ -248,13 +229,13 @@ class _ConnectionListItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppTheme.spacingSm),
                 if (onSftpTap != null)
                   IconButton(
                     icon: Icon(
                       Icons.folder_copy_outlined,
                       size: 20,
-                      color: isDark ? Colors.white54 : Colors.black45,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     onPressed: onSftpTap,
                     tooltip: 'SFTP',
@@ -264,7 +245,7 @@ class _ConnectionListItem extends StatelessWidget {
                   icon: Icon(
                     Icons.more_vert,
                     size: 20,
-                    color: isDark ? Colors.white54 : Colors.black45,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   itemBuilder: (context) => [
                     PopupMenuItem(
@@ -274,15 +255,10 @@ class _ConnectionListItem extends StatelessWidget {
                           Icon(
                             Icons.edit,
                             size: 18,
-                            color: isDark ? Colors.white70 : Colors.black54,
+                            color: colorScheme.onSurface.withValues(alpha: 0.8),
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            '编辑',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
+                          const SizedBox(width: AppTheme.spacingSm + 2),
+                          Text('编辑', style: TextStyle(color: colorScheme.onSurface)),
                         ],
                       ),
                     ),
@@ -291,7 +267,7 @@ class _ConnectionListItem extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(Icons.delete, size: 18, color: Colors.red),
-                          SizedBox(width: 10),
+                          SizedBox(width: AppTheme.spacingSm + 2),
                           Text('删除', style: TextStyle(color: Colors.red)),
                         ],
                       ),
@@ -327,7 +303,8 @@ class _CompactConnectionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -337,37 +314,31 @@ class _CompactConnectionItem extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(8),
-            hoverColor: isDark
-                ? AppTheme.accentGreen.withValues(alpha: 0.1)
-                : Colors.grey.shade200,
+            hoverColor: colorScheme.primary.withValues(alpha: 0.1),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppTheme.spacingSm,
+                horizontal: AppTheme.spacingSm + 2,
+              ),
               child: Column(
                 children: [
                   Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                          : Colors.green.shade50,
+                      color: colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
                       Icons.terminal,
-                      color: isDark
-                          ? AppTheme.accentGreen
-                          : Colors.green.shade600,
+                      color: colorScheme.primary,
                       size: 16,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     connection.name,
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: isDark ? Colors.white70 : Colors.black54,
-                    ),
+                    style: theme.textTheme.labelSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -387,7 +358,7 @@ class _CompactConnectionItem extends StatelessWidget {
                 child: Icon(
                   Icons.folder_copy_outlined,
                   size: 14,
-                  color: isDark ? Colors.white38 : Colors.black38,
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
             ),
