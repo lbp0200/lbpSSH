@@ -33,7 +33,7 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
-      value: 1.0, // Start at expanded state
+      value: 1.0,
     );
     _widthAnimation = Tween<double>(begin: _collapsedWidth, end: _expandedWidth)
         .animate(
@@ -94,29 +94,26 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return AnimatedBuilder(
       animation: _widthAnimation,
       builder: (context, child) {
         final currentWidth = _widthAnimation.value;
-        final isCompactMode =
-            currentWidth < 200; // Use actual width for layout decision
+        final isCompactMode = currentWidth < 200;
 
         return Container(
           width: currentWidth,
           decoration: BoxDecoration(
-            color: isDark ? AppTheme.surfaceDark : Colors.white,
+            color: colorScheme.surface,
             border: Border(
-              right: BorderSide(
-                color: isDark ? AppTheme.secondaryDark : Colors.grey.shade200,
-                width: 1,
-              ),
+              right: BorderSide(color: theme.dividerColor),
             ),
           ),
           child: Column(
             children: [
-              _buildHeader(isDark, isCompactMode),
+              _buildHeader(theme, colorScheme, isCompactMode),
               Expanded(
                 child: ConnectionList(
                   isCompact: isCompactMode,
@@ -124,7 +121,7 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
                   onSftpTap: widget.onSftpTap,
                 ),
               ),
-              _buildBottomBar(isDark, isCompactMode),
+              _buildBottomBar(theme, colorScheme, isCompactMode),
             ],
           ),
         );
@@ -132,23 +129,23 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
     );
   }
 
-  Widget _buildHeader(bool isDark, bool isCompactMode) {
+  Widget _buildHeader(ThemeData theme, ColorScheme colorScheme, bool isCompactMode) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppTheme.spacingMd),
       child: !isCompactMode
           ? Column(
               children: [
                 if (_showSearch)
-                  _buildSearchField(isDark)
+                  _buildSearchField(theme, colorScheme)
                 else
-                  _buildExpandedHeader(isDark),
+                  _buildExpandedHeader(theme, colorScheme),
               ],
             )
-          : _buildCollapsedHeader(isDark),
+          : _buildCollapsedHeader(theme, colorScheme),
     );
   }
 
-  Widget _buildExpandedHeader(bool isDark) {
+  Widget _buildExpandedHeader(ThemeData theme, ColorScheme colorScheme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -156,59 +153,52 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
           icon: Icons.search,
           onPressed: _toggleSearch,
           tooltip: '搜索',
-          isDark: isDark,
+          theme: theme,
+          colorScheme: colorScheme,
         ),
         _buildIconButton(
           icon: Icons.settings,
           onPressed: _openSettings,
           tooltip: '设置',
-          isDark: isDark,
+          theme: theme,
+          colorScheme: colorScheme,
         ),
       ],
     );
   }
 
-  Widget _buildSearchField(bool isDark) {
+  Widget _buildSearchField(ThemeData theme, ColorScheme colorScheme) {
     return TextField(
       controller: _searchController,
-      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      style: TextStyle(color: colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: '搜索连接...',
-        hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
-        prefixIcon: Icon(
-          Icons.search,
-          color: isDark ? Colors.white54 : Colors.black54,
-        ),
+        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5)),
+        prefixIcon: Icon(Icons.search, color: colorScheme.onSurface.withValues(alpha: 0.6)),
         suffixIcon: IconButton(
           icon: const Icon(Icons.close),
           onPressed: _toggleSearch,
-          color: isDark ? Colors.white54 : Colors.black54,
+          color: colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+          horizontal: AppTheme.spacingMd,
+          vertical: AppTheme.spacingSm + 2,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isDark ? AppTheme.secondaryDark : Colors.grey.shade300,
-          ),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: theme.dividerColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isDark ? AppTheme.secondaryDark : Colors.grey.shade300,
-          ),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: theme.dividerColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppTheme.accentGreen),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: colorScheme.primary),
         ),
         filled: true,
-        fillColor: isDark
-            ? AppTheme.secondaryDark.withValues(alpha: 0.5)
-            : Colors.grey.shade100,
+        fillColor: colorScheme.surfaceContainerHighest,
       ),
       onChanged: (value) {
         context.read<ConnectionProvider>().setSearchQuery(value);
@@ -216,12 +206,13 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
     );
   }
 
-  Widget _buildCollapsedHeader(bool isDark) {
+  Widget _buildCollapsedHeader(ThemeData theme, ColorScheme colorScheme) {
     return _buildIconButton(
       icon: Icons.chevron_right,
       onPressed: _toggleExpanded,
       tooltip: '展开',
-      isDark: isDark,
+      theme: theme,
+      colorScheme: colorScheme,
     );
   }
 
@@ -229,7 +220,8 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
     required IconData icon,
     required VoidCallback onPressed,
     required String tooltip,
-    required bool isDark,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
   }) {
     return Tooltip(
       message: tooltip,
@@ -239,14 +231,12 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: isDark
-              ? AppTheme.accentGreen.withValues(alpha: 0.1)
-              : Colors.grey.shade200,
+          hoverColor: colorScheme.primary.withValues(alpha: 0.1),
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppTheme.spacingSm + 2),
             child: Icon(
               icon,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
               size: 22,
             ),
           ),
@@ -255,34 +245,37 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
     );
   }
 
-  Widget _buildBottomBar(bool isDark, bool isCompactMode) {
+  Widget _buildBottomBar(ThemeData theme, ColorScheme colorScheme, bool isCompactMode) {
     if (!isCompactMode) {
       return Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppTheme.spacingMd),
         child: _buildIconButton(
           icon: Icons.chevron_left,
           onPressed: _toggleExpanded,
           tooltip: '折叠',
-          isDark: isDark,
+          theme: theme,
+          colorScheme: colorScheme,
         ),
       );
     } else {
       return Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(AppTheme.spacingSm),
         child: Column(
           children: [
             _buildIconButton(
               icon: Icons.search,
               onPressed: _toggleSearch,
               tooltip: '搜索',
-              isDark: isDark,
+              theme: theme,
+              colorScheme: colorScheme,
             ),
             const SizedBox(height: 4),
             _buildIconButton(
               icon: Icons.settings,
               onPressed: _openSettings,
               tooltip: '设置',
-              isDark: isDark,
+              theme: theme,
+              colorScheme: colorScheme,
             ),
           ],
         ),
