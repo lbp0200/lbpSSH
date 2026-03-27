@@ -892,10 +892,7 @@ $error
             width: 80,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
-              ),
+              style: theme.textTheme.bodySmall,
             ),
           ),
           Expanded(
