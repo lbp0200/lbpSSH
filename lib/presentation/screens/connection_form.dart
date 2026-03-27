@@ -921,7 +921,7 @@ class _ManualPathDialogState extends State<_ManualPathDialog> {
             autofocus: true,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '提示：由于 macOS 沙箱限制，无法直接选择 ~/.ssh 目录中的文件，请手动输入完整路径。',
             style: TextStyle(
               fontSize: 12,
