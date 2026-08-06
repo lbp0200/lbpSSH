@@ -1,3 +1,5 @@
+- docs: fix project structure and tech stack in READMEs (f9fb83a)
+- docs: update CHANGELOG (d7221dd)
 - docs(design-system): align MASTER.md with actual Linear theme tokens (b6b4092)
 - docs: update CHANGELOG (1712077)
 - ci: add version-resolver to release drafter config (536458a)
