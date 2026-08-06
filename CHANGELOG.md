@@ -1,3 +1,5 @@
+- test(terminal-service): cover TerminalSession methods (8b01dd9)
+- docs: update CHANGELOG (777e97c)
 - test(local-terminal): cover cd detection, executeCommand, stop, dispose (ddddf5c)
 - docs: update CHANGELOG (7fbb891)
 - test(sftp-browser): add widget tests for SftpBrowserScreen (030f489)
