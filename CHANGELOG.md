@@ -1,3 +1,5 @@
+- test(terminal-service): cover executeCommand success and failure paths (19ae70d)
+- docs: update CHANGELOG (f654eda)
 - test(local-terminal): cover escape sequence stripping and getWorkingDirectory (c4f95fe)
 - docs: update CHANGELOG (ef30bbf)
 - test(connection-form): cover password visibility toggle and key validation (30f8fe9)
