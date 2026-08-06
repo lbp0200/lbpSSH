@@ -20,7 +20,7 @@ Cross-platform SSH Terminal Manager
 - **SSH Connection Management** - Add, edit, delete SSH connections
 - **Multiple Authentication Methods** - Password, Private Key, Private Key + Password
 - **Jump Host Support** - Connect through jump/bastion hosts
-- **Terminal Emulator** - Full interactive terminal based on xterm
+- **Terminal Emulator** - Full interactive terminal based on kterm
 - **Multi-tab Support** - Manage multiple SSH connections simultaneously
 - **Configuration Sync** - Sync to Gitee Gist or GitHub Gist
 - **Encrypted Storage** - Sensitive data encrypted locally
