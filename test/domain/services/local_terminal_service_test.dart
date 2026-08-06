@@ -259,5 +259,90 @@ void main() {
         },
       );
     });
+
+    group('cd command detection', () {
+      setUp(() {
+        service.initWorkingDirectory('/home/user');
+      });
+
+      test(
+        'Given cd command with absolute path, When newline sent, Then onDirectoryChange fires with resolved dir',
+        () {
+          // Arrange (Given)
+          String? notifiedDir;
+          service.onDirectoryChange = (dir) => notifiedDir = dir;
+
+          // Act (When) - 输入 "cd /var/log" 后单独回车(模拟逐字符输入)
+          service.sendInput('cd /var/log');
+          service.sendInput('\n');
+
+          // Assert (Then)
+          expect(notifiedDir, '/var/log');
+        },
+      );
+
+      test(
+        'Given cd command with relative path, When newline sent, Then resolves relative to current dir',
+        () {
+          // Arrange (Given)
+          String? notifiedDir;
+          service.onDirectoryChange = (dir) => notifiedDir = dir;
+
+          // Act (When) - 相对路径基于 /home/user
+          service.sendInput('cd projects');
+          service.sendInput('\n');
+
+          // Assert (Then)
+          expect(notifiedDir, '/home/user/projects');
+        },
+      );
+
+      test(
+        'Given non-cd command, When newline sent, Then onDirectoryChange does not fire',
+        () {
+          // Arrange (Given)
+          var fired = false;
+          service.onDirectoryChange = (dir) => fired = true;
+
+          // Act (When)
+          service.sendInput('ls -la\n');
+
+          // Assert (Then)
+          expect(fired, isFalse);
+        },
+      );
+    });
+
+    group('executeCommand', () {
+      test(
+        'Given service not started, When executeCommand called, Then throws',
+        () async {
+          // Act (When) & Assert (Then)
+          await expectLater(
+            () => service.executeCommand('pwd'),
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
+    });
+
+    group('stop', () {
+      test(
+        'Given service not started, When stop called, Then does not throw',
+        () async {
+          // Act (When) & Assert (Then)
+          await expectLater(service.stop(), completes);
+          expect(service.isConnected, isFalse);
+        },
+      );
+
+      test(
+        'Given service not started, When dispose called, Then does not throw',
+        () {
+          // Act (When) & Assert (Then)
+          expect(service.dispose, returnsNormally);
+        },
+      );
+    });
   });
 }
