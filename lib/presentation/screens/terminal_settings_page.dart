@@ -354,21 +354,24 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
               ),
             ),
             const SizedBox(height: LinearSpacing.spacing16),
-            SwitchListTile(
-              title: const Text(
-                '启用 Kitty 协议',
-                style: TextStyle(color: LinearColors.textPrimary),
+            Material(
+              type: MaterialType.transparency,
+              child: SwitchListTile(
+                title: const Text(
+                  '启用 Kitty 协议',
+                  style: TextStyle(color: LinearColors.textPrimary),
+                ),
+                subtitle: const Text(
+                  '发送终端设备属性查询 (\\x1b[>1u)，让支持 Kitty 协议的应用（如 Neovim）自动启用高级特性。关闭此选项可兼容老旧终端设备。',
+                  style: TextStyle(color: LinearColors.textTertiary),
+                ),
+                value: _config.enableKittyProtocol,
+                onChanged: (value) {
+                  setState(() {
+                    _config = _config.copyWith(enableKittyProtocol: value);
+                  });
+                },
               ),
-              subtitle: const Text(
-                '发送终端设备属性查询 (\\x1b[>1u)，让支持 Kitty 协议的应用（如 Neovim）自动启用高级特性。关闭此选项可兼容老旧终端设备。',
-                style: TextStyle(color: LinearColors.textTertiary),
-              ),
-              value: _config.enableKittyProtocol,
-              onChanged: (value) {
-                setState(() {
-                  _config = _config.copyWith(enableKittyProtocol: value);
-                });
-              },
             ),
             const SizedBox(height: LinearSpacing.spacing32),
             Row(
