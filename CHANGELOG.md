@@ -1,3 +1,5 @@
+- test(connection-form): cover password visibility toggle and key validation (30f8fe9)
+- docs: update CHANGELOG (e0bb63a)
 - test(kitty-file-transfer): cover file operations without session (55963ca)
 - docs: update CHANGELOG (d96a77f)
 - test(sftp-browser): cover create folder dialog and long-press menu (b20f60c)
