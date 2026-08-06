@@ -198,5 +198,88 @@ void main() {
         },
       );
     });
+
+    group('activeSession getter', () {
+      test(
+        'Given no activeSessionId, When accessing activeSession, Then returns null',
+        () {
+          // Arrange (Given)
+          const state = TerminalState();
+
+          // Act (When) & Assert (Then)
+          expect(state.activeSession, isNull);
+        },
+      );
+
+      test(
+        'Given activeSessionId without matching session, When accessing activeSession, Then returns null',
+        () {
+          // Arrange (Given)
+          const state = TerminalState(activeSessionId: 'ghost');
+
+          // Act (When) & Assert (Then)
+          expect(state.activeSession, isNull);
+        },
+      );
+
+      test(
+        'Given activeSessionId with matching session, When accessing activeSession, Then returns that session',
+        () {
+          // Arrange (Given)
+          final session = TerminalSession(
+            id: 's1',
+            name: 'S1',
+            inputService: _MockInputService(),
+          );
+          const state = TerminalState(
+            activeSessionId: 's1',
+          );
+
+          // 直接构造带 sessions 的实例
+          final withSession = TerminalState(
+            sessions: [session],
+            activeSessionId: 's1',
+          );
+
+          // Act (When) & Assert (Then)
+          expect(withSession.activeSession, same(session));
+          expect(state.activeSession, isNull);
+        },
+      );
+    });
+
+    group('disposeServices', () {
+      test(
+        'Given no services registered, When disposeServices called, Then does not throw',
+        () {
+          // Act (When) & Assert (Then)
+          expect(
+            container.read(terminalProvider.notifier).disposeServices,
+            returnsNormally,
+          );
+        },
+      );
+    });
   });
+}
+
+class _MockInputService implements TerminalInputService {
+  @override
+  Stream<String> get outputStream => const Stream.empty();
+
+  @override
+  Stream<bool> get stateStream => const Stream.empty();
+
+  @override
+  Future<String> executeCommand(String command, {bool silent = false}) async =>
+      '';
+
+  @override
+  void sendInput(String input) {}
+
+  @override
+  void resize(int rows, int columns) {}
+
+  @override
+  void dispose() {}
 }
