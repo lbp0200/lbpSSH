@@ -1,3 +1,5 @@
+- docs: mark stale 2026-03-14 plans as done or obsolete (0351be6)
+- docs: update CHANGELOG (480120d)
 - test(connection-list): assert focus border styling and mark ui fix plan done (95d636e)
 - docs: update CHANGELOG (5fa54b9)
 - test(kitty): add KittyServiceBase unit tests and update changelog (5a05460)
