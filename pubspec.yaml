@@ -45,8 +45,6 @@ dependencies:
   # SSH 客户端
   dartssh2: ^2.18.0
 
-  # 数据存储（已迁移到 JSON 文件）
-
   # 终端模拟器
   kterm: ^1.4.0
   flutter_pty: ^0.4.0+2
@@ -114,10 +112,10 @@ dev_dependencies:
   test: any
 
 flutter_launcher_icons:
-  image_path: "assets/icon/app_icon.png" # 你的原图路径（必须是 1024x1024）# 只启用 Windows、macOS、Linux 三个桌面平台
+  image_path: "assets/icon/app_icon.png" # 原图路径（必须是 1024x1024）
   windows:
     generate: true
-    # icon_size: 256       # 可选，Windows 图标大小，范围 48~256，默认 48，建议 256 更清晰
+    # icon_size: 256 # 可选，Windows 图标大小，范围 48~256，默认 48，建议 256 更清晰
   macos:
     generate: true
   linux:
