@@ -1,3 +1,5 @@
+- test(connection-form): add widget tests and remove unused cupertino_icons (e15ca92)
+- docs: update CHANGELOG (5639594)
 - docs: replace stale xterm reference with kterm in READMEs (0d6f311)
 - docs: update CHANGELOG (f181bfb)
 - docs: fix project structure and tech stack in READMEs (f9fb83a)
