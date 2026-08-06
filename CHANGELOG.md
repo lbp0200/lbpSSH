@@ -1,3 +1,5 @@
+- test(sftp-browser): cover create folder dialog and long-press menu (b20f60c)
+- docs: update CHANGELOG (dc1c5f7)
 - test(connection-form): cover jump host and socks5 proxy interactions (0d20fdd)
 - docs: update CHANGELOG (003e12d)
 - test(terminal-provider): cover activeSession getter and disposeServices (d2095e8)
