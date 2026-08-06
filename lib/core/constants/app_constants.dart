@@ -2,7 +2,6 @@
 class AppConstants {
   // 应用信息
   static const String appName = 'SSH Manager';
-  static const String appVersion = '1.9.0';
 
   // 存储键名
   static const String syncSettingsKey = 'sync_settings';
