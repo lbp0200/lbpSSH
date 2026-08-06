@@ -1,3 +1,5 @@
+- test(kitty-file-transfer): cover file operations without session (55963ca)
+- docs: update CHANGELOG (d96a77f)
 - test(sftp-browser): cover create folder dialog and long-press menu (b20f60c)
 - docs: update CHANGELOG (dc1c5f7)
 - test(connection-form): cover jump host and socks5 proxy interactions (0d20fdd)
