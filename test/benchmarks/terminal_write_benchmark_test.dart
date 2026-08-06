@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:io';
+
 import 'package:kterm/kterm.dart';
 import 'package:test/test.dart';
 
@@ -108,7 +108,7 @@ void main() {
       final elapsedMs = sw.elapsedMicroseconds / 1000;
       final throughput = (bytes / 1024 / 1024) / (elapsedMs / 1000);
       print(
-        '[Plain] ${totalLines} lines, ${bytes} bytes: '
+        '[Plain] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
         '${throughput.toStringAsFixed(1)} MB/s'
       );
@@ -130,7 +130,7 @@ void main() {
       final elapsedMs = sw.elapsedMicroseconds / 1000;
       final throughput = (bytes / 1024 / 1024) / (elapsedMs / 1000);
       print(
-        '[Colored] ${totalLines} lines, ${bytes} bytes: '
+        '[Colored] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
         '${throughput.toStringAsFixed(1)} MB/s'
       );
@@ -151,7 +151,7 @@ void main() {
       final elapsedMs = sw.elapsedMicroseconds / 1000;
       final throughput = (bytes / 1024 / 1024) / (elapsedMs / 1000);
       print(
-        '[Log] ${totalLines} lines, ${bytes} bytes: '
+        '[Log] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
         '${throughput.toStringAsFixed(1)} MB/s'
       );
@@ -243,7 +243,7 @@ void main() {
   group('数据量级对比', () {
     /// 对比不同数据量级下的耗时，找线性关系
     for (final size in [1000, 5000, 20000]) {
-      test('Plain text ${size} lines', () {
+      test('Plain text $size lines', () {
         final terminal = createTerminal();
         final buf = StringBuffer();
         for (var i = 0; i < size; i++) {
@@ -263,12 +263,12 @@ void main() {
         final elapsedMs = sw.elapsedMicroseconds / 1000;
         final bytes = text.length;
         print(
-          '[Plain/$size] ${bytes} bytes → ${elapsedMs.toStringAsFixed(1)} ms '
+          '[Plain/$size] $bytes bytes → ${elapsedMs.toStringAsFixed(1)} ms '
           '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)'
         );
       });
 
-      test('Colored text ${size} lines', () {
+      test('Colored text $size lines', () {
         final terminal = createTerminal();
         final buf = StringBuffer();
         for (var i = 0; i < size; i++) {
@@ -288,7 +288,7 @@ void main() {
         final elapsedMs = sw.elapsedMicroseconds / 1000;
         final bytes = text.length;
         print(
-          '[Colored/$size] ${bytes} bytes → ${elapsedMs.toStringAsFixed(1)} ms '
+          '[Colored/$size] $bytes bytes → ${elapsedMs.toStringAsFixed(1)} ms '
           '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)'
         );
       });
@@ -321,14 +321,15 @@ void main() {
       sw2.stop();
 
       print(
-        '[StringBuffer] ${chunkCount} chunks × ${chunkSize}B: '
+        '[StringBuffer] $chunkCount chunks × ${chunkSize}B: '
         '${sw1.elapsedMicroseconds} µs'
       );
       print(
-        '[Direct concat] ${chunkCount} chunks × ${chunkSize}B: '
+        '[Direct concat] $chunkCount chunks × ${chunkSize}B: '
         '${sw2.elapsedMicroseconds} µs'
       );
       expect(result1.length, equals(chunkCount * chunkSize));
+      expect(s.length, equals(chunkCount * chunkSize));
     });
 
     test('String split overhead (Last login 过滤开销)', () {

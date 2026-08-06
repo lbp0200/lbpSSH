@@ -43,6 +43,9 @@ class _Socks5ProxySocket implements SSHSocket {
   }
 
   @override
+  Future<void> flush() => _socket.flush();
+
+  @override
   void destroy() {
     _subscription?.cancel();
     _controller.close();
