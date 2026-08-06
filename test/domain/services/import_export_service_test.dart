@@ -72,10 +72,10 @@ void main() {
 
   group('Constructor', () {
     test(
-      'Given repository, When created, Then status is idle and lastError is null',
+      'Given repository, When created, Then service is stateless and usable',
       () {
-        expect(service.status, equals(ImportExportStatus.idle));
-        expect(service.lastError, isNull);
+        when(() => mockRepository.getAllConnections()).thenReturn([]);
+        expect(service.getExportStats()['totalConnections'], equals(0));
       },
     );
   });
@@ -430,40 +430,31 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // resetStatus
+  // 无状态保证: service 不持有导入导出状态(已迁移到 Riverpod Notifier)
   // ---------------------------------------------------------------------------
 
-  group('resetStatus', () {
-    test('Given status is error with lastError set, When resetStatus called, '
-        'Then status is idle and lastError is null', () {
-      // Trigger an error state
+  group('stateless service', () {
+    test('Given repository throws, When getExportStats called, '
+        'Then exception propagates without leaving service state', () {
+      // Trigger an error
       when(
         () => mockRepository.getAllConnections(),
       ).thenThrow(Exception('Test error'));
 
-      try {
-        service.getExportStats();
-      } catch (_) {}
+      expect(() => service.getExportStats(), throwsException);
 
-      // Now manually set error state to test reset
-      // Since we cannot easily trigger error state from outside,
-      // we test the reset behavior directly
-      service.resetStatus();
-
-      expect(service.status, equals(ImportExportStatus.idle));
-      expect(service.lastError, isNull);
+      // Service remains usable after error (no sticky error state)
+      when(() => mockRepository.getAllConnections()).thenReturn([]);
+      expect(service.getExportStats()['totalConnections'], equals(0));
     });
 
-    test('Given status is success, When resetStatus called, '
-        'Then status is idle', () {
+    test('Given empty repository, When getExportStats called, '
+        'Then returns empty stats', () {
       when(() => mockRepository.getAllConnections()).thenReturn([]);
 
-      // Trigger success state
       service.getExportStats();
 
-      service.resetStatus();
-
-      expect(service.status, equals(ImportExportStatus.idle));
+      expect(service.getExportStats()['totalConnections'], equals(0));
     });
   });
 
@@ -523,37 +514,20 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Status transitions
+  // 无状态保证: 连续操作不残留状态
   // ---------------------------------------------------------------------------
 
-  group('Status transitions', () {
-    test('Given during import, When import started, '
-        'Then status is importing', () async {
+  group('stateless operations', () {
+    test('Given empty repository, When getExportStats called repeatedly, '
+        'Then results are consistent', () {
       when(() => mockRepository.getAllConnections()).thenReturn([]);
 
-      // Access the status getter to verify initial state
-      expect(service.status, equals(ImportExportStatus.idle));
-    });
-
-    test('Given service is created, When getExportStats called, '
-        'Then status remains idle', () {
-      when(() => mockRepository.getAllConnections()).thenReturn([]);
-
-      service.getExportStats();
-
-      expect(service.status, equals(ImportExportStatus.idle));
-    });
-
-    test('Given status transitions, When resetStatus called after operations, '
-        'Then status is idle', () {
-      when(() => mockRepository.getAllConnections()).thenReturn([]);
-
-      service.getExportStats();
+      final first = service.getExportStats()['totalConnections'];
       service.generateExportSummary();
-      service.resetStatus();
+      final second = service.getExportStats()['totalConnections'];
 
-      expect(service.status, equals(ImportExportStatus.idle));
-      expect(service.lastError, isNull);
+      expect(first, equals(0));
+      expect(second, equals(0));
     });
   });
 }

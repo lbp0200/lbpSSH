@@ -10,25 +10,17 @@ import '../../data/repositories/connection_repository.dart';
 enum ImportExportStatus { idle, exporting, importing, success, error }
 
 /// 导入导出服务
+///
+/// 无状态服务：导入/导出的进度状态由 Riverpod Notifier 持有，
+/// 本类只负责文件读写与数据合并等纯逻辑。
 class ImportExportService {
   final ConnectionRepository _repository;
-  ImportExportStatus _status = ImportExportStatus.idle;
-  String? _lastError;
 
   ImportExportService(this._repository);
-
-  /// 获取当前状态
-  ImportExportStatus get status => _status;
-
-  /// 获取最后错误信息
-  String? get lastError => _lastError;
 
   /// 导出SSH连接配置到本地文件
   Future<File?> exportToLocalFile() async {
     try {
-      _status = ImportExportStatus.exporting;
-      _lastError = null;
-
       // 获取所有连接
       final connections = _repository.getAllConnections();
 
@@ -66,11 +58,8 @@ class ImportExportService {
         return null;
       }
 
-      _status = ImportExportStatus.success;
       return File(outputFile);
     } catch (e) {
-      _lastError = '导出失败: $e';
-      _status = ImportExportStatus.error;
       rethrow;
     }
   }
@@ -78,9 +67,6 @@ class ImportExportService {
   /// 从本地文件导入SSH连接配置
   Future<List<SshConnection>> importFromLocalFile() async {
     try {
-      _status = ImportExportStatus.importing;
-      _lastError = null;
-
       // 选择要导入的文件
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -134,11 +120,8 @@ class ImportExportService {
         throw Exception('文件中没有有效的连接配置');
       }
 
-      _status = ImportExportStatus.success;
       return importedConnections;
     } catch (e) {
-      _lastError = '导入失败: $e';
-      _status = ImportExportStatus.error;
       rethrow;
     }
   }
@@ -287,10 +270,7 @@ class ImportExportService {
   }
 
   /// 重置状态
-  void resetStatus() {
-    _status = ImportExportStatus.idle;
-    _lastError = null;
-  }
+  void resetStatus() {}
 
   /// 导出配置摘要
   String generateExportSummary() {

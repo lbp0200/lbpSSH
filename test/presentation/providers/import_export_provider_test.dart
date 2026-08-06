@@ -6,8 +6,8 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/domain/services/import_export_service.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/import_export_provider_riverpod.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/service_providers.dart';
+import 'package:lbp_ssh/presentation/providers/import_export_provider.dart';
+import 'package:lbp_ssh/presentation/providers/service_providers.dart';
 
 class MockImportExportService extends Mock implements ImportExportService {}
 
@@ -62,7 +62,6 @@ void main() {
           when(
             () => mockService.exportToLocalFile(),
           ).thenAnswer((_) async => mockFile);
-          when(() => mockService.status).thenReturn(ImportExportStatus.success);
 
           // Act (When)
           final result = await container
@@ -111,7 +110,6 @@ void main() {
           when(
             () => mockService.importFromLocalFile(),
           ).thenAnswer((_) async => connections);
-          when(() => mockService.status).thenReturn(ImportExportStatus.success);
 
           // Act (When)
           final result = await container
@@ -254,15 +252,11 @@ void main() {
     });
 
     group('resetStatus', () {
-      test('When called, Then resets service and state', () {
-        // Arrange (Given)
-        when(() => mockService.resetStatus()).thenReturn(null);
-
+      test('When called, Then resets state to idle', () {
         // Act (When)
         container.read(importExportProvider.notifier).resetStatus();
 
         // Assert (Then)
-        verify(() => mockService.resetStatus()).called(1);
         expect(
           container.read(importExportProvider).status,
           ImportExportStatus.idle,
