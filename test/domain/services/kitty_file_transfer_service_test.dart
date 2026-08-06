@@ -1475,6 +1475,47 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
     });
+
+    // -------------------------------------------------------------------------
+    // file operations - throws when no session
+    // -------------------------------------------------------------------------
+    group('file operations throws when no session', () {
+      test(
+        'Given no terminal connection, When createDirectory called, Then throws Exception',
+        () {
+          final service = KittyFileTransferService();
+
+          expect(
+            () => service.createDirectory('backup'),
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
+
+      test(
+        'Given no terminal connection, When removeFile called, Then throws Exception',
+        () {
+          final service = KittyFileTransferService();
+
+          expect(
+            () => service.removeFile('/home/user/a.txt'),
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
+
+      test(
+        'Given no terminal connection, When removeDirectory called, Then throws Exception',
+        () {
+          final service = KittyFileTransferService();
+
+          expect(
+            () => service.removeDirectory('/home/user/docs'),
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
+    });
   });
 }
 
