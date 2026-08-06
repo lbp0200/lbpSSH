@@ -1,3 +1,5 @@
+- chore: ignore reasonix tool state, clean pubspec comments, update cask to v1.9.3 (863f260)
+- docs: update CHANGELOG (36b336a)
 - docs: add SSH input duplication debugging notes (58651da)
 - refactor: update imports after providers_riverpod rename (758ff3b)
 - refactor(import-export): move service mutable state into riverpod notifier (defad84)
