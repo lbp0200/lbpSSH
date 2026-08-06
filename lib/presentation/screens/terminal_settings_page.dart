@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_config.dart';
 import '../../data/models/terminal_config.dart';
-import '../providers_riverpod/app_config_provider_riverpod.dart';
+import '../providers/app_config_provider.dart';
 
 class TerminalSettingsPage extends ConsumerStatefulWidget {
   const TerminalSettingsPage({super.key});

@@ -6,8 +6,8 @@ import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/data/models/default_terminal_config.dart';
 import 'package:lbp_ssh/data/models/ssh_config.dart';
 import 'package:lbp_ssh/domain/services/app_config_service.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/app_config_provider_riverpod.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/service_providers.dart';
+import 'package:lbp_ssh/presentation/providers/app_config_provider.dart';
+import 'package:lbp_ssh/presentation/providers/service_providers.dart';
 
 class MockAppConfigService extends Mock implements AppConfigService {}
 

@@ -4,8 +4,8 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/repositories/connection_repository.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/connection_provider_riverpod.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/service_providers.dart';
+import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
+import 'package:lbp_ssh/presentation/providers/service_providers.dart';
 
 class MockConnectionRepository extends Mock implements ConnectionRepository {}
 

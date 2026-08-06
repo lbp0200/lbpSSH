@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/connection_provider_riverpod.dart';
+import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/widgets/connection_list.dart';
 
 class _MockConnectionNotifier extends ConnectionNotifier {

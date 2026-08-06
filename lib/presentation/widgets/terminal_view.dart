@@ -7,9 +7,9 @@ import 'package:kterm/kterm.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
 
-import '../providers_riverpod/app_config_provider_riverpod.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
-import '../providers_riverpod/terminal_provider_riverpod.dart';
+import '../providers/app_config_provider.dart';
+import '../providers/connection_provider.dart';
+import '../providers/terminal_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/terminal_config.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/kitty_file_transfer_service.dart';
-import 'terminal_provider_riverpod.dart';
+import 'terminal_provider.dart';
 
 /// SFTP 标签页数据
 class SftpTab {

@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/ssh_config_service.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
+import '../providers/connection_provider.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/linear_styled_text_field.dart';
 

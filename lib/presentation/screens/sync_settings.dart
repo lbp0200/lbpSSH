@@ -5,7 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/services/sync_service.dart'
     show SyncStatusEnum, SyncConfig;
-import '../providers_riverpod/sync_provider_riverpod.dart';
+import '../providers/sync_provider.dart';
 import '../widgets/error_dialog.dart';
 
 /// 同步设置界面

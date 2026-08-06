@@ -6,7 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/file_item.dart';
 import '../../domain/services/kitty_file_transfer_service.dart';
-import '../providers_riverpod/sftp_provider_riverpod.dart';
+import '../providers/sftp_provider.dart';
 import '../widgets/transfer_progress_dialog.dart';
 
 /// SFTP 浏览器界面
