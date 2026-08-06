@@ -8,6 +8,8 @@
 
 **Tech Stack:** Sentry, dart_code_metrics, GitHub Actions, Codemagic
 
+**实施状态：** ⚠️ 部分完成 — Chunk 1（Sentry 错误追踪）与 Chunk 3（多平台测试）已完成（`sentry_service.dart`、`main.dart` 初始化、CI 矩阵、`codemagic.yaml` 均已落地）；Chunk 2 的 dart_code_metrics 已于 2023 年 sunset 并停止维护，不实施（项目改用 `flutter_lints` + 严格 analyzer）
+
 ---
 
 ## Chunk 1: 错误追踪集成 (Error Tracking)

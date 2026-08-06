@@ -6,13 +6,15 @@
 
 **Tech Stack:** GitHub Actions, Codemagic
 
+**实施状态：** ✅ 已完成（`.github/workflows/ci.yml` 已含 macos/ubuntu/windows 构建矩阵，`codemagic.yaml` 已落地）
+
 ---
 
 ## Chunk 1: GitHub Actions 多平台构建
 
 ### 任务 3.1: 更新 CI 构建矩阵
 
-- [ ] **Step 1: 更新 .github/workflows/ci.yml**
+- [x] **Step 1: 更新 .github/workflows/ci.yml**
 
 ```yaml
 jobs:
@@ -36,7 +38,7 @@ jobs:
         if: matrix.platform == 'windows-latest'
 ```
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -49,7 +51,7 @@ git commit -m "ci: add multi-platform build matrix"
 
 ### 任务 3.2: 添加 Codemagic
 
-- [ ] **Step 1: 创建 codemagic.yaml**
+- [x] **Step 1: 创建 codemagic.yaml**
 
 ```yaml
 workflows:
@@ -70,7 +72,7 @@ workflows:
       - build/windows/runner/Release/*
 ```
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add codemagic.yaml
