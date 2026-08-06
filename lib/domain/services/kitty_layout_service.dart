@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 窗口布局类型
 enum LayoutType {
@@ -54,8 +54,7 @@ class LayoutConfig {
 /// 布局服务
 ///
 /// 实现终端窗口布局管理功能
-class KittyLayoutService {
-  final TerminalSession? _session;
+class KittyLayoutService extends KittyServiceBase {
 
   // 当前布局
   LayoutConfig _currentLayout = const LayoutConfig(type: LayoutType.grid);
@@ -63,10 +62,7 @@ class KittyLayoutService {
   // 窗口列表
   final List<WindowInfo> _windows = [];
 
-  KittyLayoutService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyLayoutService({super.session});
 
   /// 获取当前布局
   LayoutConfig get currentLayout => _currentLayout;
@@ -79,13 +75,9 @@ class KittyLayoutService {
   /// [width] - 列数
   /// [height] - 行数
   Future<void> setGridLayout(int width, int height) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; layout=grid:width:height
     final cmd = '\x1b]20;layout=grid:$width:$height\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentLayout = LayoutConfig(
       type: LayoutType.grid,
@@ -96,13 +88,9 @@ class KittyLayoutService {
 
   /// 设置堆叠布局
   Future<void> setStackLayout() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; layout=stack
     const cmd = '\x1b]20;layout=stack\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentLayout = const LayoutConfig(type: LayoutType.stack);
   }
@@ -111,17 +99,13 @@ class KittyLayoutService {
   ///
   /// [fraction] - 占比 (0.0-1.0)
   Future<void> setHorizontalLayout({double? fraction}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; layout=horizontal:fraction
     String cmd = '\x1b]20;layout=horizontal';
     if (fraction != null) {
       cmd += ':${fraction.toStringAsFixed(2)}';
     }
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentLayout = LayoutConfig(
       type: LayoutType.horizontal,
@@ -133,17 +117,13 @@ class KittyLayoutService {
   ///
   /// [fraction] - 占比 (0.0-1.0)
   Future<void> setVerticalLayout({double? fraction}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; layout=vertical:fraction
     String cmd = '\x1b]20;layout=vertical';
     if (fraction != null) {
       cmd += ':${fraction.toStringAsFixed(2)}';
     }
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentLayout = LayoutConfig(
       type: LayoutType.vertical,
@@ -156,65 +136,45 @@ class KittyLayoutService {
   /// [direction] - 方向 (h: 水平, v: 垂直)
   /// [size] - 分割大小 (像素或百分比)
   Future<void> createSplit(String direction, {int? size}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; split:direction:size
     String cmd = '\x1b]20;split:$direction';
     if (size != null) {
       cmd += ':$size';
     }
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentLayout = const LayoutConfig(type: LayoutType.split);
   }
 
   /// 关闭当前分屏
   Future<void> closeSplit() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; split:close
     const cmd = '\x1b]20;split:close\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 切换到下一个窗口
   Future<void> nextWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:next
     const cmd = '\x1b]20;window:next\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 切换到上一个窗口
   Future<void> previousWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:prev
     const cmd = '\x1b]20;window:prev\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 聚焦指定窗口
   ///
   /// [windowId] - 窗口 ID
   Future<void> focusWindow(String windowId) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:focus:id
     final cmd = '\x1b]20;window:focus:$windowId\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     // 更新本地状态
     for (var i = 0; i < _windows.length; i++) {
@@ -235,13 +195,9 @@ class KittyLayoutService {
   /// [width] - 新宽度
   /// [height] - 新高度
   Future<void> resizeWindow(int width, int height) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:resize:width:height
     final cmd = '\x1b]20;window:resize:$width:$height\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 移动窗口位置
@@ -249,57 +205,37 @@ class KittyLayoutService {
   /// [x] - X 坐标
   /// [y] - Y 坐标
   Future<void> moveWindow(int x, int y) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:move:x:y
     final cmd = '\x1b]20;window:move:$x:$y\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 最大化当前窗口
   Future<void> maximizeWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:maximize
     const cmd = '\x1b]20;window:maximize\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 还原窗口
   Future<void> restoreWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; window:restore
     const cmd = '\x1b]20;window:restore\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询窗口列表
   Future<void> queryWindows() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; windows:?
     const cmd = '\x1b]20;windows:?\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询当前布局
   Future<void> queryLayout() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; layout:?
     const cmd = '\x1b]20;layout:?\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理布局响应

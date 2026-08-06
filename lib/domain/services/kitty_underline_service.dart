@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 下划线样式
 enum UnderlineStyle {
@@ -39,16 +39,12 @@ class UnderlineConfig {
 /// 下划线服务
 ///
 /// 通过 OSC 4:58 和 OSC 58 控制序列实现下划线样式
-class KittyUnderlineService {
-  final TerminalSession? _session;
+class KittyUnderlineService extends KittyServiceBase {
 
   // 当前下划线配置
   UnderlineConfig _currentConfig = const UnderlineConfig();
 
-  KittyUnderlineService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyUnderlineService({super.session});
 
   /// 获取当前下划线配置
   UnderlineConfig get currentConfig => _currentConfig;
@@ -57,10 +53,6 @@ class KittyUnderlineService {
   ///
   /// [style] - 下划线样式
   Future<void> setStyle(UnderlineStyle style) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI 4 :58: style
     String styleValue;
     switch (style) {
@@ -88,7 +80,7 @@ class KittyUnderlineService {
     }
 
     final cmd = '\x1b[4:58:${styleValue}m';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentConfig = UnderlineConfig(
       style: style,
@@ -102,10 +94,6 @@ class KittyUnderlineService {
   /// [color] - 下划线颜色类型
   /// [customColor] - 自定义颜色 (当 color 为 default_ 时使用)
   Future<void> setColor(UnderlineColor color, {String? customColor}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String colorCode;
     switch (color) {
       case UnderlineColor.default_:
@@ -130,7 +118,7 @@ class KittyUnderlineService {
 
     if (colorCode.isNotEmpty) {
       final cmd = '\x1b[4:58:color=${colorCode}m';
-      _session.writeRaw(cmd);
+      writeRaw(cmd);
     }
 
     _currentConfig = UnderlineConfig(
@@ -144,10 +132,6 @@ class KittyUnderlineService {
   ///
   /// [colorSpec] - 颜色规格 (#rrggbb 或 rgb:r/g/b)
   Future<void> setCustomColor(String colorSpec) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 转换颜色格式
     String converted;
     if (colorSpec.startsWith('#')) {
@@ -164,7 +148,7 @@ class KittyUnderlineService {
     }
 
     final cmd = '\x1b[4:58:color=${converted}m';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _currentConfig = UnderlineConfig(
       style: _currentConfig.style,
@@ -251,12 +235,8 @@ class KittyUnderlineService {
 
   /// 重置所有属性
   Future<void> reset() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI 4:58:0m - 重置下划线
-    _session.writeRaw('\x1b[4:58:0m');
+    writeRaw('\x1b[4:58:0m');
     _currentConfig = const UnderlineConfig();
   }
 
@@ -264,17 +244,13 @@ class KittyUnderlineService {
   ///
   /// [colorIndex] - 颜色索引 (0-255)
   Future<void> setColorIndex(int colorIndex) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     if (colorIndex < 0 || colorIndex > 255) {
       throw Exception('颜色索引必须在 0-255 之间');
     }
 
     // SGR 58 - 设置下划线颜色
     final cmd = '\x1b[58:5:${colorIndex}m';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 使用 True Color 设置下划线颜色
@@ -283,16 +259,12 @@ class KittyUnderlineService {
   /// [g] - 绿色 (0-255)
   /// [b] - 蓝色 (0-255)
   Future<void> setTrueColor(int r, int g, int b) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
       throw Exception('RGB 值必须在 0-255 之间');
     }
 
     // SGR 58:2 - 设置下划线颜色为 True Color
     final cmd = '\x1b[58:2:$r;$g;${b}m';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 }

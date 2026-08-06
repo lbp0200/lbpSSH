@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 操作类型
 enum ActionType {
@@ -80,33 +80,25 @@ typedef ActionCallback = void Function(ActionArgs action);
 /// 动作服务
 ///
 /// 通过 OSC 5xx 和 actions 功能实现终端内操作
-class KittyActionsService {
-  final TerminalSession? _session;
+class KittyActionsService extends KittyServiceBase {
 
   // 回调
   ActionCallback? onAction;
 
-  KittyActionsService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyActionsService({super.session});
 
   /// 打开 URL
   ///
   /// [url] - 要打开的 URL
   /// [id] - 可选的 URL ID
   Future<void> openUrl(String url, {String? id}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5 ; open-url ; id=xxx ; u=url
     String cmd = '\x1b]5;open-url';
     if (id != null) {
       cmd += ';id=$id';
     }
     cmd += ';u=$url\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 打开文件
@@ -115,16 +107,12 @@ class KittyActionsService {
   /// [line] - 可选的行号
   /// [column] - 可选的列号
   Future<void> openFile(String path, {int? line, int? column}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5 ; open-file ; f=path ; l=line ; c=column
     String cmd = '\x1b]5;open-file;f=$path';
     if (line != null) cmd += ';l=$line';
     if (column != null) cmd += ';c=$column';
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 运行程序
@@ -137,10 +125,6 @@ class KittyActionsService {
     List<String>? arguments,
     String? cwd,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5 ; run-program ; p=program ; a=args ; d=cwd
     String cmd = '\x1b]5;run-program;p=$program';
     if (arguments != null && arguments.isNotEmpty) {
@@ -148,7 +132,7 @@ class KittyActionsService {
     }
     if (cwd != null) cmd += ';d=$cwd';
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送点击动作
@@ -156,13 +140,9 @@ class KittyActionsService {
   /// [x] - X 坐标
   /// [y] - Y 坐标
   Future<void> click(int x, int y) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5 ; click ; x=x ; y=y
     final cmd = '\x1b]5;click;x=$x;y=$y\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送滚动动作
@@ -170,25 +150,17 @@ class KittyActionsService {
   /// [deltaX] - 水平滚动
   /// [deltaY] - 垂直滚动
   Future<void> scroll({int? deltaX, int? deltaY}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String cmd = '\x1b]5;scroll';
     if (deltaX != null) cmd += ';x=$deltaX';
     if (deltaY != null) cmd += ';y=$deltaY';
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送输入动作
   ///
   /// [text] - 要输入的文本
   Future<void> input(String text) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 对文本进行转义
     final escaped = text
         .replaceAll('\\', '\\\\')
@@ -197,20 +169,16 @@ class KittyActionsService {
 
     // OSC 5 ; input ; t=text
     final cmd = '\x1b]5;input;t=$escaped\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送导航动作
   ///
   /// [direction] - 方向 (up, down, left, right, home, end)
   Future<void> navigate(String direction) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5 ; navigate ; d=direction
     final cmd = '\x1b]5;navigate;d=$direction\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求动作
@@ -220,10 +188,6 @@ class KittyActionsService {
     ActionType type, {
     Map<String, String>? params,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String typeStr;
     switch (type) {
       case ActionType.openUrl:
@@ -256,7 +220,7 @@ class KittyActionsService {
       }
     }
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理动作响应

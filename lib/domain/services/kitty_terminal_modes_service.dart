@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 终端模式
 enum TerminalMode {
@@ -44,28 +44,20 @@ class TerminalModeState {
 /// 终端模式服务
 ///
 /// 通过 SM (Set Mode) 和 RM (Reset Mode) 控制序列管理终端模式
-class KittyTerminalModesService {
-  final TerminalSession? _session;
+class KittyTerminalModesService extends KittyServiceBase {
 
   // 缓存模式状态
   final Map<TerminalMode, bool> _modeState = {};
 
-  KittyTerminalModesService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyTerminalModesService({super.session});
 
   /// 设置模式
   ///
   /// [mode] - 要设置的终端模式
   Future<void> setMode(TerminalMode mode) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI ? Pm h - 设置模式 (DEC private mode)
     final cmd = '\x1b[?${mode.value}h';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
     _modeState[mode] = true;
   }
 
@@ -73,13 +65,9 @@ class KittyTerminalModesService {
   ///
   /// [mode] - 要重置的终端模式
   Future<void> resetMode(TerminalMode mode) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI ? Pm l - 重置模式 (DEC private mode)
     final cmd = '\x1b[?${mode.value}l';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
     _modeState[mode] = false;
   }
 
@@ -99,21 +87,13 @@ class KittyTerminalModesService {
   ///
   /// [mode] - 要查询的终端模式
   Future<void> queryMode(TerminalMode mode) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI ? Pm p - 查询模式状态 (DECRQM)
     final cmd = '\x1b[?${mode.value}p';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询所有模式状态
   Future<void> queryAllModes() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 常见模式批量查询
     for (final mode in TerminalMode.values) {
       await queryMode(mode);
@@ -241,24 +221,16 @@ class KittyTerminalModesService {
 
   /// 重置所有模式到默认值
   Future<void> resetAllModes() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI ! p - 软重置
-    _session.writeRaw('\x1b[!p');
+    writeRaw('\x1b[!p');
     _modeState.clear();
   }
 
   /// 硬重置终端
   Future<void> hardReset() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // RIS - Reset to Initial State
-    _session.writeRaw('\x1b c');
-    _session.writeRaw('\x1b]c\x1b\\\\');
+    writeRaw('\x1b c');
+    writeRaw('\x1b]c\x1b\\\\');
     _modeState.clear();
   }
 

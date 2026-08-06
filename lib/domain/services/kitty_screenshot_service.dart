@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 截图格式
 enum ScreenshotFormat { png, jpeg, svg }
@@ -20,16 +20,12 @@ typedef ScreenshotCallback = void Function(Uint8List data);
 /// 截图服务
 ///
 /// 实现终端截图功能
-class KittyScreenshotService {
-  final TerminalSession? _session;
+class KittyScreenshotService extends KittyServiceBase {
 
   // 回调
   ScreenshotCallback? onScreenshot;
 
-  KittyScreenshotService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyScreenshotService({super.session});
 
   /// 截取整个屏幕
   ///
@@ -37,10 +33,6 @@ class KittyScreenshotService {
   Future<void> captureScreen({
     ScreenshotFormat format = ScreenshotFormat.png,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; screenshot:area=screen:format=format
     String formatStr;
     switch (format) {
@@ -56,7 +48,7 @@ class KittyScreenshotService {
     }
 
     final cmd = '\x1b]20;screenshot:area=screen:format=$formatStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 截取当前窗口
@@ -65,10 +57,6 @@ class KittyScreenshotService {
   Future<void> captureWindow({
     ScreenshotFormat format = ScreenshotFormat.png,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String formatStr;
     switch (format) {
       case ScreenshotFormat.png:
@@ -83,7 +71,7 @@ class KittyScreenshotService {
     }
 
     final cmd = '\x1b]20;screenshot:area=window:format=$formatStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 截取选区
@@ -92,10 +80,6 @@ class KittyScreenshotService {
   Future<void> captureSelection({
     ScreenshotFormat format = ScreenshotFormat.png,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String formatStr;
     switch (format) {
       case ScreenshotFormat.png:
@@ -110,7 +94,7 @@ class KittyScreenshotService {
     }
 
     final cmd = '\x1b]20;screenshot:area=selection:format=$formatStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 截取指定区域
@@ -127,10 +111,6 @@ class KittyScreenshotService {
     int height, {
     ScreenshotFormat format = ScreenshotFormat.png,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String formatStr;
     switch (format) {
       case ScreenshotFormat.png:
@@ -147,7 +127,7 @@ class KittyScreenshotService {
     // OSC 20 ; screenshot:area=rect:x:y:width:height:format
     final cmd =
         '\x1b]20;screenshot:area=rect:x=$x:y=$y:w=$width:h=$height:format=$formatStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 保存截图到文件
@@ -160,10 +140,6 @@ class KittyScreenshotService {
     ScreenshotArea area = ScreenshotArea.screen,
     ScreenshotFormat format = ScreenshotFormat.png,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String areaStr;
     switch (area) {
       case ScreenshotArea.screen:
@@ -193,7 +169,7 @@ class KittyScreenshotService {
     // OSC 20 ; screenshot:save:path:area:format
     final cmd =
         '\x1b]20;screenshot:save:$path:area=$areaStr:format=$formatStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 复制截图到剪贴板
@@ -202,10 +178,6 @@ class KittyScreenshotService {
   Future<void> copyToClipboard({
     ScreenshotArea area = ScreenshotArea.screen,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String areaStr;
     switch (area) {
       case ScreenshotArea.screen:
@@ -221,61 +193,45 @@ class KittyScreenshotService {
 
     // OSC 20 ; screenshot:clipboard:area
     final cmd = '\x1b]20;screenshot:clipboard:area=$areaStr\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 开始交互式截图
   ///
   /// 终端会进入截图模式，用户可以选择区域
   Future<void> startInteractiveCapture() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; screenshot:interactive
     const cmd = '\x1b]20;screenshot:interactive\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 取消截图
   Future<void> cancelCapture() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 发送 Escape 取消
-    _session.writeRaw('\x1b');
+    writeRaw('\x1b');
   }
 
   /// 设置截图质量
   ///
   /// [quality] - 质量 (1-100)，仅对 JPEG 有效
   Future<void> setQuality(int quality) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     if (quality < 1 || quality > 100) {
       throw Exception('质量必须在 1-100 之间');
     }
 
     // OSC 20 ; screenshot:quality=value
     final cmd = '\x1b]20;screenshot:quality=$quality\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 设置透明背景
   ///
   /// [transparent] - 是否透明
   Future<void> setTransparentBackground(bool transparent) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 20 ; screenshot:transparent=1/0
     final cmd =
         '\x1b]20;screenshot:transparent=${transparent ? "1" : "0"}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理截图响应

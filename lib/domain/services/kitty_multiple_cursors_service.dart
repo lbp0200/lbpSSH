@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 光标操作类型
 enum CursorOperation {
@@ -29,17 +29,13 @@ class VirtualCursor {
 /// 多光标服务
 ///
 /// 实现终端多光标编辑功能
-class KittyMultipleCursorsService {
-  final TerminalSession? _session;
+class KittyMultipleCursorsService extends KittyServiceBase {
 
   // 当前光标列表
   final List<VirtualCursor> _cursors = [];
   int _cursorCounter = 0;
 
-  KittyMultipleCursorsService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyMultipleCursorsService({super.session});
 
   /// 获取当前光标列表
   List<VirtualCursor> get cursors => List.unmodifiable(_cursors);
@@ -50,17 +46,13 @@ class KittyMultipleCursorsService {
   /// [y] - Y 坐标
   /// [select] - 是否选择模式
   Future<String> insertCursor(int x, int y, {bool select = false}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final cursorId = 'c${++_cursorCounter}';
 
     // OSC 6 > ; cursor ; id=xxx ; x=x ; y=y ; s=select
     String cmd = '\x1b[6>cursor;id=$cursorId;x=$x;y=$y';
     if (select) cmd += ';s=1';
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _cursors.add(VirtualCursor(id: cursorId, x: x, y: y, selected: select));
 
@@ -73,13 +65,9 @@ class KittyMultipleCursorsService {
   /// [x] - 新 X 坐标
   /// [y] - 新 Y 坐标
   Future<void> moveCursor(String cursorId, int x, int y) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; x=x ; y=y
     final cmd = '\x1b[6>cursor;id=$cursorId;x=$x;y=$y\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     // 更新本地状态
     final index = _cursors.indexWhere((c) => c.id == cursorId);
@@ -98,13 +86,9 @@ class KittyMultipleCursorsService {
   /// [cursorId] - 光标 ID
   /// [select] - 是否选择
   Future<void> selectCursor(String cursorId, bool select) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; s=select
     final cmd = '\x1b[6>cursor;id=$cursorId;s=${select ? "1" : "0"}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     // 更新本地状态
     final index = _cursors.indexWhere((c) => c.id == cursorId);
@@ -122,26 +106,18 @@ class KittyMultipleCursorsService {
   ///
   /// [cursorId] - 光标 ID
   Future<void> deleteCursor(String cursorId) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; d=1
     final cmd = '\x1b[6>cursor;id=$cursorId;d=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _cursors.removeWhere((c) => c.id == cursorId);
   }
 
   /// 清除所有光标
   Future<void> clearAllCursors() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; d=*
     const cmd = '\x1b[6>cursor;d=*\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     _cursors.clear();
   }
@@ -160,26 +136,18 @@ class KittyMultipleCursorsService {
   ///
   /// [cursorId] - 光标 ID
   Future<void> activateCursor(String cursorId) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; a=1
     final cmd = '\x1b[6>cursor;id=$cursorId;a=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 停用光标
   ///
   /// [cursorId] - 光标 ID
   Future<void> deactivateCursor(String cursorId) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; a=0
     final cmd = '\x1b[6>cursor;id=$cursorId;a=0\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 设置光标形状
@@ -187,13 +155,9 @@ class KittyMultipleCursorsService {
   /// [cursorId] - 光标 ID
   /// [shape] - 形状 (bar, block, underline)
   Future<void> setCursorShape(String cursorId, String shape) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 > ; cursor ; id=xxx ; shape=shape
     final cmd = '\x1b[6>cursor;id=$cursorId;shape=$shape\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理多光标响应

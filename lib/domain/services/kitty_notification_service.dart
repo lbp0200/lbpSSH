@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 通知点击回调
 typedef NotificationCallback = void Function(String notificationId);
@@ -12,18 +12,14 @@ typedef NotificationProgressCallback =
 /// 桌面通知服务
 ///
 /// 通过 SSH 终端发送 OSC 99 控制序列实现桌面通知
-class KittyNotificationService {
-  final TerminalSession? _session;
+class KittyNotificationService extends KittyServiceBase {
 
   // 回调
   NotificationCallback? onClick;
   NotificationProgressCallback? onProgress;
   NotificationCallback? onClose;
 
-  KittyNotificationService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyNotificationService({super.session});
 
   /// 发送桌面通知
   ///
@@ -37,10 +33,6 @@ class KittyNotificationService {
     required String body,
     int? progress,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 构建 OSC 99 序列
     // 格式: OSC 99 ; i=id ; t=title ; b=body [; p=progress]
     String cmd = '\x1b]99;i=$id;t=${_encode(title)};b=${_encode(body)}';
@@ -49,7 +41,7 @@ class KittyNotificationService {
     }
     cmd += '\x1b\\';
 
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 更新通知进度
@@ -57,35 +49,23 @@ class KittyNotificationService {
     required String id,
     required int progress,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 99 ; i=id ; p=progress
     final cmd = '\x1b]99;i=$id;p=$progress\x1b\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 关闭通知
   Future<void> closeNotification(String id) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 99 ; i=id ; p=close
     final cmd = '\x1b]99;i=$id;p=close\x1b\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询通知状态
   Future<void> queryNotification(String id) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 99 ; i=id ; p=?
     final cmd = '\x1b]99;i=$id;p=?\x1b\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理通知响应
