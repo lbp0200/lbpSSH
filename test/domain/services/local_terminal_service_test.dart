@@ -344,5 +344,60 @@ void main() {
         },
       );
     });
+
+    group('escape sequence handling', () {
+      setUp(() {
+        service.initWorkingDirectory('/home/user');
+      });
+
+      test(
+        'Given cd command with arrow-key escape sequences, When newline sent, Then onDirectoryChange fires with resolved dir',
+        () {
+          // Arrange (Given)
+          String? notifiedDir;
+          service.onDirectoryChange = (dir) => notifiedDir = dir;
+
+          // Act (When) - 方向键转义序列 [A 应被剥离,不影响 cd 检测
+          service.sendInput('cd /var');
+          service.sendInput('\x1b[A'); // 上箭头转义序列
+          service.sendInput('log');
+          service.sendInput('\n');
+
+          // Assert (Then) - 转义序列 [A 被清理,命令解析为 cd /varlog
+          expect(notifiedDir, '/varlog');
+        },
+      );
+
+      test(
+        'Given control characters before cd command, When newline sent, Then onDirectoryChange fires with resolved dir',
+        () {
+          // Arrange (Given)
+          String? notifiedDir;
+          service.onDirectoryChange = (dir) => notifiedDir = dir;
+
+          // Act (When) - 控制字符(< 0x20)被过滤
+          service.sendInput('\x01'); // SOH 控制字符
+          service.sendInput('cd /tmp');
+          service.sendInput('\n');
+
+          // Assert (Then)
+          expect(notifiedDir, '/tmp');
+        },
+      );
+    });
+
+    group('getWorkingDirectory', () {
+      test(
+        'Given service not started, When getWorkingDirectory called, Then returns non-empty directory',
+        () async {
+          // Act (When)
+          final dir = await service.getWorkingDirectory();
+
+          // Assert (Then) - 真实 pwd 应返回非空绝对路径
+          expect(dir, isNotEmpty);
+          expect(dir.startsWith('/'), isTrue);
+        },
+      );
+    });
   });
 }
