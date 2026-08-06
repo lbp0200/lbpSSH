@@ -1,3 +1,5 @@
+- test(providers): cover service_providers factories (66f71e3)
+- docs: update CHANGELOG (4d026e8)
 - test(terminal-service): cover TerminalSession methods (8b01dd9)
 - docs: update CHANGELOG (777e97c)
 - test(local-terminal): cover cd detection, executeCommand, stop, dispose (ddddf5c)
