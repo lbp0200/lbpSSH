@@ -1,3 +1,5 @@
+- test(connection-form): cover jump host and socks5 proxy interactions (0d20fdd)
+- docs: update CHANGELOG (003e12d)
 - test(terminal-provider): cover activeSession getter and disposeServices (d2095e8)
 - docs: update CHANGELOG (4f3b161)
 - test(l10n): cover all AppLocalizations keys and delegate behavior (550192f)
