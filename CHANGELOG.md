@@ -1,3 +1,5 @@
+- test(kitty): add KittyServiceBase unit tests and update changelog (5a05460)
+- docs: update CHANGELOG (bfdf973)
 - chore: ignore reasonix tool state, clean pubspec comments, update cask to v1.9.3 (863f260)
 - docs: update CHANGELOG (36b336a)
 - docs: add SSH input duplication debugging notes (58651da)
