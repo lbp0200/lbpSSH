@@ -1,3 +1,5 @@
+- test(connection-list): assert focus border styling and mark ui fix plan done (95d636e)
+- docs: update CHANGELOG (5fa54b9)
 - test(kitty): add KittyServiceBase unit tests and update changelog (5a05460)
 - docs: update CHANGELOG (bfdf973)
 - chore: ignore reasonix tool state, clean pubspec comments, update cask to v1.9.3 (863f260)
