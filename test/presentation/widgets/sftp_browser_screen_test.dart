@@ -213,5 +213,102 @@ void main() {
         expect(find.text('a.txt'), findsNothing);
       },
     );
+
+    testWidgets(
+      'Given directory loaded, When create folder button pressed, Then shows dialog and creates folder',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+        when(() => transferService.createDirectory(any())).thenAnswer(
+          (_) async {},
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        // 点击新建文件夹按钮,弹出输入对话框
+        await tester.tap(find.byTooltip('新建文件夹'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('新建文件夹'), findsWidgets);
+
+        // 输入名称并确认
+        await tester.enterText(find.byType(TextField), 'backup');
+        await tester.tap(find.text('确定'));
+        await tester.pumpAndSettle();
+
+        verify(() => transferService.createDirectory('backup')).called(1);
+      },
+    );
+
+    testWidgets(
+      'Given directory loaded, When item long-pressed, Then shows menu with download and delete',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        // 长按文件项打开菜单
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('下载'), findsOneWidget);
+        expect(find.text('删除'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given item menu open, When delete confirmed, Then removes file',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+        when(() => transferService.removeFile(any())).thenAnswer(
+          (_) async {},
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        // 长按 → 删除 → 确认对话框 → 确认
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('确认删除'), findsOneWidget);
+        expect(find.textContaining('确定要删除 "a.txt" 吗'), findsOneWidget);
+
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+
+        verify(() => transferService.removeFile('/a.txt')).called(1);
+      },
+    );
   });
 }
