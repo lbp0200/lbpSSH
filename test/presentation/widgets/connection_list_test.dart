@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lbp_ssh/core/theme/app_theme.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/widgets/connection_list.dart';
@@ -331,13 +332,34 @@ void main() {
           await tester.pumpWidget(createTestWidget(connections: connections));
           await tester.pump();
 
+          // 初始状态：边框为默认色，宽度 1（无焦点）
+          BoxDecoration initialDecoration() {
+            final container = tester.widget<AnimatedContainer>(
+              find.byType(AnimatedContainer).first,
+            );
+            return container.decoration! as BoxDecoration;
+          }
+
+          final initialBorder = initialDecoration().border! as Border;
+          expect(initialBorder.top.color, isNot(LinearColors.accentInteractive));
+          expect(initialBorder.top.width, 1);
+
           // Press Tab to move focus
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
 
-          // The item should be focusable and respond to focus
-          final inkWellFinder = find.byType(InkWell);
-          expect(inkWellFinder, findsWidgets);
+          // 聚焦后：边框变为焦点色，宽度 2（_isFocused 生效）
+          final focusedBorder =
+              (initialDecoration().border! as Border);
+          expect(
+            focusedBorder.top.color,
+            LinearColors.accentInteractive,
+          );
+          expect(focusedBorder.top.width, 2);
+
+          // InkWell 应存在且可聚焦
+          expect(find.byType(InkWell), findsWidgets);
         },
       );
     });
