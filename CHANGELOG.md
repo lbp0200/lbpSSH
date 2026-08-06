@@ -1,3 +1,5 @@
+- test(local-terminal): cover escape sequence stripping and getWorkingDirectory (c4f95fe)
+- docs: update CHANGELOG (ef30bbf)
 - test(connection-form): cover password visibility toggle and key validation (30f8fe9)
 - docs: update CHANGELOG (e0bb63a)
 - test(kitty-file-transfer): cover file operations without session (55963ca)
