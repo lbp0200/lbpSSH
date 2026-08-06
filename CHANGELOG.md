@@ -1,5 +1,6 @@
 - chore(deps): bump kterm constraint to ^1.5.5 (f9a6d5d)
 - docs: update CHANGELOG (41d6a9c)
+- test(terminal-settings): cover page rendering and kitty switch toggle (879a027)
 - fix(connection-list): use compact add button in empty state (7336740)
 - fix(terminal-settings): wrap SwitchListTile in transparent Material (75cd786)
 - chore(constants): remove unused appVersion constant (c076ad6)
