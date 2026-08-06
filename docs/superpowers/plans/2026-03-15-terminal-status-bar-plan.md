@@ -1,10 +1,12 @@
 # Terminal Status Bar Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a status bar below each terminal tab showing connection status, latency, duration, and server info. Show disconnect notification with reconnect button.
 
 **Architecture:** Add state tracking to TerminalSession, create TerminalStatusBar widget, integrate into TerminalTabsView Column layout.
+
+**Status:** ✅ Completed (`terminal_status_bar.dart` + widget test landed, integrated in `terminal_view.dart`)
 
 **Tech Stack:** Flutter, Provider, kterm.dart
 
@@ -28,14 +30,14 @@
 **Files:**
 - Modify: `lib/domain/services/terminal_service.dart:31-70`
 
-- [ ] **Step 1: Add import for SshConnectionState**
+- [x] **Step 1: Add import for SshConnectionState**
 
 ```dart
 // Add after existing imports in terminal_service.dart
 import 'ssh_service.dart';
 ```
 
-- [ ] **Step 2: Add state fields to TerminalSession class**
+- [x] **Step 2: Add state fields to TerminalSession class**
 
 Find the TerminalSession class constructor around line 62 and add these fields:
 
@@ -62,7 +64,7 @@ class TerminalSession {
   }) : // ... existing initialization ...
 ```
 
-- [ ] **Step 3: Update state subscription to store state**
+- [x] **Step 3: Update state subscription to store state**
 
 Find the `_stateSubscription` listener around line 236 and update:
 
@@ -79,7 +81,7 @@ _stateSubscription = inputService.stateStream.listen(
 );
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add lib/domain/services/terminal_service.dart
@@ -95,7 +97,7 @@ git commit -m "feat: add connection state tracking to TerminalSession"
 **Files:**
 - Create: `lib/presentation/widgets/terminal_status_bar.dart`
 
-- [ ] **Step 1: Create the widget file**
+- [x] **Step 1: Create the widget file**
 
 ```dart
 import 'dart:async';
@@ -261,7 +263,7 @@ class _TerminalStatusBarState extends State<TerminalStatusBar> {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_status_bar.dart
@@ -277,7 +279,7 @@ git commit -m "feat: add TerminalStatusBar widget"
 **Files:**
 - Modify: `lib/presentation/widgets/terminal_view.dart:449-556`
 
-- [ ] **Step 1: Add import for TerminalStatusBar**
+- [x] **Step 1: Add import for TerminalStatusBar**
 
 Add at the top of terminal_view.dart:
 
@@ -285,7 +287,7 @@ Add at the top of terminal_view.dart:
 import 'terminal_status_bar.dart';
 ```
 
-- [ ] **Step 2: Find the Column layout and add status bar**
+- [x] **Step 2: Find the Column layout and add status bar**
 
 Find the `return Column` around line 449 and update to add the status bar after the terminal:
 
@@ -326,7 +328,7 @@ return Column(
 );
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_view.dart
@@ -342,7 +344,7 @@ git commit -m "feat: integrate TerminalStatusBar into TerminalTabsView"
 **Files:**
 - Modify: `lib/presentation/widgets/terminal_view.dart`
 
-- [ ] **Step 1: Update onReconnect to show SnackBar and trigger reconnect**
+- [x] **Step 1: Update onReconnect to show SnackBar and trigger reconnect**
 
 Find the onReconnect callback and update it:
 
@@ -360,7 +362,7 @@ onReconnect: () {
 },
 ```
 
-- [ ] **Step 2: Add reconnect method to TerminalProvider**
+- [x] **Step 2: Add reconnect method to TerminalProvider**
 
 Check if reconnect method exists or add it:
 
@@ -380,7 +382,7 @@ Future<void> reconnectSession(String sessionId) async {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_view.dart lib/presentation/providers/terminal_provider.dart
@@ -397,7 +399,7 @@ git commit -m "feat: add disconnect SnackBar and reconnect functionality"
 - Modify: `lib/l10n/app_zh.arb`
 - Modify: `lib/l10n/app_en.arb`
 
-- [ ] **Step 1: Add strings**
+- [x] **Step 1: Add strings**
 
 In `app_zh.arb`:
 ```json
@@ -419,11 +421,11 @@ In `app_en.arb`:
 }
 ```
 
-- [ ] **Step 2: Update widget to use localization**
+- [x] **Step 2: Update widget to use localization**
 
 Replace hardcoded strings with localization calls.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/l10n/
