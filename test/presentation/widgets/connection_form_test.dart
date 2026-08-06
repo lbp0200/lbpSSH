@@ -106,7 +106,7 @@ void main() {
         await pumpForm(tester);
 
         // 切换到密钥认证
-        await tester.tap(find.text('认证方式'));
+        await tester.tap(find.byType(DropdownButtonFormField<AuthType>).first);
         await tester.pumpAndSettle();
         await tester.tap(find.text('密钥认证').last);
         await tester.pumpAndSettle();
@@ -198,7 +198,7 @@ void main() {
         await pumpForm(tester);
 
         // 切换到密钥认证
-        await tester.tap(find.text('认证方式'));
+        await tester.tap(find.byType(DropdownButtonFormField<AuthType>).first);
         await tester.pumpAndSettle();
         await tester.tap(find.text('密钥认证').last);
         await tester.pumpAndSettle();
