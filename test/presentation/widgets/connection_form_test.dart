@@ -173,5 +173,41 @@ void main() {
         expect(find.text('请输入代理主机'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'Given password auth, When visibility icon tapped, Then password becomes visible',
+      (tester) async {
+        await pumpForm(tester);
+
+        // 初始为隐藏状态(visibility 图标表示点击可查看)
+        expect(find.byIcon(Icons.visibility), findsOneWidget);
+        expect(find.byIcon(Icons.visibility_off), findsNothing);
+
+        // 点击眼睛图标切换为明文
+        await tester.tap(find.byIcon(Icons.visibility));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.visibility_off), findsOneWidget);
+        expect(find.byIcon(Icons.visibility), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Given key auth selected, When save without key file, Then shows key validation error',
+      (tester) async {
+        await pumpForm(tester);
+
+        // 切换到密钥认证
+        await tester.tap(find.text('认证方式'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('密钥认证').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('保存'));
+        await tester.pump();
+
+        expect(find.text('请选择私钥文件'), findsOneWidget);
+      },
+    );
   });
 }
