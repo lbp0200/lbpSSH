@@ -8,24 +8,26 @@
 
 **Tech Stack:** Sentry SDK, Flutter
 
+**实施状态：** ✅ 已完成（`lib/utils/sentry_service.dart`、`lib/main.dart` 均已落地，sentry ^9.20.0 在依赖中）
+
 ---
 
 ## Chunk 1: Sentry 依赖和服务
 
 ### 任务 1.1: 添加 Sentry 依赖
 
-- [ ] **Step 1: 添加 Sentry 依赖到 pubspec.yaml**
+- [x] **Step 1: 添加 Sentry 依赖到 pubspec.yaml**
 
 ```yaml
 dependencies:
   sentry: ^8.0.0
 ```
 
-- [ ] **Step 2: 运行 pub get**
+- [x] **Step 2: 运行 pub get**
 
 Run: `flutter pub get`
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add pubspec.yaml
@@ -36,7 +38,7 @@ git commit -m "chore(deps): add sentry for error tracking"
 
 ### 任务 1.2: 创建 SentryService
 
-- [ ] **Step 1: 创建 lib/utils/sentry_service.dart**
+- [x] **Step 1: 创建 lib/utils/sentry_service.dart**
 
 ```dart
 import 'package:sentry/sentry.dart';
@@ -64,7 +66,7 @@ class SentryService {
 }
 ```
 
-- [ ] **Step 2: 更新 lib/main.dart 初始化 Sentry**
+- [x] **Step 2: 更新 lib/main.dart 初始化 Sentry**
 
 ```dart
 import 'utils/sentry_service.dart';
@@ -77,7 +79,7 @@ void main() async {
 }
 ```
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add lib/utils/sentry_service.dart lib/main.dart
@@ -88,7 +90,7 @@ git commit -m "feat(monitoring): add SentryService for error tracking"
 
 ### 任务 1.3: 添加全局错误处理器
 
-- [ ] **Step 1: 在 main.dart 添加错误处理器**
+- [x] **Step 1: 在 main.dart 添加错误处理器**
 
 ```dart
 FlutterError.onError = (details) {
@@ -101,7 +103,7 @@ PlatformDispatcher.instance.onError = (error, stack) {
 };
 ```
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add lib/main.dart
