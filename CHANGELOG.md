@@ -1,3 +1,5 @@
+- test(sftp-browser): add widget tests for SftpBrowserScreen (030f489)
+- docs: update CHANGELOG (36cb830)
 - test(connection-form): add widget tests and remove unused cupertino_icons (e15ca92)
 - docs: update CHANGELOG (5639594)
 - docs: replace stale xterm reference with kterm in READMEs (0d6f311)
