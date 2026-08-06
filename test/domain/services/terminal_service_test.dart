@@ -418,4 +418,88 @@ void main() {
       },
     );
   });
+
+  group('TerminalSession Methods', () {
+    late MockTerminalInputService inputService;
+
+    setUp(() {
+      inputService = MockTerminalInputService();
+    });
+
+    TerminalSession createSession({String name = 'Test Session'}) {
+      return TerminalSession(
+        id: 'method-test',
+        name: name,
+        inputService: inputService,
+      );
+    }
+
+    test(
+      'Given session, When writeRaw called, Then writes to terminal without throwing',
+      () {
+        final session = createSession();
+
+        expect(() => session.writeRaw('hello'), returnsNormally);
+      },
+    );
+
+    test(
+      'Given session, When setName called, Then updates name getter',
+      () {
+        final session = createSession();
+
+        session.setName('Renamed');
+
+        expect(session.name, 'Renamed');
+      },
+    );
+
+    test(
+      'Given session with empty working directory, When updateLocalTerminalName called, Then name becomes local /',
+      () {
+        final session = createSession(name: 'whatever');
+
+        session.updateLocalTerminalName();
+
+        expect(session.name, 'local /');
+      },
+    );
+
+    test(
+      'Given session with working directory, When updateLocalTerminalName called, Then name becomes local folder',
+      () {
+        final session = createSession();
+
+        session.setWorkingDirectory('/Users/test/project');
+        session.updateLocalTerminalName();
+
+        expect(session.name, 'local project');
+      },
+    );
+
+    test(
+      'Given session, When setWorkingDirectory called, Then updates working directory without changing name',
+      () {
+        final session = createSession();
+
+        session.setWorkingDirectory('/tmp');
+
+        expect(session.workingDirectory, '/tmp');
+        expect(session.name, 'Test Session');
+      },
+    );
+
+    test(
+      'Given session, When setOsType called, Then updates osType',
+      () {
+        final session = createSession();
+
+        expect(session.osType, 'Linux');
+
+        session.setOsType('Darwin');
+
+        expect(session.osType, 'Darwin');
+      },
+    );
+  });
 }
