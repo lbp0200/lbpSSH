@@ -107,6 +107,29 @@ void main() {
       );
 
       testWidgets(
+        'Given empty connections and isCompact, When rendered, Then shows compact add button without overflow',
+        (tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(
+            createTestWidget(connections: [], isCompact: true),
+          );
+
+          // 紧凑模式：只有图标按钮，没有带文字的 FilledButton（避免 60px 宽度溢出）
+          expect(find.byType(FilledButton), findsNothing);
+          expect(find.byType(IconButton), findsOneWidget);
+          expect(find.byIcon(Icons.add), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
         'Given empty connections, When rendered, Then shows FilledButton',
         (WidgetTester tester) async {
           // Set up screen size

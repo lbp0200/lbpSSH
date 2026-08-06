@@ -36,6 +36,16 @@ class ConnectionList extends ConsumerWidget {
     final connections = provider.filteredConnections;
 
     if (connections.isEmpty) {
+      if (isCompact) {
+        return Center(
+          child: IconButton(
+            onPressed: () => _showConnectionForm(context, null),
+            icon: const Icon(Icons.add),
+            tooltip: '添加连接',
+            color: LinearColors.textPrimary.withValues(alpha: 0.6),
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
