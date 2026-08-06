@@ -1,3 +1,5 @@
+- ci: add version-resolver to release drafter config (536458a)
+- docs: update CHANGELOG (0dc6f9e)
 - docs: mark remaining 2026-03-14 plans with actual status (c218709)
 - docs: update CHANGELOG (24a49c8)
 - docs: mark completed 2026-02 plans and superpowers plans as done (fb77fe9)
