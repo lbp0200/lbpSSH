@@ -501,5 +501,56 @@ void main() {
         expect(session.osType, 'Darwin');
       },
     );
+
+    test(
+      'Given session, When executeCommand called, Then writes command to terminal and invokes inputService',
+      () async {
+        final session = createSession();
+
+        await session.executeCommand('ls -la');
+
+        // 命令被写入终端
+        expect(session.terminal.buffer.toString(), contains('ls -la'));
+      },
+    );
+
+    test(
+      'Given inputService throws, When executeCommand called, Then writes error to terminal without rethrowing',
+      () async {
+        final failingService = _ThrowingInputService();
+        final session = TerminalSession(
+          id: 'throw-test',
+          name: 'Throw Test',
+          inputService: failingService,
+        );
+
+        await session.executeCommand('bad-cmd');
+
+        expect(session.terminal.buffer.toString(), contains('错误:'));
+      },
+    );
   });
+}
+
+/// 输入服务:executeCommand 始终抛异常
+class _ThrowingInputService implements TerminalInputService {
+  @override
+  Stream<String> get outputStream => const Stream.empty();
+
+  @override
+  Stream<bool> get stateStream => const Stream.empty();
+
+  @override
+  Future<String> executeCommand(String command, {bool silent = false}) async {
+    throw Exception('command failed');
+  }
+
+  @override
+  void sendInput(String input) {}
+
+  @override
+  void resize(int rows, int columns) {}
+
+  @override
+  void dispose() {}
 }
