@@ -126,5 +126,52 @@ void main() {
         expect(find.text('跳板机地址'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'Given jump host toggle enabled, When save with empty jump host, Then shows jump host validation error',
+      (tester) async {
+        await pumpForm(tester);
+
+        await tester.tap(find.text('使用跳板机'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('保存'));
+        await tester.pump();
+
+        expect(find.text('请输入跳板机地址'), findsOneWidget);
+        expect(find.text('请输入跳板机用户名'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given SOCKS5 proxy toggle enabled, When rendered, Then shows proxy fields',
+      (tester) async {
+        await pumpForm(tester);
+
+        await tester.tap(find.text('使用 SOCKS5 代理'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('代理主机'), findsOneWidget);
+        // 默认端口提示
+        expect(find.textContaining('默认 1080'), findsOneWidget);
+        // 可选配置提示
+        expect(find.textContaining('用户名和密码为可选配置'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given SOCKS5 proxy toggle enabled, When save with empty proxy host, Then shows proxy validation error',
+      (tester) async {
+        await pumpForm(tester);
+
+        await tester.tap(find.text('使用 SOCKS5 代理'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('保存'));
+        await tester.pump();
+
+        expect(find.text('请输入代理主机'), findsOneWidget);
+      },
+    );
   });
 }
