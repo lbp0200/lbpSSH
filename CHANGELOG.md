@@ -1,3 +1,5 @@
+- test(terminal-provider): cover activeSession getter and disposeServices (d2095e8)
+- docs: update CHANGELOG (4f3b161)
 - test(l10n): cover all AppLocalizations keys and delegate behavior (550192f)
 - docs: update CHANGELOG (37cf27e)
 - test(providers): cover service_providers factories (66f71e3)
