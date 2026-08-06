@@ -1,3 +1,5 @@
+- docs: mark completed 2026-02 plans and superpowers plans as done (fb77fe9)
+- docs: update CHANGELOG (cf19085)
 - docs: mark stale 2026-03-14 plans as done or obsolete (0351be6)
 - docs: update CHANGELOG (480120d)
 - test(connection-list): assert focus border styling and mark ui fix plan done (95d636e)
