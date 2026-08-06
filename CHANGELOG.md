@@ -1,3 +1,5 @@
+- docs(design-system): align MASTER.md with actual Linear theme tokens (b6b4092)
+- docs: update CHANGELOG (1712077)
 - ci: add version-resolver to release drafter config (536458a)
 - docs: update CHANGELOG (0dc6f9e)
 - docs: mark remaining 2026-03-14 plans with actual status (c218709)
