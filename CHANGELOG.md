@@ -1,3 +1,5 @@
+- docs: replace stale xterm reference with kterm in READMEs (0d6f311)
+- docs: update CHANGELOG (f181bfb)
 - docs: fix project structure and tech stack in READMEs (f9fb83a)
 - docs: update CHANGELOG (d7221dd)
 - docs(design-system): align MASTER.md with actual Linear theme tokens (b6b4092)
