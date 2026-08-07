@@ -1,16 +1,53 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lbp_ssh/data/models/file_item.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
-import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
+import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart'
+    hide FileType;
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
 import 'package:lbp_ssh/presentation/screens/sftp_browser_screen.dart';
 
 class _MockTransferService extends Mock implements KittyFileTransferService {}
+
+/// Fake FilePickerPlatform：可配置 pickFiles/getDirectoryPath 返回值
+class _FakeFilePickerPlatform extends FilePickerPlatform {
+  FilePickerResult? pickResult;
+  String? directoryPath;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    void Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+    bool cancelUploadOnWindowBlur = true,
+    AndroidSAFOptions? androidSafOptions,
+  }) async {
+    return pickResult;
+  }
+
+  @override
+  Future<String?> getDirectoryPath({
+    String? dialogTitle,
+    bool lockParentWindow = false,
+    String? initialDirectory,
+    AndroidSAFOptions? androidSafOptions,
+  }) async {
+    return directoryPath;
+  }
+}
 
 /// 正常打开标签页的 mock:直接返回预设 tab,跳过 terminalProvider 依赖
 class _MockSftpNotifier extends SftpNotifier {
@@ -308,6 +345,435 @@ void main() {
         await tester.pumpAndSettle();
 
         verify(() => transferService.removeFile('/a.txt')).called(1);
+      },
+    );
+
+    testWidgets(
+      'Given directory item, When tapped, Then changes directory and refreshes',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(
+              name: 'docs',
+              path: '/home/user/docs',
+              isDirectory: true,
+            ),
+          ],
+        );
+        when(() => transferService.changeDirectory('docs')).thenAnswer(
+          (_) async {},
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/home/user',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('docs'));
+        await tester.pumpAndSettle();
+
+        verify(() => transferService.changeDirectory('docs')).called(1);
+      },
+    );
+
+    testWidgets(
+      'Given non-root path, When back button pressed, Then goes up and refreshes',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(
+              name: 'parent.txt',
+              path: '/parent.txt',
+              isDirectory: false,
+            ),
+          ],
+        );
+        when(() => transferService.goUp()).thenAnswer((_) async {});
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/home/user',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.arrow_back));
+        await tester.pumpAndSettle();
+
+        verify(() => transferService.goUp()).called(1);
+      },
+    );
+
+    testWidgets(
+      'Given list refresh throws, When rendered, Then shows error and retry',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenThrow(
+          Exception('boom'),
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/home/user',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('boom'), findsOneWidget);
+        expect(find.text('重试'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given create folder dialog, When cancel pressed, Then no folder created',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('新建文件夹'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+
+        verifyNever(() => transferService.createDirectory(any()));
+      },
+    );
+
+    testWidgets(
+      'Given createDirectory throws, When folder created, Then shows error snackbar',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+        when(() => transferService.createDirectory(any())).thenThrow(
+          Exception('mkdir failed'),
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('新建文件夹'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'backup');
+        await tester.tap(find.text('确定'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('mkdir failed'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given delete dialog, When cancel pressed, Then file not removed',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+
+        verifyNever(() => transferService.removeFile(any()));
+      },
+    );
+
+    testWidgets(
+      'Given directory item, When delete confirmed, Then removes directory',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(
+              name: 'docs',
+              path: '/home/user/docs',
+              isDirectory: true,
+            ),
+          ],
+        );
+        when(() => transferService.removeDirectory(any())).thenAnswer(
+          (_) async {},
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/home/user',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('docs'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+
+        verify(() => transferService.removeDirectory('/home/user/docs'))
+            .called(1);
+      },
+    );
+
+    testWidgets(
+      'Given removeFile throws, When delete confirmed, Then shows error snackbar',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+        when(() => transferService.removeFile(any())).thenThrow(
+          Exception('rm failed'),
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除').last);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('rm failed'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given directory item, When download menu tapped, Then does not download',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(
+              name: 'docs',
+              path: '/docs',
+              isDirectory: true,
+            ),
+          ],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('docs'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+
+        verifyNever(() => transferService.downloadFile(any(), any()));
+      },
+    );
+
+    testWidgets(
+      'Given various file extensions, When rendered, Then shows matching icons',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(name: 'photo.png', path: '/photo.png', isDirectory: false),
+            FileItem(name: 'doc.pdf', path: '/doc.pdf', isDirectory: false),
+            FileItem(name: 'data.zip', path: '/data.zip', isDirectory: false),
+            FileItem(name: 'notes.md', path: '/notes.md', isDirectory: false),
+            FileItem(name: 'misc.xyz', path: '/misc.xyz', isDirectory: false),
+          ],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.image), findsOneWidget);
+        expect(find.byIcon(Icons.picture_as_pdf), findsOneWidget);
+        expect(find.byIcon(Icons.archive), findsOneWidget);
+        expect(find.byIcon(Icons.description), findsOneWidget);
+        expect(find.byIcon(Icons.insert_drive_file), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given large files, When rendered, Then formats size in MB and GB',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(
+              name: 'big.bin',
+              path: '/big.bin',
+              isDirectory: false,
+              size: 5 * 1024 * 1024, // 5 MB
+            ),
+            FileItem(
+              name: 'huge.bin',
+              path: '/huge.bin',
+              isDirectory: false,
+              size: 3 * 1024 * 1024 * 1024, // 3 GB
+            ),
+          ],
+        );
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        expect(find.text('5.0 MB'), findsOneWidget);
+        expect(find.text('3.0 GB'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given upload file picked, When upload pressed, Then sends file and shows success',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => <FileItem>[],
+        );
+        when(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final fake = _FakeFilePickerPlatform()
+          ..pickResult = FilePickerResult([
+            PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
+          ]);
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).called(1);
+        expect(find.text('上传成功'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given directory picked, When download menu tapped, '
+      'Then downloads file and shows success',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false)],
+        );
+        when(
+          () => transferService.downloadFile(
+            any(),
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => transferService.downloadFile(
+            '/a.txt',
+            '/tmp/a.txt',
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).called(1);
+        expect(find.text('下载成功'), findsOneWidget);
       },
     );
   });
