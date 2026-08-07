@@ -170,5 +170,131 @@ void main() {
       final result = repo2.getAllConnections();
       expect(result, isEmpty);
     });
+
+    test('saveConnection encrypts sensitive fields in file', () async {
+      final connection = SshConnection(
+        id: 'sec-1',
+        name: 'Secure',
+        host: '10.0.0.1',
+        username: 'user',
+        authType: AuthType.password,
+        password: 'secret-pw',
+      );
+
+      await repo.saveConnection(connection);
+
+      // 文件内容不应包含明文密码
+      final raw = await configFile.readAsString();
+      expect(raw.contains('secret-pw'), isFalse);
+    });
+
+    test('saved connection with password round-trips after reload', () async {
+      final connection = SshConnection(
+        id: 'sec-2',
+        name: 'Secure 2',
+        host: '10.0.0.2',
+        username: 'user',
+        authType: AuthType.keyWithPassword,
+        privateKeyContent: 'BEGIN RSA PRIVATE KEY content',
+        keyPassphrase: 'passphrase-123',
+      );
+
+      await repo.saveConnection(connection);
+
+      // 重新加载仓库，验证敏感字段解密还原
+      final newRepo = ConnectionRepository(configFile: configFile);
+      await newRepo.init();
+      addTearDown(() => newRepo.close());
+
+      final loaded = newRepo.getConnectionById('sec-2')!;
+      expect(loaded.password, isNull);
+      expect(loaded.privateKeyContent, 'BEGIN RSA PRIVATE KEY content');
+      expect(loaded.keyPassphrase, 'passphrase-123');
+    });
+
+    test('saved connection with jump host password round-trips', () async {
+      final connection = SshConnection(
+        id: 'jh-1',
+        name: 'Jump',
+        host: '10.0.0.3',
+        username: 'user',
+        authType: AuthType.password,
+        password: 'main-pw',
+        jumpHost: JumpHostConfig(
+          host: 'bastion.example.com',
+          username: 'jump-user',
+          authType: AuthType.password,
+          password: 'jump-pw',
+        ),
+      );
+
+      await repo.saveConnection(connection);
+
+      final raw = await configFile.readAsString();
+      expect(raw.contains('jump-pw'), isFalse);
+
+      final newRepo = ConnectionRepository(configFile: configFile);
+      await newRepo.init();
+      addTearDown(() => newRepo.close());
+
+      final loaded = newRepo.getConnectionById('jh-1')!;
+      expect(loaded.jumpHost?.password, 'jump-pw');
+      expect(loaded.password, 'main-pw');
+    });
+
+    test('saved connection with socks5 proxy password round-trips', () async {
+      final connection = SshConnection(
+        id: 's5-1',
+        name: 'Proxy',
+        host: '10.0.0.4',
+        username: 'user',
+        authType: AuthType.password,
+        password: 'main-pw',
+        socks5Proxy: Socks5ProxyConfig(
+          host: 'proxy.example.com',
+          username: 'proxy-user',
+          password: 'proxy-pw',
+        ),
+      );
+
+      await repo.saveConnection(connection);
+
+      final raw = await configFile.readAsString();
+      expect(raw.contains('proxy-pw'), isFalse);
+
+      final newRepo = ConnectionRepository(configFile: configFile);
+      await newRepo.init();
+      addTearDown(() => newRepo.close());
+
+      final loaded = newRepo.getConnectionById('s5-1')!;
+      expect(loaded.socks5Proxy?.password, 'proxy-pw');
+      expect(loaded.password, 'main-pw');
+    });
+
+    test('saveConnection updates jump host and socks5 without password', () async {
+      final connection = SshConnection(
+        id: 'none-1',
+        name: 'No Secrets',
+        host: '10.0.0.5',
+        username: 'user',
+        authType: AuthType.password,
+        jumpHost: JumpHostConfig(
+          host: 'bastion.example.com',
+          username: 'jump-user',
+          authType: AuthType.password,
+        ),
+        socks5Proxy: Socks5ProxyConfig(host: 'proxy.example.com'),
+      );
+
+      await repo.saveConnection(connection);
+
+      final newRepo = ConnectionRepository(configFile: configFile);
+      await newRepo.init();
+      addTearDown(() => newRepo.close());
+
+      final loaded = newRepo.getConnectionById('none-1')!;
+      expect(loaded.jumpHost?.host, 'bastion.example.com');
+      expect(loaded.socks5Proxy?.host, 'proxy.example.com');
+    });
   });
 }
