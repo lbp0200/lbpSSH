@@ -34,5 +34,21 @@ void main() {
       await service.captureException(Exception('after empty init'));
       // Should complete without throwing
     });
+
+    test('init with valid DSN initializes the service', () async {
+      final service = SentryService();
+      await service.init(dsn: 'https://valid-dsn@sentry.io/1');
+      // Should complete without throwing; Sentry.init was invoked
+    });
+
+    test('captureException after init does not throw', () async {
+      final service = SentryService();
+      await service.init(dsn: 'https://valid-dsn@sentry.io/1');
+      await service.captureException(
+        Exception('after init'),
+        stackTrace: StackTrace.current,
+      );
+      // Should complete without throwing
+    });
   });
 }
