@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
@@ -530,6 +534,380 @@ void main() {
       },
     );
   });
+
+  group('TerminalSession Notification Stream', () {
+    test(
+      'Given terminal notification, When onNotification fired, Then notificationStream emits event',
+      () async {
+        final session = TerminalSession(
+          id: 'notify-test',
+          name: 'Notify',
+          inputService: MockTerminalInputService(),
+        );
+
+        final notifications = <({String title, String body})>[];
+        session.notificationStream.listen(notifications.add);
+
+        session.terminal.onNotification?.call('Kitty 通知', '测试内容');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(notifications, hasLength(1));
+        expect(notifications.single.title, 'Kitty 通知');
+        expect(notifications.single.body, '测试内容');
+      },
+    );
+  });
+
+  group('TerminalSession OSC 5113 File Transfer', () {
+    late TerminalSession session;
+    late List<FileTransferEvent> events;
+
+    setUp(() {
+      session = TerminalSession(
+        id: 'osc-test',
+        name: 'OSC',
+        inputService: MockTerminalInputService(),
+      );
+      events = [];
+      session.fileTransferStream.listen(events.add);
+    });
+
+    void fireOsc5113(List<String> args) {
+      session.terminal.onPrivateOSC?.call('5113', args);
+    }
+
+    test(
+      'Given ac=send, When OSC 5113 fired, Then emits start event with parsed fields',
+      () async {
+        // n 是 base64 编码的文件名
+        fireOsc5113([
+          'ac=send',
+          'fid=file-1',
+          'n=ZmlsZS50eHQ=',
+          'size=1024',
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single.type, 'start');
+        expect(events.single.fileId, 'file-1');
+        expect(events.single.fileName, 'file.txt');
+        expect(events.single.fileSize, 1024);
+      },
+    );
+
+    test(
+      'Given ac=data, When OSC 5113 fired, Then emits chunk event with decoded bytes',
+      () async {
+        // d 是 base64 编码的数据
+        fireOsc5113([
+          'ac=data',
+          'fid=file-1',
+          'offset=0',
+          'd=SGVsbG8=',
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single.type, 'chunk');
+        expect(events.single.fileId, 'file-1');
+        expect(events.single.offset, 0);
+        expect(events.single.data, [72, 101, 108, 108, 111]);
+      },
+    );
+
+    test(
+      'Given ac=finish, When OSC 5113 fired, Then emits end event',
+      () async {
+        fireOsc5113(['ac=finish', 'fid=file-1']);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single.type, 'end');
+        expect(events.single.fileId, 'file-1');
+      },
+    );
+
+    test(
+      'Given malformed base64 name, When OSC 5113 send fired, Then fileName is null',
+      () async {
+        fireOsc5113(['ac=send', 'fid=file-1', 'n=!!!', 'size=10']);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single.fileName, isNull);
+      },
+    );
+
+    test(
+      'Given unknown action, When OSC 5113 fired, Then no event emitted',
+      () async {
+        fireOsc5113(['ac=unknown', 'fid=file-1']);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, isEmpty);
+      },
+    );
+  });
+
+  group('TerminalSession Clipboard (OSC 52)', () {
+    test(
+      'Given clipboard has text, When onClipboardRead fired, '
+      'Then terminal writes OSC 52 response with base64 content',
+      () async {
+        final session = TerminalSession(
+          id: 'clip-test',
+          name: 'Clip',
+          inputService: MockTerminalInputService(),
+        );
+
+        // 捕获写回的内容：kterm 解析 OSC 52 响应后会触发 onClipboardWrite
+        String? writtenData;
+        session.terminal.onClipboardWrite = (data, target) {
+          writtenData = data;
+        };
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return <String, dynamic>{'text': 'hello-clip'};
+          }
+          return null;
+        });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        // 字段类型为 void Function(String)，内部为 async 回调，调用后等待完成
+        session.terminal.onClipboardRead?.call('c');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(writtenData, 'hello-clip');
+      },
+    );
+
+    test(
+      'Given onClipboardWrite fired, Then Clipboard.setData called with decoded text',
+      () async {
+        final session = TerminalSession(
+          id: 'clip-test',
+          name: 'Clip',
+          inputService: MockTerminalInputService(),
+        );
+        String? clipboardText;
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            clipboardText = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        final encoded = base64Encode(utf8.encode('复制内容'));
+        session.terminal.onClipboardWrite?.call(encoded, 'c');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(clipboardText, '复制内容');
+      },
+    );
+  });
+
+  group('TerminalSession initialize()', () {
+    late _ControlledInputService inputService;
+
+    setUp(() {
+      inputService = _ControlledInputService();
+    });
+
+    test(
+      'Given output stream emits, When initialize called, Then writes output to terminal',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        inputService.outputController.add('hello output');
+        await Future<void>.delayed(Duration.zero);
+
+        expect(session.terminal.buffer.toString(), contains('hello output'));
+      },
+    );
+
+    test(
+      'Given state stream emits true, When initialize called, '
+      'Then connectionState becomes connected and start time is set',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        inputService.stateController.add(true);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(session.connectionState, SshConnectionState.connected);
+        expect(session.connectionStartTime, isNotNull);
+      },
+    );
+
+    test(
+      'Given state stream emits false, When initialize called, '
+      'Then connectionState becomes disconnected',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        inputService.stateController.add(false);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(session.connectionState, SshConnectionState.disconnected);
+      },
+    );
+
+    test(
+      'Given terminal output, When onOutput fired, Then sends input to service',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        session.terminal.onOutput?.call('ls -la');
+        expect(inputService.sentInputs, contains('ls -la'));
+      },
+    );
+
+    test(
+      'Given empty terminal output, When onOutput fired, Then skips sending',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        session.terminal.onOutput?.call('');
+        expect(inputService.sentInputs, isEmpty);
+      },
+    );
+
+    test(
+      'Given input service throws on send, When onOutput fired, '
+      'Then writes error to terminal without rethrowing',
+      () async {
+        final throwingService = _ThrowingSendInputService();
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: throwingService,
+        );
+        session.initialize();
+
+        expect(
+          () => session.terminal.onOutput?.call('bad'),
+          returnsNormally,
+        );
+        expect(session.terminal.buffer.toString(), contains('输入发送失败'));
+      },
+    );
+
+    test(
+      'Given resize fired, When debounce delay elapses, Then resizes input service',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        session.terminal.onResize?.call(100, 30, 800, 600);
+        expect(inputService.resizeCount, 0);
+
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(inputService.resizeCount, 1);
+        expect(inputService.lastResize, (30, 100));
+      },
+    );
+  });
+}
+
+/// 输入服务:可控流 + 记录 sendInput/resize 调用
+class _ControlledInputService implements TerminalInputService {
+  final outputController = StreamController<String>.broadcast();
+  final stateController = StreamController<bool>.broadcast();
+  final sentInputs = <String>[];
+  int resizeCount = 0;
+  (int, int)? lastResize;
+
+  @override
+  Stream<String> get outputStream => outputController.stream;
+
+  @override
+  Stream<bool> get stateStream => stateController.stream;
+
+  @override
+  Future<String> executeCommand(String command, {bool silent = false}) async =>
+      '';
+
+  @override
+  void sendInput(String input) {
+    sentInputs.add(input);
+  }
+
+  @override
+  void resize(int rows, int columns) {
+    resizeCount++;
+    lastResize = (rows, columns);
+  }
+
+  @override
+  void dispose() {
+    outputController.close();
+    stateController.close();
+  }
+}
+
+/// 输入服务:sendInput 始终抛异常
+class _ThrowingSendInputService implements TerminalInputService {
+  @override
+  Stream<String> get outputStream => const Stream.empty();
+
+  @override
+  Stream<bool> get stateStream => const Stream.empty();
+
+  @override
+  Future<String> executeCommand(String command, {bool silent = false}) async =>
+      '';
+
+  @override
+  void sendInput(String input) {
+    throw Exception('send failed');
+  }
+
+  @override
+  void resize(int rows, int columns) {}
+
+  @override
+  void dispose() {}
 }
 
 /// 输入服务:executeCommand 始终抛异常
