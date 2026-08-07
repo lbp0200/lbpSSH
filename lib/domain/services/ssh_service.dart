@@ -9,22 +9,18 @@ import 'app_config_service.dart';
 import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
 
-/// 将任何 Socket 适配为 SSHSocket
+/// 将 SOCKS5 连接适配为 SSHSocket
+///
+/// socks5_proxy 在握手阶段已通过 `asBroadcastStream()` 监听了 socket，
+/// 因此这里直接复用其广播流，不能再对原始 socket 调用 [Socket.listen]，
+/// 否则会抛出 "Stream has already been listened to" 错误。
 class _Socks5ProxySocket implements SSHSocket {
   final Socket _socket;
-  late final Stream<Uint8List> _stream;
-  late final StreamController<Uint8List> _controller;
-  StreamSubscription<Object>? _subscription;
+  final Stream<Uint8List> _stream;
 
-  _Socks5ProxySocket(Socket socket) : _socket = socket {
-    _controller = StreamController<Uint8List>.broadcast();
-    _stream = _controller.stream;
-    _subscription = _socket.listen(
-      (data) => _controller.add(data),
-      onError: (Object e) => _controller.addError(e),
-      onDone: () => _controller.close(),
-    );
-  }
+  _Socks5ProxySocket(Socket socket, Stream<Uint8List> stream)
+      : _socket = socket,
+        _stream = stream;
 
   @override
   Stream<Uint8List> get stream => _stream;
@@ -36,19 +32,13 @@ class _Socks5ProxySocket implements SSHSocket {
   Future<void> get done => _socket.done;
 
   @override
-  Future<void> close() async {
-    await _subscription?.cancel();
-    await _controller.close();
-    await _socket.close();
-  }
+  Future<void> close() => _socket.close();
 
   @override
   Future<void> flush() => _socket.flush();
 
   @override
   void destroy() {
-    _subscription?.cancel();
-    _controller.close();
     _socket.destroy();
   }
 
@@ -88,7 +78,9 @@ Future<SSHSocket> connectViaSocks5Proxy(
   ).timeout(timeout ?? const Duration(seconds: 30));
 
   // 包装为 SSHSocket
-  return _Socks5ProxySocket(socksSocket.socket);
+  // socksSocket.stream 是 socks5_proxy 内部的广播流（握手时已监听 socket），
+  // 直接复用，避免对原始 socket 二次 listen。
+  return _Socks5ProxySocket(socksSocket.socket, socksSocket.stream);
 }
 
 /// SSH 连接状态
