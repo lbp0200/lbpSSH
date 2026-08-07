@@ -1,5 +1,7 @@
 - chore(deps): bump kterm constraint to ^1.5.5 (f9a6d5d)
 - docs: update CHANGELOG (41d6a9c)
+- test(terminal-view): cover tab bar, add menu and session switching (da51246)
+- test(app-settings): cover tab switching between setting pages (0e9b847)
 - fix(import-export): copy imported list and avoid clearing caller data (5694731)
 - test(main-screen): cover rendering, connection tap and error dialog (11bf657)
 - test(connection-management): cover states, navigation and delete flow (7b3889c)
