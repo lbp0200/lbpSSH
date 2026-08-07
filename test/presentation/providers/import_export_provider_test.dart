@@ -263,5 +263,121 @@ void main() {
         );
       });
     });
+
+    group('ImportExportStatusData', () {
+      test(
+        'Given base data, When copyWith status and lastError, '
+        'Then returns updated data',
+        () {
+          const base = ImportExportStatusData(
+            // status 默认即 idle
+            lastError: 'old',
+          );
+
+          final updated = base.copyWith(
+            status: ImportExportStatus.error,
+            lastError: 'new error',
+          );
+
+          expect(updated.status, ImportExportStatus.error);
+          expect(updated.lastError, 'new error');
+          expect(base.lastError, 'old'); // 原对象不变
+        },
+      );
+
+      test(
+        'Given data, When copyWith with nulls, Then keeps existing values',
+        () {
+          const base = ImportExportStatusData(
+            status: ImportExportStatus.success,
+            lastError: 'keep me',
+          );
+
+          final updated = base.copyWith();
+
+          expect(updated.status, ImportExportStatus.success);
+          expect(updated.lastError, 'keep me');
+        },
+      );
+
+      test(
+        'Given equal data, When compared, Then operator == is true',
+        () {
+          const a = ImportExportStatusData(
+            status: ImportExportStatus.error,
+            lastError: 'same',
+          );
+          const b = ImportExportStatusData(
+            status: ImportExportStatus.error,
+            lastError: 'same',
+          );
+
+          expect(a == b, isTrue);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+
+      test(
+        'Given different data, When compared, Then operator == is false',
+        () {
+          const a = ImportExportStatusData(
+            status: ImportExportStatus.error,
+            lastError: 'a',
+          );
+          const b = ImportExportStatusData(
+            status: ImportExportStatus.success,
+            lastError: 'a',
+          );
+          const c = ImportExportStatusData(
+            status: ImportExportStatus.error,
+            lastError: 'b',
+          );
+
+          expect(a == b, isFalse);
+          expect(a == c, isFalse);
+          // 与完全不同的实例比较（默认状态）
+          expect(a == const ImportExportStatusData(), isFalse);
+        },
+      );
+    });
+
+    group('importAndSaveConnections error path', () {
+      test(
+        'Given service throws, When called, Then rethrows and sets error state',
+        () async {
+          // Arrange (Given)
+          when(
+            () => mockService.importAndSaveConnections(
+              any(),
+              overwrite: any(named: 'overwrite'),
+              addPrefix: any(named: 'addPrefix'),
+            ),
+          ).thenThrow(Exception('Save failed'));
+
+          // Act & Assert (When)
+          await expectLater(
+            () => container
+                .read(importExportProvider.notifier)
+                .importAndSaveConnections(
+                  [
+                    SshConnection(
+                      id: 'c3',
+                      name: 'Server 3',
+                      host: '10.0.0.3',
+                      username: 'admin',
+                      authType: AuthType.password,
+                    ),
+                  ],
+                ),
+            throwsException,
+          );
+
+          // Assert (Then) - 状态被设置为 error 且携带错误信息
+          final state = container.read(importExportProvider);
+          expect(state.status, ImportExportStatus.error);
+          expect(state.lastError, contains('导入失败'));
+        },
+      );
+    });
   });
 }
