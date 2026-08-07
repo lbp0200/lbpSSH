@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/domain/services/local_terminal_service.dart';
 import 'package:mocktail/mocktail.dart';
@@ -396,6 +398,46 @@ void main() {
           // Assert (Then) - 真实 pwd 应返回非空绝对路径
           expect(dir, isNotEmpty);
           expect(dir.startsWith('/'), isTrue);
+        },
+      );
+    });
+
+    group('canonical path case-insensitive match', () {
+      test(
+        'Given directory exists with different case, When resolvePath called, '
+        'Then matches the actual directory',
+        () {
+          // Arrange (Given) - 创建混合大小写目录
+          final tempDir = Directory.systemTemp.createTempSync(
+            'lbpssh_case_test',
+          );
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+          final mixedCaseDir = Directory('${tempDir.path}/MyFolder')
+            ..createSync();
+          service.initWorkingDirectory(tempDir.path);
+
+          // Act (When) - 用小写路径解析
+          final result = service.resolvePath('myfolder');
+
+          // Assert (Then) - 大小写不敏感匹配（macOS 默认不区分大小写）
+          expect(result.toLowerCase(), mixedCaseDir.path.toLowerCase());
+        },
+      );
+    });
+
+    group('start() early return', () {
+      test(
+        'Given service stopped, When start called again, Then does not start',
+        () async {
+          // Arrange (Given) - stop() 会设置 _isShuttingDown
+          await service.stop();
+          expect(service.isConnected, isFalse);
+
+          // Act (When)
+          await service.start();
+
+          // Assert (Then) - 提前返回，未启动
+          expect(service.isConnected, isFalse);
         },
       );
     });
