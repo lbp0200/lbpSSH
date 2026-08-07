@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1513,6 +1514,507 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
             () => service.removeDirectory('/home/user/docs'),
             throwsA(isA<Exception>()),
           );
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // FileMetadata constructor
+    // -------------------------------------------------------------------------
+    group('FileMetadata', () {
+      test(
+        'Given all fields, When constructing, Then stores values',
+        () {
+          final meta = FileMetadata(
+            name: 'file.txt',
+            fileType: FileType.directory,
+            size: 100,
+            permissions: 0x1A4,
+            mtime: 1700000000000,
+            linkTarget: 'target-path',
+          );
+
+          expect(meta.name, 'file.txt');
+          expect(meta.fileType, FileType.directory);
+          expect(meta.size, 100);
+          expect(meta.permissions, 0x1A4);
+          expect(meta.mtime, 1700000000000);
+          expect(meta.linkTarget, 'target-path');
+        },
+      );
+
+      test(
+        'Given defaults, When constructing, Then uses regular file type',
+        () {
+          final meta = FileMetadata(name: 'a');
+
+          expect(meta.fileType, FileType.regular);
+          expect(meta.size, isNull);
+          expect(meta.permissions, isNull);
+          expect(meta.mtime, isNull);
+          expect(meta.linkTarget, isNull);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // SFTP branch: listCurrentDirectory
+    // -------------------------------------------------------------------------
+    group('listCurrentDirectory with SFTP client', () {
+      late MockTerminalSession mockSession;
+      late MockSshService mockSsh;
+      late MockSftpClient mockSftp;
+
+      setUp(() {
+        mockSession = MockTerminalSession();
+        mockSsh = MockSshService();
+        mockSftp = MockSftpClient();
+        when(() => mockSession.inputService).thenReturn(mockSsh);
+        when(() => mockSsh.getSftpClient()).thenAnswer((_) async => mockSftp);
+      });
+
+      SftpName makeName(
+        String filename, {
+        int mode = 0x81A4,
+        int? size,
+        int? modifyTime,
+      }) {
+        return SftpName(
+          filename: filename,
+          longname: '',
+          attr: SftpFileAttrs(
+            mode: SftpFileMode.value(mode),
+            size: size,
+            modifyTime: modifyTime,
+          ),
+        );
+      }
+
+      test(
+        'Given SFTP returns entries, When listCurrentDirectory called, '
+        'Then returns FileItems and skips dot entries',
+        () async {
+          when(() => mockSftp.listdir('/home/user')).thenAnswer(
+            (_) async => [
+              makeName('.', mode: 0x41ED),
+              makeName('..', mode: 0x41ED),
+              makeName('docs', mode: 0x41ED, size: 0, modifyTime: 1700000000),
+              makeName('file.txt', size: 2048),
+            ],
+          );
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          final items = await service.listCurrentDirectory();
+
+          expect(items.length, 2);
+          expect(items[0].name, 'docs');
+          expect(items[0].isDirectory, isTrue);
+          expect(items[0].size, 0);
+          expect(items[0].path, '/home/user/docs');
+          expect(items[1].name, 'file.txt');
+          expect(items[1].isDirectory, isFalse);
+          expect(items[1].size, 2048);
+        },
+      );
+
+      test(
+        'Given directory at root, When listCurrentDirectory called, '
+        'Then builds child paths from root',
+        () async {
+          when(() => mockSftp.listdir('/')).thenAnswer(
+            (_) async => [makeName('etc', mode: 0x41ED)],
+          );
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            // initialPath 默认即为 '/'
+          );
+
+          final items = await service.listCurrentDirectory();
+
+          expect(items.single.path, '/etc');
+        },
+      );
+
+      test(
+        'Given entries with permissions, When listCurrentDirectory called, '
+        'Then formats permission strings',
+        () async {
+          when(() => mockSftp.listdir('/home/user')).thenAnswer(
+            (_) async => [
+              makeName('dir1', mode: 0x41ED), // drwxr-xr-x
+              makeName('link1', mode: 0xA1FF), // lrwxrwxrwx
+              makeName('f1'), // -rw-r--r--（默认 mode 0x81A4）
+            ],
+          );
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          final items = await service.listCurrentDirectory();
+
+          expect(items[0].permissions, 'drwxr-xr-x');
+          expect(items[1].permissions, 'lrwxrwxrwx');
+          expect(items[2].permissions, '-rw-r--r--');
+        },
+      );
+
+      test(
+        'Given entry without mode, When listCurrentDirectory called, '
+        'Then permissions is empty string',
+        () async {
+          when(() => mockSftp.listdir('/home/user')).thenAnswer(
+            (_) async => [
+              SftpName(
+                filename: 'nofile',
+                longname: '',
+                attr: SftpFileAttrs(),
+              ),
+            ],
+          );
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          final items = await service.listCurrentDirectory();
+
+          expect(items.single.permissions, '');
+          expect(items.single.modified, isNull);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // SFTP branch: createDirectory / removeFile / removeDirectory
+    // -------------------------------------------------------------------------
+    group('SFTP operations', () {
+      late MockTerminalSession mockSession;
+      late MockSshService mockSsh;
+      late MockSftpClient mockSftp;
+
+      setUp(() {
+        mockSession = MockTerminalSession();
+        mockSsh = MockSshService();
+        mockSftp = MockSftpClient();
+        when(() => mockSession.inputService).thenReturn(mockSsh);
+        when(() => mockSsh.getSftpClient()).thenAnswer((_) async => mockSftp);
+      });
+
+      test(
+        'Given SFTP client, When createDirectory called, Then calls mkdir',
+        () async {
+          when(() => mockSftp.mkdir('/home/user/newdir'))
+              .thenAnswer((_) async {});
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          await service.createDirectory('newdir');
+
+          verify(() => mockSftp.mkdir('/home/user/newdir')).called(1);
+        },
+      );
+
+      test(
+        'Given SFTP client, When removeFile called, Then calls remove',
+        () async {
+          when(() => mockSftp.remove('/home/user/a.txt'))
+              .thenAnswer((_) async {});
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          await service.removeFile('/home/user/a.txt');
+
+          verify(() => mockSftp.remove('/home/user/a.txt')).called(1);
+        },
+      );
+
+      test(
+        'Given SFTP client, When removeDirectory called, Then calls rmdir',
+        () async {
+          when(() => mockSftp.rmdir('/home/user/docs'))
+              .thenAnswer((_) async {});
+
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+
+          await service.removeDirectory('/home/user/docs');
+
+          verify(() => mockSftp.rmdir('/home/user/docs')).called(1);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // checkProtocolSupport
+    // -------------------------------------------------------------------------
+    group('checkProtocolSupport', () {
+      late MockTerminalSession mockSession;
+      late MockTerminalInputService mockInput;
+
+      setUp(() {
+        mockSession = MockTerminalSession();
+        mockInput = MockTerminalInputService();
+        when(() => mockSession.inputService).thenReturn(mockInput);
+      });
+
+      test(
+        'Given no session, When checkProtocolSupport called, '
+        'Then returns unsupported with connection message',
+        () async {
+          final service = KittyFileTransferService();
+
+          final result = await service.checkProtocolSupport();
+
+          expect(result.isSupported, isFalse);
+          expect(result.errorMessage, contains('未连接到终端'));
+        },
+      );
+
+      test(
+        'Given output mentions ki version, When checkProtocolSupport called, '
+        'Then returns supported',
+        () async {
+          when(
+            () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
+          ).thenAnswer((_) async => 'ki version 0.6.0');
+
+          final service = KittyFileTransferService(session: mockSession);
+
+          final result = await service.checkProtocolSupport();
+
+          expect(result.isSupported, isTrue);
+        },
+      );
+
+      test(
+        'Given output without kitty markers, When checkProtocolSupport called, '
+        'Then returns unsupported',
+        () async {
+          when(
+            () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
+          ).thenAnswer((_) async => 'command not found: ki');
+
+          final service = KittyFileTransferService(session: mockSession);
+
+          final result = await service.checkProtocolSupport();
+
+          expect(result.isSupported, isFalse);
+          expect(result.errorMessage, isNotNull);
+        },
+      );
+
+      test(
+        'Given command throws, When checkProtocolSupport called, '
+        'Then returns unsupported',
+        () async {
+          when(
+            () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
+          ).thenThrow(Exception('boom'));
+
+          final service = KittyFileTransferService(session: mockSession);
+
+          final result = await service.checkProtocolSupport();
+
+          expect(result.isSupported, isFalse);
+          expect(result.errorMessage, isNotNull);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // sendFile
+    // -------------------------------------------------------------------------
+    group('sendFile', () {
+      late MockTerminalSession mockSession;
+      late MockTerminalInputService mockInput;
+      late Directory tempDir;
+      final written = <String>[];
+
+      setUp(() {
+        mockSession = MockTerminalSession();
+        mockInput = MockTerminalInputService();
+        tempDir = Directory.systemTemp.createTempSync('lbpssh_send_test');
+        when(() => mockSession.inputService).thenReturn(mockInput);
+        when(
+          () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
+        ).thenAnswer((_) async => 'ki version 0.6.0');
+        when(() => mockSession.writeRaw(captureAny())).thenAnswer((inv) {
+          written.add(inv.positionalArguments.first as String);
+        });
+      });
+
+      tearDown(() {
+        tempDir.deleteSync(recursive: true);
+        written.clear();
+      });
+
+      test(
+        'Given no session, When sendFile called, Then throws connection error',
+        () async {
+          final service = KittyFileTransferService();
+
+          await expectLater(
+            service.sendFile(
+              localPath: '${tempDir.path}/f.bin',
+              remoteFileName: 'f.bin',
+              onProgress: _mockProgressCallback(),
+            ),
+            throwsA(
+              predicate<Exception>(
+                (e) => e.toString().contains('未连接到终端'),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'Given file does not exist, When sendFile called, Then throws',
+        () async {
+          final service = KittyFileTransferService(session: mockSession);
+
+          await expectLater(
+            service.sendFile(
+              localPath: '${tempDir.path}/missing.bin',
+              remoteFileName: 'missing.bin',
+              onProgress: _mockProgressCallback(),
+            ),
+            throwsA(
+              predicate<Exception>((e) => e.toString().contains('文件不存在')),
+            ),
+          );
+        },
+      );
+
+      test(
+        'Given existing file, When sendFile called, '
+        'Then writes send sequences and reports progress',
+        () async {
+          final file = File('${tempDir.path}/payload.bin');
+          await file.writeAsBytes(List<int>.generate(100, (i) => i % 256));
+
+          final progress = <TransferProgress>[];
+          final service = KittyFileTransferService(session: mockSession);
+
+          await service.sendFile(
+            localPath: file.path,
+            remoteFileName: 'payload.bin',
+            onProgress: progress.add,
+          );
+
+          // 会话开始 + 元数据（文件名在序列中被 base64 编码）+ 数据块 + 结束
+          expect(
+            written.any((s) => s.contains('ac=send')),
+            isTrue,
+          );
+          expect(
+            written.any((s) => s.contains('ac=file')),
+            isTrue,
+          );
+          expect(
+            written.any((s) => s.contains('ac=data')),
+            isTrue,
+          );
+          expect(
+            written.any((s) => s.contains('ac=finish')),
+            isTrue,
+          );
+          expect(progress, isNotEmpty);
+          expect(progress.last.totalBytes, 100);
+          expect(progress.last.transferredBytes, 100);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // downloadFile
+    // -------------------------------------------------------------------------
+    group('downloadFile', () {
+      late MockTerminalSession mockSession;
+      late Directory tempDir;
+
+      setUp(() {
+        mockSession = MockTerminalSession();
+        tempDir = Directory.systemTemp.createTempSync('lbpssh_dl_test');
+      });
+
+      tearDown(() {
+        tempDir.deleteSync(recursive: true);
+      });
+
+      test(
+        'Given no session, When downloadFile called, Then throws',
+        () async {
+          final service = KittyFileTransferService();
+
+          await expectLater(
+            service.downloadFile('/remote/a.txt', '${tempDir.path}/a.txt'),
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
+
+      test(
+        'Given transfer events, When downloadFile called, '
+        'Then writes chunks to local file and completes',
+        () async {
+          final controller = StreamController<FileTransferEvent>.broadcast();
+          when(() => mockSession.fileTransferStream).thenAnswer(
+            (_) => controller.stream,
+          );
+          when(() => mockSession.inputService).thenReturn(
+            MockTerminalInputService(),
+          );
+
+          final localPath = '${tempDir.path}/downloaded.bin';
+          final service = KittyFileTransferService(session: mockSession);
+
+          final future = service.downloadFile(
+            '/remote/data.bin',
+            localPath,
+          );
+
+          controller.add(
+            FileTransferEvent(
+              type: 'start',
+              fileId: 'f1',
+              fileName: 'data.bin',
+              fileSize: 4,
+            ),
+          );
+          controller.add(
+            FileTransferEvent(
+              type: 'chunk',
+              fileId: 'f1',
+              offset: 0,
+              data: Uint8List.fromList([1, 2, 3, 4]),
+            ),
+          );
+          controller.add(
+            FileTransferEvent(type: 'end', fileId: 'f1'),
+          );
+
+          await future;
+          await controller.close();
+
+          final bytes = await File(localPath).readAsBytes();
+          expect(bytes, [1, 2, 3, 4]);
         },
       );
     });
