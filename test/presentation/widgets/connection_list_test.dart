@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,14 +6,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lbp_ssh/core/theme/app_theme.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
+import 'package:lbp_ssh/presentation/screens/connection_form.dart';
 import 'package:lbp_ssh/presentation/widgets/connection_list.dart';
 
 class _MockConnectionNotifier extends ConnectionNotifier {
   final ConnectionState _state;
+  final List<String> deletedIds = [];
   _MockConnectionNotifier(this._state);
 
   @override
   ConnectionState build() => _state;
+
+  @override
+  Future<void> deleteConnection(String id) async {
+    deletedIds.add(id);
+  }
 }
 
 void main() {
@@ -21,6 +29,8 @@ void main() {
     String? error,
     bool isLoading = false,
     bool isCompact = false,
+    void Function(SshConnection)? onConnectionTap,
+    void Function(SshConnection)? onSftpTap,
   }) {
     final state = ConnectionState(
       isLoading: isLoading,
@@ -38,8 +48,8 @@ void main() {
           ],
           child: ConnectionList(
             isCompact: isCompact,
-            onConnectionTap: (_) {},
-            onSftpTap: (_) {},
+            onConnectionTap: onConnectionTap ?? (_) {},
+            onSftpTap: onSftpTap ?? (_) {},
           ),
         ),
       ),
@@ -445,6 +455,313 @@ void main() {
           // Verify the icon has appropriate size
           final icon = tester.widget<Icon>(iconFinder);
           expect(icon.size, 56);
+        },
+      );
+    });
+
+    group('add connection button', () {
+      testWidgets(
+        'Given empty connections, When add button tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(connections: []));
+
+          await tester.tap(find.text('添加连接'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given connections exist, When FAB tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          // 点击右下角浮动添加按钮（tooltip 添加连接）
+          await tester.tap(find.byTooltip('添加连接'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given empty connections and compact mode, When add icon tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(
+            createTestWidget(connections: [], isCompact: true),
+          );
+
+          await tester.tap(find.byIcon(Icons.add));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+    });
+
+    group('compact callbacks', () {
+      testWidgets(
+        'Given compact item, When tapped, Then onConnectionTap is called',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Compact 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+          final tapped = <String>[];
+
+          await tester.pumpWidget(
+            createTestWidget(
+              connections: connections,
+              isCompact: true,
+              onConnectionTap: (c) => tapped.add(c.id),
+            ),
+          );
+
+          await tester.tap(find.text('Compact 1'));
+          await tester.pump();
+
+          expect(tapped, ['1']);
+        },
+      );
+
+      testWidgets(
+        'Given compact item, When SFTP icon tapped, Then onSftpTap is called',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Compact 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+          final sftpTapped = <String>[];
+
+          await tester.pumpWidget(
+            createTestWidget(
+              connections: connections,
+              isCompact: true,
+              onSftpTap: (c) => sftpTapped.add(c.id),
+            ),
+          );
+
+          await tester.tap(find.byIcon(Icons.folder_copy_outlined));
+          await tester.pump();
+
+          expect(sftpTapped, ['1']);
+        },
+      );
+    });
+
+    group('edit and delete menu', () {
+      testWidgets(
+        'Given item menu open, When edit selected, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('编辑'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given item menu open, When delete confirmed, Then notifier deletes connection',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+
+          // 确认对话框
+          expect(find.text('确认删除'), findsOneWidget);
+          expect(find.textContaining('确定要删除连接 "Server 1" 吗'), findsOneWidget);
+
+          await tester.tap(find.text('删除').last);
+          await tester.pumpAndSettle();
+
+          // 获取 notifier 验证删除调用
+          final notifier = ProviderScope.containerOf(
+            tester.element(find.byType(ConnectionList)),
+          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          expect(notifier.deletedIds, ['1']);
+          expect(find.text('连接已删除'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given item menu open, When delete cancelled, Then notifier does not delete',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('取消'));
+          await tester.pumpAndSettle();
+
+          final notifier = ProviderScope.containerOf(
+            tester.element(find.byType(ConnectionList)),
+          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          expect(notifier.deletedIds, isEmpty);
+        },
+      );
+    });
+
+    group('hover state toggle', () {
+      testWidgets(
+        'Given connection item, When mouse enters, Then hover styling applies',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Hover Item',
+              host: '192.168.1.1',
+              username: 'user',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+          await tester.pump();
+
+          // 移动鼠标进入条目区域触发 onEnter
+          final gesture = await tester.createGesture(
+            kind: PointerDeviceKind.mouse,
+          );
+          await gesture.addPointer(location: Offset.zero);
+          await tester.pump();
+          await gesture.moveTo(
+            tester.getCenter(find.text('Hover Item')),
+          );
+          await tester.pump();
+
+          // hover 后颜色切换为 fillSurfaceHover
+          final container = tester.widget<AnimatedContainer>(
+            find.byType(AnimatedContainer).first,
+          );
+          final decoration = container.decoration! as BoxDecoration;
+          expect(decoration.color, LinearColors.fillSurfaceHover);
+
+          await gesture.removePointer();
+          await tester.pump();
         },
       );
     });
