@@ -8,6 +8,7 @@ import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
+import 'package:lbp_ssh/domain/services/ssh_service.dart';
 import 'package:lbp_ssh/l10n/app_localizations.dart';
 import 'package:lbp_ssh/presentation/providers/app_config_provider.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
@@ -49,8 +50,15 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
   final List<String> closedSessions = [];
   int createLocalCalls = 0;
   final List<String> createdConnectionIds = [];
+  final Object? createLocalError;
+  final Object? reconnectError;
+  int reconnectCalls = 0;
 
-  _RecordingTerminalNotifier(this._state);
+  _RecordingTerminalNotifier(
+    this._state, {
+    this.createLocalError,
+    this.reconnectError,
+  });
 
   @override
   TerminalState build() => _state;
@@ -68,6 +76,9 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
   @override
   Future<TerminalSession> createLocalTerminal() async {
     createLocalCalls++;
+    if (createLocalError != null) {
+      throw createLocalError!;
+    }
     return makeSession('local', 'local home');
   }
 
@@ -75,6 +86,14 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
   Future<TerminalSession> createSession(SshConnection connection) async {
     createdConnectionIds.add(connection.id);
     throw UnimplementedError('测试中不应返回真实 session');
+  }
+
+  @override
+  Future<void> reconnectSession(String sessionId) async {
+    reconnectCalls++;
+    if (reconnectError != null) {
+      throw reconnectError!;
+    }
   }
 }
 
@@ -375,6 +394,124 @@ void main() {
 
           expect(notifier.switchedSessions, ['conn-1']);
           expect(notifier.createdConnectionIds, isEmpty);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given createLocalTerminal throws, When empty-state button tapped, '
+        'Then shows error dialog',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            const TerminalState(),
+            createLocalError: Exception('start failed'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await tester.tap(find.text('创建本地终端'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('创建终端失败'), findsOneWidget);
+          expect(find.textContaining('start failed'), findsWidgets);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given createLocalTerminal throws, When add menu local terminal selected, '
+        'Then shows error dialog',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(
+              sessions: [makeSession('s1', 'Server Alpha')],
+              activeSessionId: 's1',
+            ),
+            createLocalError: Exception('start failed'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await tester.tap(
+            find.descendant(
+              of: find.byType(PopupMenuButton<String>),
+              matching: find.byIcon(Icons.add),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('本地终端'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('创建终端失败'), findsOneWidget);
+          expect(find.textContaining('start failed'), findsWidgets);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('notification stream', () {
+      testWidgets(
+        'Given active session emits notification, When rendered, '
+        'Then shows snackbar with notification content',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          // 触发终端通知（kterm 的 onNotification 回调）
+          session.terminal.onNotification?.call('磁盘告警', '空间不足');
+          await tester.pumpAndSettle();
+
+          expect(find.text('磁盘告警\n空间不足'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('reconnect', () {
+      testWidgets(
+        'Given disconnected SSH session, When reconnect pressed, '
+        'Then shows reconnecting snackbar and calls reconnectSession',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          // 模拟 SSH 会话：非本地、已断开
+          session.connectionState = SshConnectionState.disconnected;
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await tester.tap(find.text('Reconnect'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+
+          expect(notifier.reconnectCalls, 1);
+          expect(find.text('Reconnecting...'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given reconnectSession throws, When reconnect pressed, '
+        'Then shows reconnect failed snackbar',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          session.connectionState = SshConnectionState.disconnected;
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+            reconnectError: Exception('conn refused'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await tester.tap(find.text('Reconnect'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+
+          expect(notifier.reconnectCalls, 1);
+          // 「正在重连」snackbar 持续 2 秒，失败消息需等其过期后才显示
+          await tester.pump(const Duration(seconds: 2));
+          await tester.pumpAndSettle();
+          expect(find.textContaining('Reconnect failed'), findsOneWidget);
           await teardownTabs(tester);
         },
       );
