@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lbp_ssh/domain/services/import_export_service.dart';
@@ -5,6 +10,45 @@ import 'package:lbp_ssh/data/repositories/connection_repository.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 
 class MockConnectionRepository extends Mock implements ConnectionRepository {}
+
+/// Fake FilePickerPlatform：可配置 pickFiles/saveFile 返回值
+class _FakeFilePickerPlatform extends FilePickerPlatform {
+  FilePickerResult? pickResult;
+  String? saveResult;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    void Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+    bool cancelUploadOnWindowBlur = true,
+    AndroidSAFOptions? androidSafOptions,
+  }) async {
+    return pickResult;
+  }
+
+  @override
+  Future<String?> saveFile({
+    String? dialogTitle,
+    required String fileName,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    required Uint8List bytes,
+    void Function(FilePickerStatus)? onFileLoading,
+    bool lockParentWindow = false,
+  }) async {
+    return saveResult;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Fake SshConnection for registerFallbackValue
@@ -528,6 +572,231 @@ void main() {
 
       expect(first, equals(0));
       expect(second, equals(0));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // exportToLocalFile
+  // ---------------------------------------------------------------------------
+
+  group('exportToLocalFile', () {
+    late FilePickerPlatform originalPlatform;
+
+    setUp(() {
+      originalPlatform = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = _FakeFilePickerPlatform();
+    });
+
+    tearDown(() {
+      // 恢复默认实现，避免影响其他测试
+      FilePickerPlatform.instance = originalPlatform;
+    });
+
+    test('Given empty repository, When exportToLocalFile called, '
+        'Then throws no-connections exception', () async {
+      when(() => mockRepository.getAllConnections()).thenReturn([]);
+
+      await expectLater(
+        service.exportToLocalFile(),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('没有SSH连接配置可导出'),
+          ),
+        ),
+      );
+    });
+
+    test('Given connections, When saveFile returns a path, '
+        'Then returns that File', () async {
+      when(() => mockRepository.getAllConnections()).thenReturn(
+        [makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')],
+      );
+      final fake = _FakeFilePickerPlatform()..saveResult = '/tmp/export.json';
+      FilePickerPlatform.instance = fake;
+
+      final file = await service.exportToLocalFile();
+
+      expect(file, isNotNull);
+      expect(file!.path, '/tmp/export.json');
+    });
+
+    test('Given connections, When saveFile returns null, '
+        'Then returns null', () async {
+      when(() => mockRepository.getAllConnections()).thenReturn(
+        [makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')],
+      );
+      final fake = _FakeFilePickerPlatform()..saveResult = null;
+      FilePickerPlatform.instance = fake;
+
+      final file = await service.exportToLocalFile();
+
+      expect(file, isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // importFromLocalFile
+  // ---------------------------------------------------------------------------
+
+  group('importFromLocalFile', () {
+    late FilePickerPlatform originalPlatform;
+    late Directory tempDir;
+
+    setUp(() {
+      originalPlatform = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = _FakeFilePickerPlatform();
+      tempDir = Directory.systemTemp.createTempSync('lbpssh_import_test');
+    });
+
+    tearDown(() {
+      FilePickerPlatform.instance = originalPlatform;
+      tempDir.deleteSync(recursive: true);
+    });
+
+    Future<File> writeJson(Map<String, dynamic> data) async {
+      final file = File('${tempDir.path}/import.json');
+      await file.writeAsString(jsonEncode(data));
+      return file;
+    }
+
+    FilePickerResult resultFor(File file) {
+      return FilePickerResult([
+        PlatformFile(name: file.path.split('/').last, size: 0, path: file.path),
+      ]);
+    }
+
+    test('Given pickFiles returns null, When importFromLocalFile called, '
+        'Then throws no-file-selected exception', () async {
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = null;
+
+      await expectLater(
+        service.importFromLocalFile(),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('未选择文件')),
+        ),
+      );
+    });
+
+    test('Given picked file does not exist, '
+        'When importFromLocalFile called, Then throws file-not-exist',
+        () async {
+      final fake = _FakeFilePickerPlatform()
+        ..pickResult = FilePickerResult([
+          PlatformFile(
+            name: 'missing.json',
+            size: 0,
+            path: '${tempDir.path}/missing.json',
+          ),
+        ]);
+      FilePickerPlatform.instance = fake;
+
+      await expectLater(
+        service.importFromLocalFile(),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('文件不存在')),
+        ),
+      );
+    });
+
+    test('Given invalid JSON content, When importFromLocalFile called, '
+        'Then throws invalid-json exception', () async {
+      final file = File('${tempDir.path}/bad.json');
+      await file.writeAsString('{not valid json');
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+
+      await expectLater(
+        service.importFromLocalFile(),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('无效的JSON')),
+        ),
+      );
+    });
+
+    test('Given valid JSON but missing required keys, '
+        'When importFromLocalFile called, Then throws invalid-structure',
+        () async {
+      final file = await writeJson({'foo': 'bar'});
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+
+      await expectLater(
+        service.importFromLocalFile(),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('不是有效的SSH连接配置文件'),
+          ),
+        ),
+      );
+    });
+
+    test('Given valid structure but unparseable connections, '
+        'When importFromLocalFile called, Then throws empty-connections',
+        () async {
+      // connections 非空但都无法解析为 SshConnection
+      final file = await writeJson({
+        'version': 1,
+        'exportTime': DateTime.now().toIso8601String(),
+        'connections': <dynamic>[
+          <String, dynamic>{'foo': 'bar'},
+        ],
+      });
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+
+      await expectLater(
+        service.importFromLocalFile(),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('文件中没有有效的连接配置'),
+          ),
+        ),
+      );
+    });
+
+    test('Given valid file with connections, When importFromLocalFile called, '
+        'Then returns parsed connections', () async {
+      final conn = makeConnection(id: 'c1', name: '导入连接', password: 'pw');
+      final file = await writeJson({
+        'version': 1,
+        'exportTime': DateTime.now().toIso8601String(),
+        'connections': [conn.toJson()],
+      });
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+
+      final result = await service.importFromLocalFile();
+
+      expect(result, hasLength(1));
+      expect(result.single.id, 'c1');
+      expect(result.single.name, '导入连接');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getExportStats 的 sshConfig 分支
+  // ---------------------------------------------------------------------------
+
+  group('getExportStats sshConfig', () {
+    test('Given sshConfig connection, When getExportStats called, '
+        'Then sshConfig not counted as password or key', () {
+      final connections = [
+        makeConnection(id: 's1', authType: AuthType.sshConfig),
+      ];
+      when(() => mockRepository.getAllConnections()).thenReturn(connections);
+
+      final stats = service.getExportStats();
+
+      expect(stats['totalConnections'], equals(1));
+      expect(stats['passwordAuth'], equals(0));
+      expect(stats['keyAuth'], equals(0));
+      expect(stats['keyWithPasswordAuth'], equals(0));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // resetStatus
+  // ---------------------------------------------------------------------------
+
+  group('resetStatus', () {
+    test('Given service, When resetStatus called, Then does not throw', () {
+      expect(service.resetStatus, returnsNormally);
     });
   });
 }
