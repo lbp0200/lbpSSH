@@ -145,6 +145,16 @@ class ConnectionRepository {
         .map((conn) => conn.toJson())
         .toList();
     for (final map in jsonList) {
+      // 嵌套配置需先序列化为 map，否则下方加密分支的
+      // `is Map<String, dynamic>` 判断不命中，密码会明文落盘
+      final jumpHost = map['jumpHost'];
+      if (jumpHost is JumpHostConfig) {
+        map['jumpHost'] = jumpHost.toJson();
+      }
+      final socks5 = map['socks5Proxy'];
+      if (socks5 is Socks5ProxyConfig) {
+        map['socks5Proxy'] = socks5.toJson();
+      }
       _encryptFields(map);
     }
     await _configFile!.writeAsString(jsonEncode(jsonList));
