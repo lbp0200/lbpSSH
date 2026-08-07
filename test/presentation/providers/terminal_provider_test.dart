@@ -260,6 +260,195 @@ void main() {
         },
       );
     });
+
+    group('TerminalState.copyWith', () {
+      test(
+        'Given clearActive true, When copyWith called, Then activeSessionId is cleared',
+        () {
+          // Arrange (Given)
+          const state = TerminalState(activeSessionId: 's1');
+
+          // Act (When)
+          final result = state.copyWith(clearActive: true);
+
+          // Assert (Then)
+          expect(result.activeSessionId, isNull);
+        },
+      );
+
+      test(
+        'Given new activeSessionId, When copyWith called, Then replaces activeSessionId',
+        () {
+          // Arrange (Given)
+          const state = TerminalState(activeSessionId: 's1');
+
+          // Act (When)
+          final result = state.copyWith(activeSessionId: 's2');
+
+          // Assert (Then)
+          expect(result.activeSessionId, 's2');
+        },
+      );
+    });
+
+    group('TerminalState equality', () {
+      test(
+        'Given identical fields, When compared, Then equal with same hashCode',
+        () {
+          // Arrange (Given)
+          const a = TerminalState(activeSessionId: 's1');
+          const b = TerminalState(activeSessionId: 's1');
+
+          // Act (When) & Assert (Then)
+          expect(a, b);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+
+      test(
+        'Given different activeSessionId, When compared, Then not equal',
+        () {
+          // Arrange (Given)
+          const a = TerminalState(activeSessionId: 's1');
+          const b = TerminalState(activeSessionId: 's2');
+
+          // Act (When) & Assert (Then)
+          expect(a == b, isFalse);
+        },
+      );
+
+      test(
+        'Given different sessions, When compared, Then not equal',
+        () {
+          // Arrange (Given)
+          const a = TerminalState();
+          const b = TerminalState(activeSessionId: 's1');
+
+          // Act (When) & Assert (Then)
+          expect(a == b, isFalse);
+        },
+      );
+    });
+
+    group('closeSession with remaining sessions', () {
+      test(
+        'Given closing the active session with remaining sessions, '
+        'Then activates the first remaining session',
+        () {
+          // Arrange (Given)
+          final session1 = MockTerminalSession();
+          final session2 = MockTerminalSession();
+          when(() => session1.id).thenReturn('s1');
+          when(() => session2.id).thenReturn('s2');
+          when(() => mockTerminalService.getSession('s1')).thenReturn(session1);
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([session1, session2]);
+
+          container = ProviderContainer(
+            overrides: [
+              terminalServiceProvider.overrideWithValue(mockTerminalService),
+              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+            ],
+          );
+          container.read(terminalProvider.notifier).switchToSession('s1');
+          expect(container.read(terminalProvider).activeSessionId, 's1');
+
+          // 关闭后只剩 session2
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([session2]);
+
+          // Act (When)
+          container.read(terminalProvider.notifier).closeSession('s1');
+
+          // Assert (Then)
+          verify(() => mockTerminalService.closeSession('s1')).called(1);
+          final state = container.read(terminalProvider);
+          expect(state.sessions, [session2]);
+          expect(state.activeSessionId, 's2');
+        },
+      );
+
+      test(
+        'Given closing a non-active session, Then keeps activeSessionId unchanged',
+        () {
+          // Arrange (Given)
+          final session1 = MockTerminalSession();
+          final session2 = MockTerminalSession();
+          when(() => session1.id).thenReturn('s1');
+          when(() => session2.id).thenReturn('s2');
+          when(() => mockTerminalService.getSession('s1')).thenReturn(session1);
+          when(() => mockTerminalService.getSession('s2')).thenReturn(session2);
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([session1, session2]);
+
+          container = ProviderContainer(
+            overrides: [
+              terminalServiceProvider.overrideWithValue(mockTerminalService),
+              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+            ],
+          );
+          container.read(terminalProvider.notifier).switchToSession('s1');
+
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([session1]);
+
+          // Act (When)
+          container.read(terminalProvider.notifier).closeSession('s2');
+
+          // Assert (Then)
+          verify(() => mockTerminalService.closeSession('s2')).called(1);
+          final state = container.read(terminalProvider);
+          expect(state.activeSessionId, 's1');
+          expect(state.sessions, [session1]);
+        },
+      );
+    });
+
+    group('getSshService', () {
+      test(
+        'Given no service registered, When getSshService called, Then returns null',
+        () {
+          // Act (When)
+          final result = container
+              .read(terminalProvider.notifier)
+              .getSshService('none');
+
+          // Assert (Then)
+          expect(result, isNull);
+        },
+      );
+    });
+
+    group('reconnectSession', () {
+      test(
+        'Given no matching session in state, When reconnectSession called, '
+        'Then returns without changing state',
+        () async {
+          // Arrange (Given)
+          final oldSession = MockTerminalSession();
+          when(() => oldSession.id).thenReturn('s1');
+          when(
+            () => mockTerminalService.getSession('s1'),
+          ).thenReturn(oldSession);
+          when(() => mockTerminalService.getAllSessions()).thenReturn([]);
+
+          // Act (When)
+          await container
+              .read(terminalProvider.notifier)
+              .reconnectSession('s1');
+
+          // Assert (Then) — state.sessions 为空，提前返回，不创建新服务
+          verify(() => mockTerminalService.getSession('s1')).called(1);
+          final state = container.read(terminalProvider);
+          expect(state.sessions, isEmpty);
+          expect(state.activeSessionId, isNull);
+        },
+      );
+    });
   });
 }
 
