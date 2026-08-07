@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import 'package:lbp_ssh/domain/services/kitty_file_transfer_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
 import 'package:lbp_ssh/presentation/providers/sftp_provider.dart';
@@ -13,6 +14,9 @@ class MockTerminalInputService extends Mock implements TerminalInputService {}
 class MockTerminalSession extends Mock implements TerminalSession {}
 
 class MockTerminalService extends Mock implements TerminalService {}
+
+class MockKittyFileTransferService extends Mock
+    implements KittyFileTransferService {}
 
 void main() {
   late MockTerminalService mockTerminalService;
@@ -179,6 +183,128 @@ void main() {
 
           // Assert (Then)
           expect(result, isNull);
+        },
+      );
+    });
+
+    group('SftpTab equality and hashCode', () {
+      late KittyFileTransferService mockTransferService;
+
+      setUp(() {
+        mockTransferService = MockKittyFileTransferService();
+      });
+
+      SftpTab makeTab(String id, String currentPath) {
+        return SftpTab(
+          id: id,
+          connection: SshConnection(
+            id: id,
+            name: 'Server',
+            host: '10.0.0.1',
+            username: 'user',
+            authType: AuthType.password,
+          ),
+          service: mockTransferService,
+          currentPath: currentPath,
+        );
+      }
+
+      test(
+        'Given tabs with same id and path, When compared, Then operator == is true',
+        () {
+          final a = makeTab('tab1', '/home/user');
+          final b = makeTab('tab1', '/home/user');
+
+          expect(a == b, isTrue);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+
+      test(
+        'Given tabs with different id, When compared, Then operator == is false',
+        () {
+          final a = makeTab('tab1', '/home/user');
+          final b = makeTab('tab2', '/home/user');
+
+          expect(a == b, isFalse);
+          expect(a.hashCode == b.hashCode, isFalse);
+        },
+      );
+
+      test(
+        'Given tabs with different path, When compared, Then operator == is false',
+        () {
+          final a = makeTab('tab1', '/home/user');
+          final b = makeTab('tab1', '/root');
+
+          expect(a == b, isFalse);
+        },
+      );
+
+      test(
+        'Given tab compared with non-tab instance, When compared, Then operator == is false',
+        () {
+          final a = makeTab('tab1', '/home/user');
+          // 与不同 id 的实例比较（避免 String 无关类型比较）
+          final other = makeTab('tab-other', '/home/user');
+
+          expect(a == other, isFalse);
+        },
+      );
+    });
+
+    group('SftpState equality and hashCode', () {
+      late KittyFileTransferService mockTransferService;
+
+      setUp(() {
+        mockTransferService = MockKittyFileTransferService();
+      });
+
+      SftpTab makeTab(String id) {
+        return SftpTab(
+          id: id,
+          connection: SshConnection(
+            id: id,
+            name: 'Server',
+            host: '10.0.0.1',
+            username: 'user',
+            authType: AuthType.password,
+          ),
+          service: mockTransferService,
+          currentPath: '/',
+        );
+      }
+
+      test(
+        'Given states with same tabs, When compared, Then operator == is true and hashCode matches',
+        () {
+          const a = SftpState();
+          const b = SftpState();
+
+          expect(a == b, isTrue);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+
+      test(
+        'Given states with different tabs, When compared, Then operator == is false',
+        () {
+          final a = SftpState(tabs: [makeTab('tab1')]);
+          final b = SftpState(tabs: [makeTab('tab2')]);
+
+          expect(a == b, isFalse);
+        },
+      );
+
+      test(
+        'Given state, When copyWith keeps tabs, Then result is equal',
+        () {
+          final a = SftpState(tabs: [makeTab('tab1')]);
+
+          final b = a.copyWith();
+
+          expect(a == b, isTrue);
+          expect(a.hashCode, b.hashCode);
         },
       );
     });
