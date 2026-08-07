@@ -365,7 +365,7 @@ class KittyFileTransferService extends KittyServiceBase {
     // 文件类型
     if ((mode & 0x4000) != 0) {
       buffer.write('d');
-    } else if ((mode & 0xA000) != 0) {
+    } else if ((mode & 0xF000) == 0xA000) {
       buffer.write('l');
     } else {
       buffer.write('-');
