@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import 'package:lbp_ssh/domain/services/ssh_config_service.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/screens/connection_form.dart';
 
@@ -1057,6 +1058,82 @@ void main() {
         final conn = mockNotifier.added.single;
         expect(conn.authType, AuthType.sshConfig);
         expect(conn.sshConfigHost, isNull);
+      },
+    );
+
+    testWidgets(
+      'Given sshConfig auth with config entries, When host selected from dropdown, '
+      'Then host, port and username are auto-filled',
+      (tester) async {
+        final entries = SshConfigService.readConfigFile();
+
+        await pumpForm(tester);
+        await switchAuthType(tester, 'SSH Config');
+
+        if (entries.isEmpty) {
+          // 无 ~/.ssh/config → 显示空态警告
+          expect(find.textContaining('未找到 ~/.ssh/config 文件'), findsOneWidget);
+          return;
+        }
+
+        final first = entries.first;
+
+        // 打开 SSH Config 主机下拉框并选择第一个条目
+        await tester.tap(find.byType(DropdownButtonFormField<String?>).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(first.hostName).last);
+        await tester.pumpAndSettle();
+
+        // 自动填充主机
+        final hostField = tester.widget<TextFormField>(
+          find.ancestor(
+            of: find.text('主机地址'),
+            matching: find.byType(TextFormField),
+          ),
+        );
+        expect(hostField.controller?.text, first.getConnectHost());
+
+        // 自动填充端口
+        if (first.port != null) {
+          final portField = tester.widget<TextFormField>(
+            find.ancestor(
+              of: find.text('端口'),
+              matching: find.byType(TextFormField),
+            ),
+          );
+          expect(portField.controller?.text, first.port.toString());
+        }
+
+        // 自动填充用户名
+        if (first.user != null) {
+          final userField = tester.widget<TextFormField>(
+            find.ancestor(
+              of: find.text('用户名'),
+              matching: find.byType(TextFormField),
+            ),
+          );
+          expect(userField.controller?.text, first.user);
+        }
+      },
+    );
+
+    testWidgets(
+      'Given sshConfig auth, When refresh tapped, '
+      'Then reloads entries without error',
+      (tester) async {
+        await pumpForm(tester);
+        await switchAuthType(tester, 'SSH Config');
+
+        await tester.tap(find.text('刷新列表'));
+        await tester.pumpAndSettle();
+
+        // 刷新后按配置存在与否展示下拉框或空态提示
+        final entries = SshConfigService.readConfigFile();
+        if (entries.isEmpty) {
+          expect(find.textContaining('未找到 ~/.ssh/config 文件'), findsOneWidget);
+        } else {
+          expect(find.text('选择 SSH Config 主机'), findsOneWidget);
+        }
       },
     );
 
