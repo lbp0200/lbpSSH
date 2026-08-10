@@ -269,5 +269,148 @@ void main() {
         expect(find.text('No Context'), findsOneWidget);
       },
     );
+
+    Future<void> pumpErrorDialog(
+      WidgetTester tester, {
+      String title = 'Test',
+      Object error = 'test error',
+      StackTrace? stackTrace,
+      Map<String, String>? extraContext,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showDialog<Widget>(
+                  context: context,
+                  builder: (_) => ErrorDialog(
+                    title: title,
+                    error: error,
+                    stackTrace: stackTrace,
+                    extraContext: extraContext,
+                    appVersion: '1.0.0',
+                  ),
+                ),
+                child: const Text('Show'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Show'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'Given error with stack trace and context, When copy report tapped, '
+      'Then clipboard contains stack and context sections',
+      (tester) async {
+        final clipboardTexts = <String>[];
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            clipboardTexts.add((call.arguments as Map)['text'] as String);
+          }
+          return null;
+        });
+
+        await pumpErrorDialog(
+          tester,
+          title: 'Copy Full',
+          error: 'connection refused',
+          stackTrace: StackTrace.fromString('line 1\nline 2'),
+          extraContext: const {'host': '192.168.1.1', 'port': '22'},
+        );
+
+        await tester.tap(find.text('复制报告'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 3));
+
+        expect(clipboardTexts, hasLength(1));
+        final report = clipboardTexts.single;
+        expect(report, contains('**Stack Trace**'));
+        expect(report, contains('line 1'));
+        expect(report, contains('**额外上下文**'));
+        expect(report, contains('host: 192.168.1.1'));
+        expect(report, contains('操作系统'));
+      },
+    );
+
+    testWidgets(
+      'Given feedback button, When tapped, '
+      'Then copies report and shows issues state',
+      (tester) async {
+        // Mock url_launcher 平台通道
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          (call) async {
+            if (call.method == 'canLaunch' || call.method == 'launch') {
+              return true;
+            }
+            return null;
+          },
+        );
+
+        await pumpErrorDialog(
+          tester,
+          title: 'Feedback',
+          error: 'disk full',
+          stackTrace: StackTrace.fromString('stack here'),
+        );
+
+        await tester.tap(find.text('反馈问题'));
+        await tester.pump();
+
+        // 按钮文案切换为「已复制，前往 Issues」
+        expect(find.text('已复制，前往 Issues'), findsOneWidget);
+
+        // 等待 3 秒 timer 恢复按钮文案
+        await tester.pump(const Duration(seconds: 3));
+        expect(find.text('反馈问题'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given error section, When header tapped, Then collapses and expands',
+      (tester) async {
+        await pumpErrorDialog(tester, title: 'Collapse', error: 'collapse me');
+
+        expect(find.text('collapse me'), findsOneWidget);
+
+        // 点击标题折叠
+        await tester.tap(find.text('错误信息'));
+        await tester.pumpAndSettle();
+        expect(find.text('collapse me'), findsNothing);
+
+        // 再次点击展开
+        await tester.tap(find.text('错误信息'));
+        await tester.pumpAndSettle();
+        expect(find.text('collapse me'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given stack trace section, When header tapped, Then collapses and expands',
+      (tester) async {
+        await pumpErrorDialog(
+          tester,
+          title: 'Stack Collapse',
+          error: 'boom',
+          stackTrace: StackTrace.fromString('frame A\nframe B'),
+        );
+
+        expect(find.textContaining('frame A'), findsOneWidget);
+
+        await tester.tap(find.text('Stack Trace'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('frame A'), findsNothing);
+
+        await tester.tap(find.text('Stack Trace'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('frame A'), findsOneWidget);
+      },
+    );
   });
 }

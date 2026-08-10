@@ -272,6 +272,56 @@ void main() {
         // Button text changes to "已复制，前往 Issues" after tap
         expect(find.text('已复制，前往 Issues'), findsOneWidget);
       });
+
+      testWidgets(
+        'Given feedback button, When url_launcher supports URL, '
+        'Then opens issues page and resets after 3 seconds',
+        (WidgetTester tester) async {
+          // Mock url_launcher 平台通道
+          final launchedUrls = <String>[];
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/url_launcher'),
+            (call) async {
+              if (call.method == 'launch') {
+                launchedUrls.add(
+                  (call.arguments as Map<dynamic, dynamic>)['url'] as String,
+                );
+                return true;
+              }
+              if (call.method == 'canLaunch') {
+                return true;
+              }
+              return null;
+            },
+          );
+          addTearDown(() {
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+                .setMockMethodCallHandler(
+              const MethodChannel('plugins.flutter.io/url_launcher'),
+              null,
+            );
+          });
+
+          final conn = _createConnection();
+
+          await pumpDialog(tester, connection: conn, errorMessage: 'test');
+
+          await tester.tap(find.text('反馈问题'));
+          await tester.pump();
+
+          expect(
+            launchedUrls,
+            contains('https://github.com/lbp0200/lbpSSH/issues/new'),
+          );
+          expect(find.text('已复制，前往 Issues'), findsOneWidget);
+
+          // 3 秒后按钮文案恢复为「反馈问题」
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(find.text('反馈问题'), findsOneWidget);
+        },
+      );
     });
   });
 }
