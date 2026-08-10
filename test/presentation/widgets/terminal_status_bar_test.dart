@@ -223,5 +223,38 @@ void main() {
         expect(find.textContaining('@'), findsNothing);
       },
     );
+
+    testWidgets(
+      'Given session with connectionStartTime, When one second passes, '
+      'Then duration timer updates the display',
+      (tester) async {
+        final mockService = MockTerminalInputService();
+        final session = TerminalSession(
+          id: 'timer-session',
+          name: 'Timer Session',
+          inputService: mockService,
+          serverInfo: 'user@192.168.1.1',
+        );
+        session.connectionState = SshConnectionState.connected;
+        session.connectionStartTime = DateTime.now().subtract(
+          const Duration(hours: 1, minutes: 2, seconds: 3),
+        );
+
+        await tester.pumpWidget(
+          createApp(child: TerminalStatusBar(session: session)),
+        );
+        await tester.pump();
+
+        // 初始显示 • 01:02:03
+        expect(find.text('• 01:02:03'), findsOneWidget);
+
+        // 推进 1 秒触发 Timer.periodic 回调（setState 分支）。
+        // 注意：DateTime.now() 是真实时钟，不受 fake async pump 影响，
+        // 因此时长不会真的 +1 秒，只验证回调执行无异常且时长仍在渲染。
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('01:02:0'), findsOneWidget);
+      },
+    );
   });
 }

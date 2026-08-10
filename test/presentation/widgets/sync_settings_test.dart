@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -15,6 +16,7 @@ class _RecordingSyncNotifier extends SyncNotifier {
   int downloadCalls = 0;
   int testConnectionCalls = 0;
   bool failOperations = false;
+  bool failSave = false;
 
   _RecordingSyncNotifier(this._state);
 
@@ -23,6 +25,9 @@ class _RecordingSyncNotifier extends SyncNotifier {
 
   @override
   Future<void> saveConfig(SyncConfig config) async {
+    if (failSave) {
+      throw Exception('save failed');
+    }
     savedConfigs.add(config);
   }
 
@@ -355,6 +360,165 @@ void main() {
 
           expect(notifier.downloadCalls, 1);
           expect(find.text('配置已下载'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given no config, When download is tapped, Then shows hint snackbar',
+        (tester) async {
+          await pumpScreen(tester);
+
+          await tester.ensureVisible(find.text('下载配置'));
+          await tester.tap(find.text('下载配置'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('请先配置同步设置'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given download fails, When download is tapped, Then shows error dialog',
+        (tester) async {
+          final notifier = _RecordingSyncNotifier(
+            SyncStatus(config: savedConfig),
+          )..failOperations = true;
+          await pumpScreen(tester, notifier: notifier);
+
+          await tester.ensureVisible(find.text('下载配置'));
+          await tester.tap(find.text('下载配置'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('下载失败'), findsOneWidget);
+          expect(find.textContaining('network error'), findsWidgets);
+        },
+      );
+
+      testWidgets(
+        'Given test connection fails, When test connection tapped, '
+        'Then shows error dialog',
+        (tester) async {
+          final notifier = _RecordingSyncNotifier(
+            SyncStatus(config: savedConfig),
+          )..failOperations = true;
+          await pumpScreen(tester, notifier: notifier);
+
+          await tester.ensureVisible(find.text('测试连接'));
+          await tester.tap(find.text('测试连接'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('连接测试失败'), findsOneWidget);
+          expect(find.textContaining('network error'), findsWidgets);
+        },
+      );
+    });
+
+    group('save failure', () {
+      testWidgets(
+        'Given save throws, When save is tapped, Then shows failure snackbar',
+        (tester) async {
+          final notifier = _RecordingSyncNotifier(
+            SyncStatus(config: savedConfig),
+          )..failSave = true;
+          await pumpScreen(tester, notifier: notifier);
+
+          await tester.tap(find.text('保存配置'));
+          await tester.pumpAndSettle();
+
+          expect(find.textContaining('保存失败'), findsOneWidget);
+        },
+      );
+    });
+
+    group('auto sync toggle', () {
+      testWidgets(
+        'Given autoSync off, When switch toggled, Then interval field appears',
+        (tester) async {
+          await pumpScreen(tester);
+
+          final switchTile = find.byType(SwitchListTile);
+          expect(tester.widget<SwitchListTile>(switchTile).value, isFalse);
+
+          await tester.ensureVisible(switchTile);
+          await tester.tap(switchTile);
+          await tester.pumpAndSettle();
+
+          expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+          expect(find.text('同步间隔（分钟）'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given autoSync on, When interval entered, '
+        'Then saved config uses the interval',
+        (tester) async {
+          final notifier = _RecordingSyncNotifier(
+            SyncStatus(config: savedConfig),
+          );
+          await pumpScreen(tester, notifier: notifier);
+
+          // 输入间隔前先关闭自动同步再打开，确保间隔字段可见
+          final switchTile = find.byType(SwitchListTile);
+          await tester.ensureVisible(switchTile);
+          await tester.tap(switchTile); // off -> 间隔字段消失
+          await tester.pumpAndSettle();
+          await tester.tap(switchTile); // on -> 间隔字段出现
+          await tester.pumpAndSettle();
+
+          await tester.enterText(
+            find.widgetWithText(TextFormField, '同步间隔（分钟）'),
+            '30',
+          );
+          await tester.tap(find.text('保存配置'));
+          await tester.pumpAndSettle();
+
+          expect(notifier.savedConfigs, hasLength(1));
+          expect(notifier.savedConfigs.first.syncIntervalMinutes, 30);
+        },
+      );
+    });
+
+    group('create token', () {
+      testWidgets(
+        'Given create token button, When tapped, Then opens token creation URL',
+        (tester) async {
+          // Mock url_launcher 平台通道
+          final launchedUrls = <String>[];
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/url_launcher'),
+            (call) async {
+              if (call.method == 'launch') {
+                launchedUrls.add(
+                  (call.arguments as Map<dynamic, dynamic>)['url'] as String,
+                );
+                return true;
+              }
+              if (call.method == 'canLaunch') {
+                return true;
+              }
+              return null;
+            },
+          );
+          addTearDown(() {
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+                .setMockMethodCallHandler(
+              const MethodChannel('plugins.flutter.io/url_launcher'),
+              null,
+            );
+          });
+
+          await pumpScreen(tester);
+
+          await tester.ensureVisible(find.text('创建 Token'));
+          await tester.tap(find.text('创建 Token'));
+          await tester.pumpAndSettle();
+
+          expect(
+            launchedUrls,
+            contains(
+              'https://github.com/settings/tokens/new?scopes=gist',
+            ),
+          );
         },
       );
     });
