@@ -1310,6 +1310,67 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
           );
         },
       );
+
+      test(
+        'Given directory containing a file, When sendDirectory called, '
+        'Then writes file metadata and data chunk',
+        () async {
+          // 在临时目录中创建一个文件，触发 sendEntity 的 File 分支
+          await File('${tempDir.path}/note.txt').writeAsString('hello');
+
+          final dirName = tempDir.path.split('/').last;
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+          final progress = _mockProgressCallback();
+
+          await service.sendDirectory(
+            localPath: tempDir.path,
+            remotePath: '/home/user/$dirName',
+            onProgress: progress,
+          );
+
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=data'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+          ).called(1);
+        },
+      );
+
+      test(
+        'Given directory containing a broken symlink, When sendDirectory called, '
+        'Then writes symlink metadata',
+        () async {
+          // 创建指向不存在目标的悬空符号链接：listSync 无法跟随链接时
+          // 会以 Link 类型返回，从而触发 sendEntity 的 Link 分支
+          await Link(
+            '${tempDir.path}/mylink',
+          ).create('${tempDir.path}/nonexistent_target');
+
+          final dirName = tempDir.path.split('/').last;
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+          final progress = _mockProgressCallback();
+
+          await service.sendDirectory(
+            localPath: tempDir.path,
+            remotePath: '/home/user/$dirName',
+            onProgress: progress,
+          );
+
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ft=symlink'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+          ).called(1);
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -1332,6 +1393,66 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
             ),
             throwsA(isA<Exception>()),
           );
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // sendFileWithMetadata - with session
+    // -------------------------------------------------------------------------
+    group('sendFileWithMetadata with session', () {
+      late MockTerminalSession mockSession;
+      late Directory tempDir;
+      late File tempFile;
+
+      setUp(() async {
+        mockSession = MockTerminalSession();
+        when(
+          () => mockSession.inputService,
+        ).thenReturn(StubTerminalInputService());
+        when(() => mockSession.writeRaw(any())).thenReturn(null);
+
+        tempDir = await Directory.systemTemp.createTemp('kitty_meta_test_');
+        tempFile = File('${tempDir.path}/meta.txt');
+        await tempFile.writeAsString('meta content');
+      });
+
+      tearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      test(
+        'Given session and valid file, When sendFileWithMetadata called, '
+        'Then writes send session, metadata, data chunk and finish',
+        () async {
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+          final progress = _mockProgressCallback();
+
+          await service.sendFileWithMetadata(
+            localPath: tempFile.path,
+            remoteFileName: 'meta.txt',
+            onProgress: progress,
+            permissions: 420,
+            mtime: 1708800000000000000,
+          );
+
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=send'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=file'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=data'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+          ).called(1);
         },
       );
     });
