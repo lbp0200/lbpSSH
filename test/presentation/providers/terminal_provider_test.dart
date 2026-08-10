@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
 import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/terminal_input_service.dart';
@@ -9,6 +12,14 @@ import 'package:lbp_ssh/domain/services/app_config_service.dart';
 import 'package:lbp_ssh/domain/services/ssh_service.dart';
 import 'package:lbp_ssh/presentation/providers/terminal_provider.dart';
 import 'package:lbp_ssh/presentation/providers/service_providers.dart';
+
+/// 绑定一个临时端口后立即关闭，用于触发真实的连接拒绝（SocketException）。
+Future<int> _closedLocalPort() async {
+  final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+  final port = server.port;
+  await server.close();
+  return port;
+}
 
 // Mock classes
 class MockTerminalService extends Mock implements TerminalService {}
@@ -28,6 +39,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(TerminalConfig.defaultConfig);
+    registerFallbackValue(MockTerminalInputService());
   });
 
   setUp(() {
@@ -289,6 +301,21 @@ void main() {
           expect(result.activeSessionId, 's2');
         },
       );
+
+      test(
+        'Given no new activeSessionId, When copyWith called with clearActive false, '
+        'Then keeps existing activeSessionId',
+        () {
+          // Arrange (Given)
+          const state = TerminalState(activeSessionId: 's1');
+
+          // Act (When)
+          final result = state.copyWith();
+
+          // Assert (Then) — clearActive 默认 false，沿用原 activeSessionId
+          expect(result.activeSessionId, 's1');
+        },
+      );
     });
 
     group('TerminalState equality', () {
@@ -446,6 +473,151 @@ void main() {
           final state = container.read(terminalProvider);
           expect(state.sessions, isEmpty);
           expect(state.activeSessionId, isNull);
+        },
+      );
+    });
+
+    group('createLocalTerminal / initialize', () {
+      // 测试环境中 flutter_pty 原生库未打包，LocalTerminalService.start()
+      // 必然抛错——用这条确定性路径覆盖 createLocalTerminal 的
+      // 前半段（会话注册、目录初始化）与 initialize() 的静默吞错。
+      void stubCreateSession() {
+        final mockSession = MockTerminalSession();
+        when(
+          () => mockTerminalService.createSession(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            inputService: any(named: 'inputService'),
+            terminalConfig: any(named: 'terminalConfig'),
+            isLocal: any(named: 'isLocal'),
+          ),
+        ).thenReturn(mockSession);
+        when(
+          () => mockSession.setWorkingDirectoryAndUpdateName(any()),
+        ).thenReturn(null);
+      }
+
+      test(
+        'Given LocalTerminalService start fails, '
+        'When initialize called, Then does not throw',
+        () async {
+          stubCreateSession();
+
+          // Act (When) — start() 抛错被 initialize() 静默吞掉
+          await expectLater(
+            container.read(terminalProvider.notifier).initialize(),
+            completes,
+          );
+        },
+      );
+
+      test(
+        'Given LocalTerminalService start fails, '
+        'When createLocalTerminal called, Then rethrows',
+        () async {
+          stubCreateSession();
+
+          // Act (When) & Assert (Then) — 错误向上传播
+          await expectLater(
+            container.read(terminalProvider.notifier).createLocalTerminal(),
+            throwsA(anything),
+          );
+        },
+      );
+
+      test(
+        'Given failed createLocalTerminal, '
+        'When disposeServices called, Then disposes registered services',
+        () async {
+          stubCreateSession();
+          await container.read(terminalProvider.notifier).initialize();
+
+          // Act (When) — _services 中已注册失败的 localService
+          expect(
+            container.read(terminalProvider.notifier).disposeServices,
+            returnsNormally,
+          );
+        },
+      );
+    });
+
+    group('createLocalTerminal with custom shellPath', () {
+      test(
+        'Given terminal config with non-empty shellPath, '
+        'When createLocalTerminal called, '
+        'Then applies shell path before start fails',
+        () async {
+          // Arrange (Given)
+          when(
+            () => mockAppConfigService.terminal,
+          ).thenReturn(TerminalConfig(shellPath: '/bin/zsh'));
+
+          final mockSession = MockTerminalSession();
+          when(
+            () => mockTerminalService.createSession(
+              id: any(named: 'id'),
+              name: any(named: 'name'),
+              inputService: any(named: 'inputService'),
+              terminalConfig: any(named: 'terminalConfig'),
+              isLocal: any(named: 'isLocal'),
+            ),
+          ).thenReturn(mockSession);
+          when(
+            () => mockSession.setWorkingDirectoryAndUpdateName(any()),
+          ).thenReturn(null);
+
+          // Act (When) — shellPath 非空会执行 setShellPath(第84行)，
+          // 随后 start() 抛错（PTY 原生库未打包）向上传播
+          await expectLater(
+            container.read(terminalProvider.notifier).createLocalTerminal(),
+            throwsA(anything),
+          );
+        },
+      );
+    });
+
+    group('createSession (SSH) failure path', () {
+      test(
+        'Given unreachable server, When createSession called, '
+        'Then closes session and rethrows',
+        () async {
+          // Arrange (Given)
+          final mockSession = MockTerminalSession();
+          when(() => mockSession.id).thenReturn('ssh-session');
+          when(
+            () => mockTerminalService.createSession(
+              id: any(named: 'id'),
+              name: any(named: 'name'),
+              inputService: any(named: 'inputService'),
+              terminalConfig: any(named: 'terminalConfig'),
+              serverInfo: any(named: 'serverInfo'),
+            ),
+          ).thenReturn(mockSession);
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([mockSession]);
+          when(() => mockTerminalService.closeSession(any())).thenReturn(null);
+          when(() => mockTerminalService.getSession(any()))
+              .thenReturn(mockSession);
+
+          final port = await _closedLocalPort();
+          final conn = SshConnection(
+            id: 'conn1',
+            name: 'MyServer',
+            host: '127.0.0.1',
+            port: port,
+            username: 'root',
+            authType: AuthType.password,
+            password: 'secret',
+            connectTimeout: 1000,
+          );
+
+          // Act (When) & Assert (Then) — connect 失败 → closeSession + rethrow
+          await expectLater(
+            container.read(terminalProvider.notifier).createSession(conn),
+            throwsA(isA<Exception>()),
+          );
+          verify(() => mockTerminalService.closeSession(any())).called(1);
         },
       );
     });
