@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lbp_ssh/core/constants/app_constants.dart';
 import 'package:lbp_ssh/domain/services/sync_service.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/repositories/connection_repository.dart';
@@ -259,6 +260,27 @@ void main() {
       final service = SyncService(mockRepository, dio: mockDio);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(service.lastSyncTime, isNull);
+    });
+
+    test('loads existing config from prefs', () async {
+      SharedPreferences.setMockInitialValues({
+        AppConstants.syncSettingsKey: jsonEncode({
+          'accessToken': 'token_persisted',
+          'gistId': 'gist_persisted',
+          'gistFilename': 'custom.json',
+          'autoSync': true,
+          'syncIntervalMinutes': 60,
+        }),
+      });
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(service.getConfig(), isNotNull);
+      expect(service.getConfig()!.accessToken, 'token_persisted');
+      expect(service.getConfig()!.gistId, 'gist_persisted');
+      expect(service.getConfig()!.gistFilename, 'custom.json');
+      expect(service.getConfig()!.autoSync, true);
+      expect(service.getConfig()!.syncIntervalMinutes, 60);
     });
   });
 
@@ -551,6 +573,78 @@ void main() {
       await expectLater(service.uploadConfig(), throwsA(isA<DioException>()));
       expect(service.status, SyncStatusEnum.error);
     });
+
+    test('uploadConfig throws when create Gist returns empty response', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(SyncConfig(accessToken: 'token123'));
+
+      when(() => mockRepository.getAllConnections()).thenReturn([]);
+
+      // POST /gists 返回空 data
+      when(
+        () => mockDio.post<Map<String, dynamic>>(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          statusCode: 500,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.uploadConfig(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('创建 Gist 失败：空响应'),
+          ),
+        ),
+      );
+      expect(service.status, SyncStatusEnum.error);
+    });
+
+    test('uploadConfig throws when create Gist returns no id', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(SyncConfig(accessToken: 'token123'));
+
+      when(() => mockRepository.getAllConnections()).thenReturn([]);
+
+      when(
+        () => mockDio.post<Map<String, dynamic>>(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          data: <String, dynamic>{},
+          statusCode: 200,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.uploadConfig(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('创建 Gist 失败：未返回 ID'),
+          ),
+        ),
+      );
+      expect(service.status, SyncStatusEnum.error);
+    });
   });
 
   // =======================================================================
@@ -811,6 +905,175 @@ void main() {
           options: any(named: 'options'),
         ),
       ).called(1);
+    });
+
+    test('downloadConfig throws when Gist does not exist (null data)', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(
+        SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
+      );
+
+      when(
+        () => mockDio.get<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          statusCode: 404,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.downloadConfig(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Gist 不存在'),
+          ),
+        ),
+      );
+      expect(service.status, SyncStatusEnum.error);
+    });
+
+    test('downloadConfig throws when Gist files list is empty', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(
+        SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
+      );
+
+      when(
+        () => mockDio.get<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          data: {'id': 'gist_abc'},
+          statusCode: 200,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.downloadConfig(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Gist 文件列表为空'),
+          ),
+        ),
+      );
+      expect(service.status, SyncStatusEnum.error);
+    });
+
+    test('downloadConfig throws when file content is empty', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(
+        SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
+      );
+
+      when(
+        () => mockDio.get<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          data: {
+            'id': 'gist_abc',
+            'files': {
+              'ssh_connections.json': {'content': ''},
+            },
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.downloadConfig(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('文件内容为空'),
+          ),
+        ),
+      );
+      expect(service.status, SyncStatusEnum.error);
+    });
+
+    test('downloadConfig throws SyncConflictException on version conflict', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SyncService(mockRepository, dio: mockDio);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await service.saveConfig(
+        SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
+      );
+
+      // 本地连接：version 1，最近更新
+      final now = DateTime.now();
+      final local = SshConnection(
+        id: 'conn1',
+        name: 'Server Alpha',
+        host: '192.168.1.10',
+        username: 'admin',
+        authType: AuthType.password,
+        createdAt: now.subtract(const Duration(minutes: 10)),
+        updatedAt: now.subtract(const Duration(minutes: 1)),
+      );
+      when(() => mockRepository.getAllConnections()).thenReturn([local]);
+
+      // 远端连接：同 id、version 2、更新早于本地但晚于本地创建时间
+      final remoteJson = local.toJson()
+        ..['version'] = 2
+        ..['updatedAt'] = now
+            .subtract(const Duration(minutes: 5))
+            .toIso8601String();
+
+      when(
+        () => mockDio.get<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<Map<String, dynamic>>(
+          data: {
+            'id': 'gist_abc',
+            'files': {
+              'ssh_connections.json': {
+                'content': jsonEncode({
+                  'version': 1,
+                  'timestamp': now.toIso8601String(),
+                  'connections': [remoteJson],
+                }),
+              },
+            },
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(),
+        ),
+      );
+
+      await expectLater(
+        service.downloadConfig(),
+        throwsA(isA<SyncConflictException>()),
+      );
+      expect(service.status, SyncStatusEnum.error);
     });
   });
 }
