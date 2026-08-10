@@ -670,20 +670,29 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
                     ..._sshConfigEntries.map(
                       (entry) => DropdownMenuItem<String?>(
                         value: entry.hostName,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(entry.hostName),
-                            if (entry.actualHost != null || entry.user != null)
+                        child: ConstrainedBox(
+                          // 多主机配置行（如 "Host a.com b.com c.com"）较长，
+                          // 约束宽度并省略号截断，避免下拉框横向溢出
+                          constraints: const BoxConstraints(maxWidth: 280),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: LinearColors.textTertiary,
-                                ),
+                                entry.hostName,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                          ],
+                              if (entry.actualHost != null || entry.user != null)
+                                Text(
+                                  '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: LinearColors.textTertiary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

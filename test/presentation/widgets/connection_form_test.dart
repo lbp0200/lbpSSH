@@ -1,11 +1,39 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/screens/connection_form.dart';
+
+/// Fake FilePickerPlatform：可配置 pickFiles 返回值
+class _FakeFilePickerPlatform extends FilePickerPlatform {
+  FilePickerResult? pickResult;
+  Object? pickError;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    void Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+    bool cancelUploadOnWindowBlur = true,
+    AndroidSAFOptions? androidSafOptions,
+  }) async {
+    if (pickError != null) throw pickError!;
+    return pickResult;
+  }
+}
 
 class _MockConnectionNotifier extends ConnectionNotifier {
   final ConnectionState _state;
@@ -28,12 +56,34 @@ class _MockConnectionNotifier extends ConnectionNotifier {
   }
 }
 
+/// 保存时抛错的 notifier，用于测试保存失败的错误对话框
+class _ThrowingConnectionNotifier extends _MockConnectionNotifier {
+  _ThrowingConnectionNotifier(super.state);
+
+  @override
+  Future<void> addConnection(SshConnection connection) async {
+    throw Exception('模拟保存失败');
+  }
+}
+
 void main() {
   late _MockConnectionNotifier mockNotifier;
 
-  Widget createTestWidget({SshConnection? connection}) {
+  setUpAll(() {
+    PackageInfo.setMockInitialValues(
+      appName: 'lbp_ssh',
+      packageName: 'com.lbp.lbp_ssh',
+      version: '1.9.4',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+  });
+
+  Widget createTestWidget({SshConnection? connection, bool saveFails = false}) {
     const state = ConnectionState();
-    mockNotifier = _MockConnectionNotifier(state);
+    mockNotifier = saveFails
+        ? _ThrowingConnectionNotifier(state)
+        : _MockConnectionNotifier(state);
 
     return MaterialApp(
       home: ProviderScope(
@@ -46,7 +96,11 @@ void main() {
   }
 
   /// 表单内容较长,使用高视口让 ListView 全部渲染,避免滚动查找
-  Future<void> pumpForm(WidgetTester tester, {SshConnection? connection}) async {
+  Future<void> pumpForm(
+    WidgetTester tester, {
+    SshConnection? connection,
+    bool saveFails = false,
+  }) async {
     tester.view.physicalSize = const Size(1000, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -54,7 +108,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    await tester.pumpWidget(createTestWidget(connection: connection));
+    await tester.pumpWidget(
+      createTestWidget(connection: connection, saveFails: saveFails),
+    );
     await tester.pump();
   }
 
@@ -438,6 +494,275 @@ void main() {
     );
 
     testWidgets(
+      'Given key auth, When manual path points to an unreadable file, '
+      'Then shows read-failure message',
+      (tester) async {
+        // 创建无读权限的文件，exists() 为 true 但 readAsString 抛错
+        final tempDir = Directory.systemTemp.createTempSync('lbpssh_noread');
+        final file = File('${tempDir.path}/noperm')
+          ..writeAsStringSync('secret key');
+        Process.runSync('chmod', ['000', file.path]);
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        await pumpForm(tester);
+        await switchAuthType(tester, '密钥认证');
+
+        await tester.tap(find.text('输入路径'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextFormField),
+          ),
+          file.path,
+        );
+        await confirmManualPath(tester);
+
+        // File.exists() 为 true，readAsString 权限不足抛错 → 读取失败消息
+        expect(find.textContaining('读取文件失败'), findsOneWidget);
+        await drainSnackBars(tester);
+      },
+    );
+
+    for (final (label, header) in [
+      ('RSA', '-----BEGIN RSA PRIVATE KEY-----'),
+      ('DSA', '-----BEGIN DSA PRIVATE KEY-----'),
+      ('EC', '-----BEGIN EC PRIVATE KEY-----'),
+    ]) {
+      testWidgets(
+        'Given key auth, When manual path points to a valid $label key file, '
+        'Then key is loaded and shown as loaded',
+        (tester) async {
+          final keyFile = createTempKeyFile(
+            '$header\n'
+            'test-content\n'
+            '-----END $label PRIVATE KEY-----',
+          );
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await tester.tap(find.text('输入路径'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(
+            find.descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byType(TextFormField),
+            ),
+            keyFile.path,
+          );
+          await confirmManualPath(tester);
+
+          expect(find.textContaining('私钥已加载'), findsOneWidget);
+          await drainSnackBars(tester);
+        },
+      );
+    }
+
+    /// 点击「选择文件」按钮并等待 FilePicker + 真实文件 IO 完成
+    Future<void> pickKeyFile(WidgetTester tester) async {
+      await tester.tap(find.text('选择文件'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+      }
+      await tester.pumpAndSettle();
+    }
+
+    group('FilePicker key selection', () {
+      late FilePickerPlatform originalPlatform;
+
+      setUp(() {
+        originalPlatform = FilePickerPlatform.instance;
+      });
+
+      tearDown(() {
+        FilePickerPlatform.instance = originalPlatform;
+      });
+
+      testWidgets(
+        'Given key auth, When FilePicker returns a valid key file, '
+        'Then key is loaded and shown as loaded',
+        (tester) async {
+          final keyFile = createTempKeyFile(
+            '-----BEGIN OPENSSH PRIVATE KEY-----\n'
+            'test-content\n'
+            '-----END OPENSSH PRIVATE KEY-----',
+          );
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickResult = FilePickerResult([
+              PlatformFile(
+                name: 'id_ed25519',
+                path: keyFile.path,
+                size: 0,
+              ),
+            ]);
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.textContaining('私钥文件已加载'), findsOneWidget);
+          await drainSnackBars(tester);
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker returns a valid RSA key file, '
+        'Then key is loaded and shown as loaded',
+        (tester) async {
+          final keyFile = createTempKeyFile(
+            '-----BEGIN RSA PRIVATE KEY-----\n'
+            'test-content\n'
+            '-----END RSA PRIVATE KEY-----',
+          );
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickResult = FilePickerResult([
+              PlatformFile(
+                name: 'id_rsa',
+                path: keyFile.path,
+                size: 0,
+              ),
+            ]);
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.textContaining('私钥文件已加载'), findsOneWidget);
+          await drainSnackBars(tester);
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker is cancelled, '
+        'Then no key is loaded and no snackbar is shown',
+        (tester) async {
+          FilePickerPlatform.instance = _FakeFilePickerPlatform();
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.textContaining('私钥文件已加载'), findsNothing);
+          expect(find.text('文件不存在或无法访问'), findsNothing);
+          expect(find.textContaining('文件不是有效的私钥格式'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker returns a non-existent file, '
+        'Then shows file-not-exist message',
+        (tester) async {
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickResult = FilePickerResult([
+              PlatformFile(
+                name: 'key.pem',
+                path: '/non/existent/key.pem',
+                size: 0,
+              ),
+            ]);
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.text('文件不存在或无法访问'), findsOneWidget);
+          await drainSnackBars(tester);
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker returns an invalid key file, '
+        'Then shows invalid-key-format message',
+        (tester) async {
+          final keyFile = createTempKeyFile('not a valid key');
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickResult = FilePickerResult([
+              PlatformFile(
+                name: 'bad_key',
+                path: keyFile.path,
+                size: 0,
+              ),
+            ]);
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.textContaining('文件不是有效的私钥格式'), findsOneWidget);
+          await drainSnackBars(tester);
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker returns an unreadable file, '
+        'Then shows read-failure error dialog',
+        (tester) async {
+          // 创建无读权限的文件，exists() 为 true 但 readAsString 抛错
+          final tempDir = Directory.systemTemp.createTempSync('lbpssh_noread');
+          final file = File('${tempDir.path}/noperm')
+            ..writeAsStringSync('secret key');
+          Process.runSync('chmod', ['000', file.path]);
+          addTearDown(() {
+            try {
+              tempDir.deleteSync(recursive: true);
+            } catch (_) {}
+          });
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickResult = FilePickerResult([
+              PlatformFile(
+                name: 'key_noperm',
+                path: file.path,
+                size: 0,
+              ),
+            ]);
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          // File(path).exists() 为 true，readAsString 抛错 → 错误对话框
+          expect(find.text('读取文件失败'), findsOneWidget);
+          await tester.tap(find.text('关闭'));
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'Given key auth, When FilePicker platform throws, '
+        'Then shows pick-failure error dialog',
+        (tester) async {
+          FilePickerPlatform.instance = _FakeFilePickerPlatform()
+            ..pickError = Exception('picker exploded');
+
+          await pumpForm(tester);
+          await switchAuthType(tester, '密钥认证');
+
+          await pickKeyFile(tester);
+
+          expect(find.text('选择文件失败'), findsOneWidget);
+          await tester.tap(find.text('关闭'));
+          await tester.pumpAndSettle();
+        },
+      );
+    });
+
+    testWidgets(
       'Given keyWithPassword auth, When passphrase visibility tapped, '
       'Then passphrase becomes visible',
       (tester) async {
@@ -491,6 +816,35 @@ void main() {
         expect(conn.jumpHost!.username, 'jumpuser');
         expect(conn.socks5Proxy!.host, '127.0.0.1');
         expect(conn.socks5Proxy!.username, 'proxyuser');
+      },
+    );
+
+    testWidgets(
+      'Given SOCKS5 proxy with username and password, When save pressed, '
+      'Then connection includes proxy credentials',
+      (tester) async {
+        await pumpForm(tester);
+
+        await enterField(tester, '连接名称', '代理服务器');
+        await enterField(tester, '主机地址', '192.168.1.80');
+        await enterField(tester, '用户名', 'root');
+
+        // 启用 SOCKS5 代理并填写用户名 + 密码
+        await tester.tap(find.text('使用 SOCKS5 代理'));
+        await tester.pumpAndSettle();
+        await enterField(tester, '代理主机', '127.0.0.1');
+        await enterField(tester, '端口', '1080', last: true);
+        await enterField(tester, '用户名', 'proxyuser', last: true);
+        await enterField(tester, '密码', 'proxypass', last: true);
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.added, hasLength(1));
+        final conn = mockNotifier.added.single;
+        expect(conn.socks5Proxy!.host, '127.0.0.1');
+        expect(conn.socks5Proxy!.username, 'proxyuser');
+        expect(conn.socks5Proxy!.password, 'proxypass');
       },
     );
 
@@ -554,6 +908,223 @@ void main() {
         final conn = mockNotifier.updated.single;
         expect(conn.id, '1');
         expect(conn.name, '新名称');
+      },
+    );
+
+    testWidgets(
+      'Given password auth with password and notes filled, When save pressed, '
+      'Then connection includes password and notes',
+      (tester) async {
+        await pumpForm(tester);
+
+        await enterField(tester, '连接名称', '密码服务器');
+        await enterField(tester, '主机地址', '192.168.1.50');
+        await enterField(tester, '用户名', 'root');
+        await enterField(tester, '密码', 'secret123');
+        await enterField(tester, '备注', '生产环境主服务器');
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.added, hasLength(1));
+        final conn = mockNotifier.added.single;
+        expect(conn.authType, AuthType.password);
+        expect(conn.password, 'secret123');
+        expect(conn.notes, '生产环境主服务器');
+      },
+    );
+
+    testWidgets(
+      'Given keyWithPassword auth with loaded key and passphrase, '
+      'When save pressed, Then connection includes passphrase and key content',
+      (tester) async {
+        const validKey = '-----BEGIN OPENSSH PRIVATE KEY-----\n'
+            'test-content\n'
+            '-----END OPENSSH PRIVATE KEY-----';
+        final keyFile = createTempKeyFile(validKey);
+
+        await pumpForm(tester);
+        await switchAuthType(tester, '密钥+密码认证');
+
+        await tester.tap(find.text('输入路径'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextFormField),
+          ),
+          keyFile.path,
+        );
+        await confirmManualPath(tester);
+
+        await enterField(tester, '连接名称', '密钥服务器');
+        await enterField(tester, '主机地址', '10.1.1.1');
+        await enterField(tester, '用户名', 'root');
+        await enterField(tester, '密钥密码', 'passphrase123');
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.added, hasLength(1));
+        final conn = mockNotifier.added.single;
+        expect(conn.authType, AuthType.keyWithPassword);
+        expect(conn.keyPassphrase, 'passphrase123');
+        expect(conn.privateKeyContent, validKey);
+        await drainSnackBars(tester);
+      },
+    );
+
+    testWidgets(
+      'Given jump host with password filled, When save pressed, '
+      'Then connection includes jump host password',
+      (tester) async {
+        await pumpForm(tester);
+
+        await enterField(tester, '连接名称', '隧道服务器');
+        await enterField(tester, '主机地址', '192.168.1.200');
+        await enterField(tester, '用户名', 'root');
+
+        await tester.tap(find.text('使用跳板机'));
+        await tester.pumpAndSettle();
+        await enterField(tester, '跳板机地址', '10.0.0.1');
+        await enterField(tester, '跳板机用户名', 'jumpuser', last: true);
+        await enterField(tester, '跳板机密码', 'jumpsecret');
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.added, hasLength(1));
+        final conn = mockNotifier.added.single;
+        expect(conn.jumpHost!.password, 'jumpsecret');
+      },
+    );
+
+    testWidgets(
+      'Given jump host enabled, When jump auth switched to key, '
+      'Then jump password field hides and shows again on password',
+      (tester) async {
+        await pumpForm(tester);
+
+        await tester.tap(find.text('使用跳板机'));
+        await tester.pumpAndSettle();
+        expect(find.text('跳板机密码'), findsOneWidget);
+
+        // 跳板机认证方式下拉框（页面中第二个 AuthType 下拉框）
+        await tester.tap(find.byType(DropdownButtonFormField<AuthType>).last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('密钥认证').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('跳板机密码'), findsNothing);
+
+        // 切回密码认证
+        await tester.tap(find.byType(DropdownButtonFormField<AuthType>).last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('密码认证').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('跳板机密码'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given sshConfig auth selected, When rendered, '
+      'Then shows refresh button regardless of config file',
+      (tester) async {
+        await pumpForm(tester);
+        await switchAuthType(tester, 'SSH Config');
+
+        // 无论 ~/.ssh/config 是否存在，刷新列表按钮都会显示
+        expect(find.text('刷新列表'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given sshConfig auth without selection, When save pressed, '
+      'Then connection has sshConfig auth and null sshConfigHost',
+      (tester) async {
+        await pumpForm(tester);
+
+        await enterField(tester, '连接名称', '配置服务器');
+        await enterField(tester, '主机地址', '192.168.1.60');
+        await enterField(tester, '用户名', 'root');
+        await switchAuthType(tester, 'SSH Config');
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.added, hasLength(1));
+        final conn = mockNotifier.added.single;
+        expect(conn.authType, AuthType.sshConfig);
+        expect(conn.sshConfigHost, isNull);
+      },
+    );
+
+    testWidgets(
+      'Given addConnection throws, When save pressed, '
+      'Then shows error dialog with 保存失败',
+      (tester) async {
+        await pumpForm(tester, saveFails: true);
+
+        await enterField(tester, '连接名称', '失败服务器');
+        await enterField(tester, '主机地址', '192.168.1.70');
+        await enterField(tester, '用户名', 'root');
+
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('保存失败'), findsOneWidget);
+        expect(find.textContaining('模拟保存失败'), findsOneWidget);
+
+        // 关闭对话框
+        await tester.tap(find.text('关闭'));
+        await tester.pumpAndSettle();
+        expect(find.text('保存失败'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Given existing connection with key auth, When rendered, '
+      'Then shows loaded key status',
+      (tester) async {
+        const validKey = '-----BEGIN OPENSSH PRIVATE KEY-----\n'
+            'test-content\n'
+            '-----END OPENSSH PRIVATE KEY-----';
+        final connection = SshConnection(
+          id: '1',
+          name: '密钥服务器',
+          host: '10.0.0.2',
+          username: 'root',
+          authType: AuthType.key,
+          privateKeyContent: validKey,
+          privateKeyPath: '/Users/test/.ssh/id_ed25519',
+        );
+
+        await pumpForm(tester, connection: connection);
+
+        expect(find.textContaining('私钥已加载'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given manual path dialog with empty input, When 确定 tapped, '
+      'Then dialog stays open',
+      (tester) async {
+        await pumpForm(tester);
+        await switchAuthType(tester, '密钥认证');
+
+        await tester.tap(find.text('输入路径'));
+        await tester.pumpAndSettle();
+
+        // 不输入路径直接点确定，对话框不应关闭
+        await tester.tap(find.text('确定'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('输入私钥文件路径'), findsOneWidget);
+
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+        expect(find.text('输入私钥文件路径'), findsNothing);
       },
     );
   });
