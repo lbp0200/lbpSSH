@@ -628,6 +628,9 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
               if (_sshConfigEntries.isNotEmpty) ...[
                 DropdownButtonFormField<String?>(
                   initialValue: _selectedSshConfigHost,
+                  // 按钮占满可用宽度，配合 selectedItemBuilder 的省略号收缩，
+                  // 避免长主机名把按钮横向撑爆
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: '选择 SSH Config 主机',
                     labelStyle: const TextStyle(
@@ -694,6 +697,18 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
                             ],
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                  // 按钮态单行展示：InputDecorator 高度有限，两行内容会垂直溢出；
+                  // 菜单展开态仍使用 items 中的两行（主机名 + 副标题）
+                  selectedItemBuilder: (context) => [
+                    const Text('-- 选择主机 --'),
+                    ..._sshConfigEntries.map(
+                      (entry) => Text(
+                        entry.hostName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
