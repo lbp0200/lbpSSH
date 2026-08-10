@@ -270,6 +270,33 @@ void main() {
       });
     });
 
+    group('setUnderlineColor', () {
+      test('sends CSI 58:2 with converted values', () async {
+        await service.setUnderlineColor(0.2, 0.5, 0.9);
+        // 0.2 * 65535 = 13107
+        // 0.5 * 65535 = 32767.5 ≈ 32768
+        // 0.9 * 65535 = 58981.5 ≈ 58982
+        verify(
+          () => mockSession.writeRaw('\x1b[58:2:13107:32768:58982m'),
+        ).called(1);
+      });
+
+      test('handles zero values', () async {
+        await service.setUnderlineColor(0.0, 0.0, 0.0);
+        verify(
+          () => mockSession.writeRaw('\x1b[58:2:0:0:0m'),
+        ).called(1);
+      });
+
+      test('throws when session is null', () async {
+        final nullService = KittyWideGamutService();
+        expect(
+          () => nullService.setUnderlineColor(0.5, 0.5, 0.5),
+          throwsA(isA<Exception>()),
+        );
+      });
+    });
+
     group('setCursorColor', () {
       test('sends OSC 12 command', () async {
         await service.setCursorColor(0.5, 0.0, 1.0);
