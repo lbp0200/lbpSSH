@@ -732,6 +732,112 @@ void main() {
     );
 
     testWidgets(
+      'Given upload in progress, When cancel tapped, '
+      'Then progress dialog closes and no success message shown',
+      (tester) async {
+        // sendFile 挂起，让进度对话框保持打开
+        final uploadCompleter = Completer<void>();
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => <FileItem>[],
+        );
+        when(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) => uploadCompleter.future);
+
+        final fake = _FakeFilePickerPlatform()
+          ..pickResult = FilePickerResult([
+            PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
+          ]);
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+
+        // 进度对话框可见
+        expect(find.text('取消'), findsOneWidget);
+
+        // 点击取消 → onCancel 关闭流并关闭对话框
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('取消'), findsNothing);
+        expect(find.text('上传成功'), findsNothing);
+
+        // 完成挂起的传输，避免残留未完成 future
+        uploadCompleter.complete();
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'Given download in progress, When cancel tapped, '
+      'Then progress dialog closes and no success message shown',
+      (tester) async {
+        final downloadCompleter = Completer<void>();
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false),
+          ],
+        );
+        when(
+          () => transferService.downloadFile(
+            any(),
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) => downloadCompleter.future);
+
+        final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+
+        // 进度对话框可见
+        expect(find.text('取消'), findsOneWidget);
+
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('取消'), findsNothing);
+        expect(find.text('下载成功'), findsNothing);
+
+        downloadCompleter.complete();
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
       'Given directory picked, When download menu tapped, '
       'Then downloads file and shows success',
       (tester) async {
@@ -774,6 +880,142 @@ void main() {
           ),
         ).called(1);
         expect(find.text('下载成功'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given upload file picked and sendFile throws, '
+      'When upload pressed, Then shows upload failure',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => <FileItem>[],
+        );
+        when(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenThrow(Exception('disk full'));
+
+        final fake = _FakeFilePickerPlatform()
+          ..pickResult = FilePickerResult([
+            PlatformFile(name: 'fail.txt', size: 10, path: '/tmp/fail.txt'),
+          ]);
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('上传失败'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given download file picked and downloadFile throws, '
+      'When download pressed, Then shows download failure',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(name: 'b.txt', path: '/b.txt', isDirectory: false),
+          ],
+        );
+        when(
+          () => transferService.downloadFile(
+            any(),
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenThrow(Exception('connection lost'));
+
+        final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('b.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('下载失败'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given sendFile invokes onProgress, '
+      'When upload pressed, Then progress stream is fed',
+      (tester) async {
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => <FileItem>[],
+        );
+        when(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((invocation) async {
+          // 模拟分块进度回调
+          final callback =
+              invocation.namedArguments[#onProgress]
+                  as void Function(TransferProgress);
+          callback(
+            TransferProgress(
+              fileName: 'up.txt',
+              transferredBytes: 50,
+              totalBytes: 100,
+              percent: 50,
+              bytesPerSecond: 0,
+            ),
+          );
+        });
+
+        final fake = _FakeFilePickerPlatform()
+          ..pickResult = FilePickerResult([
+            PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
+          ]);
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+
+        // 进度流被消费后对话框展示进度，上传完成后显示成功
+        expect(find.text('上传成功'), findsOneWidget);
       },
     );
   });
