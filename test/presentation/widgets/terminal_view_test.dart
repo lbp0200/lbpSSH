@@ -1,6 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kterm/kterm.dart' hide TerminalState;
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:lbp_ssh/core/theme/app_theme.dart';
@@ -53,6 +56,7 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
   final Object? createLocalError;
   final Object? reconnectError;
   int reconnectCalls = 0;
+  TerminalSession? getSessionResult;
 
   _RecordingTerminalNotifier(
     this._state, {
@@ -62,6 +66,9 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
 
   @override
   TerminalState build() => _state;
+
+  @override
+  TerminalSession? getSession(String sessionId) => getSessionResult;
 
   @override
   void switchToSession(String sessionId) {
@@ -98,8 +105,10 @@ class _RecordingTerminalNotifier extends TerminalNotifier {
 }
 
 class _MockTerminalConfigNotifier extends TerminalConfigNotifier {
+  TerminalConfig value = TerminalConfig();
+
   @override
-  TerminalConfig build() => TerminalConfig();
+  TerminalConfig build() => value;
 }
 
 TerminalSession makeSession(String id, String name) {
@@ -134,6 +143,7 @@ void main() {
   Widget createTestWidget({
     required TerminalNotifier terminalNotifier,
     ConnectionNotifier? connectionNotifier,
+    TerminalConfigNotifier? configNotifier,
   }) {
     return ProviderScope(
       overrides: [
@@ -145,7 +155,9 @@ void main() {
                 ConnectionState(connections: testConnections),
               ),
         ),
-        terminalConfigProvider.overrideWith(_MockTerminalConfigNotifier.new),
+        terminalConfigProvider.overrideWith(
+          () => configNotifier ?? _MockTerminalConfigNotifier(),
+        ),
       ],
       child: const MaterialApp(
         localizationsDelegates: [AppLocalizations.delegate],
@@ -159,6 +171,7 @@ void main() {
     WidgetTester tester, {
     required TerminalNotifier terminalNotifier,
     ConnectionNotifier? connectionNotifier,
+    TerminalConfigNotifier? configNotifier,
   }) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1.0;
@@ -170,6 +183,7 @@ void main() {
       createTestWidget(
         terminalNotifier: terminalNotifier,
         connectionNotifier: connectionNotifier,
+        configNotifier: configNotifier,
       ),
     );
     await tester.pumpAndSettle();
@@ -468,6 +482,139 @@ void main() {
       );
     });
 
+    group('drag & drop file upload', () {
+      /// 通过 mock desktop_drop 方法通道派发平台拖拽事件
+      Future<void> dispatchDrop(
+        WidgetTester tester,
+        String method,
+        Object? args,
+      ) async {
+        final codec = const StandardMethodCodec();
+        tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          'desktop_drop',
+          codec.encodeMethodCall(MethodCall(method, args)),
+          (_) {},
+        );
+        await tester.pump();
+      }
+
+      /// 派发「拖入 + 放下文件」完整序列
+      Future<void> dropFiles(
+        WidgetTester tester,
+        List<Map<String, dynamic>> items,
+      ) async {
+        await dispatchDrop(tester, 'entered', [700.0, 400.0]);
+        await dispatchDrop(
+          tester,
+          'performOperation_macos',
+          items,
+        );
+        await tester.pump();
+      }
+
+      testWidgets(
+        'Given active session, When drag entered, '
+        'Then upload overlay is shown',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(
+              sessions: [makeSession('s1', 'Server Alpha')],
+              activeSessionId: 's1',
+            ),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await dispatchDrop(tester, 'entered', [700.0, 400.0]);
+
+          expect(find.text('释放以上传文件到服务器'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given upload overlay shown, When drag exited, '
+        'Then overlay is hidden',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(
+              sessions: [makeSession('s1', 'Server Alpha')],
+              activeSessionId: 's1',
+            ),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await dispatchDrop(tester, 'entered', [700.0, 400.0]);
+          expect(find.text('释放以上传文件到服务器'), findsOneWidget);
+
+          await dispatchDrop(tester, 'exited', null);
+          expect(find.text('释放以上传文件到服务器'), findsNothing);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given session not resolvable, When files dropped, '
+        'Then shows connect-first snackbar',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(
+              sessions: [makeSession('s1', 'Server Alpha')],
+              activeSessionId: 's1',
+            ),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await dropFiles(tester, [
+            {'path': '/tmp/file.txt', 'apple-bookmark': null, 'isDirectory': false},
+          ]);
+
+          expect(find.text('请先连接到服务器'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given session exists, When file dropped, '
+        'Then upload failure snackbar is shown (no kitty support)',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          )..getSessionResult = session;
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await dropFiles(tester, [
+            {'path': '/tmp/file.txt', 'apple-bookmark': null, 'isDirectory': false},
+          ]);
+
+          // sendFile → checkProtocolSupport → executeCommand('ki version') 返回空
+          // → 判定不支持 → 抛异常 → catch → 上传失败 snackbar
+          expect(find.textContaining('上传失败'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given empty file list, When dropped, '
+        'Then no upload is attempted',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          )..getSessionResult = session;
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          await dispatchDrop(tester, 'entered', [700.0, 400.0]);
+          await dispatchDrop(tester, 'performOperation_macos', <Map>[]);
+          await tester.pump();
+
+          expect(find.textContaining('上传失败'), findsNothing);
+          expect(find.textContaining('上传成功'), findsNothing);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
     group('reconnect', () {
       testWidgets(
         'Given disconnected SSH session, When reconnect pressed, '
@@ -512,6 +659,214 @@ void main() {
           await tester.pump(const Duration(seconds: 2));
           await tester.pumpAndSettle();
           expect(find.textContaining('Reconnect failed'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('selection copy', () {
+      testWidgets(
+        'Given terminal text written, When selection is set, '
+        'Then selected text is copied to clipboard',
+        (tester) async {
+          // 拦截剪贴板调用，避免真实平台通道等待
+          final clipboardCalls = <String>[];
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            (call) async {
+              if (call.method == 'Clipboard.setData') {
+                clipboardCalls.add(
+                  (call.arguments as Map<dynamic, dynamic>)['text'] as String,
+                );
+              }
+              return null;
+            },
+          );
+          addTearDown(() {
+            tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+              SystemChannels.platform,
+              null,
+            );
+          });
+
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          // 向终端写入文本并设置选区，触发 _onSelectionChanged 复制到剪贴板
+          session.terminal.write('hello');
+          await tester.pump();
+          final line = session.terminal.buffer.currentLine;
+          session.controller.setSelection(
+            CellAnchor(0, owner: line),
+            CellAnchor(5, owner: line),
+          );
+          await tester.pump();
+
+          expect(clipboardCalls, contains('hello'));
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given selection cleared, When controller notifies, '
+        'Then no clipboard write and no error',
+        (tester) async {
+          // 拦截剪贴板调用
+          final clipboardCalls = <String>[];
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            (call) async {
+              if (call.method == 'Clipboard.setData') {
+                clipboardCalls.add(
+                  (call.arguments as Map<dynamic, dynamic>)['text'] as String,
+                );
+              }
+              return null;
+            },
+          );
+          addTearDown(() {
+            tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+              SystemChannels.platform,
+              null,
+            );
+          });
+
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          // 先设置选区再清除，覆盖 _onSelectionChanged 的 null 分支
+          session.terminal.write('hello');
+          await tester.pump();
+          final line = session.terminal.buffer.currentLine;
+          session.controller.setSelection(
+            CellAnchor(0, owner: line),
+            CellAnchor(5, owner: line),
+          );
+          await tester.pump();
+          expect(clipboardCalls, contains('hello'));
+
+          session.controller.clearSelection();
+          await tester.pump();
+
+          expect(tester.takeException(), isNull);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('config change', () {
+      testWidgets(
+        'Given font size changed, When config updates, '
+        'Then terminal rebuilds without error',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          final configNotifier = _MockTerminalConfigNotifier();
+          await pumpTabs(
+            tester,
+            terminalNotifier: notifier,
+            configNotifier: configNotifier,
+          );
+
+          // 修改字体大小触发字体度量缓存失效重算
+          configNotifier.value = configNotifier.value.copyWith(fontSize: 20);
+          configNotifier.state = configNotifier.value;
+          await tester.pump();
+
+          expect(tester.takeException(), isNull);
+          await teardownTabs(tester);
+        },
+      );
+
+      testWidgets(
+        'Given line height changed, When config updates, '
+        'Then terminal rebuilds without error',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 's1'),
+          );
+          final configNotifier = _MockTerminalConfigNotifier();
+          await pumpTabs(
+            tester,
+            terminalNotifier: notifier,
+            configNotifier: configNotifier,
+          );
+
+          // 修改行高触发字体度量缓存失效重算（fontFamily/fontSize 不变）
+          configNotifier.value = configNotifier.value.copyWith(lineHeight: 1.8);
+          configNotifier.state = configNotifier.value;
+          await tester.pump();
+
+          expect(tester.takeException(), isNull);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('status bar fallback', () {
+      testWidgets(
+        'Given activeSessionId not in sessions, When rendered, '
+        'Then falls back to first session without error',
+        (tester) async {
+          final session = makeSession('s1', 'Server Alpha');
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(sessions: [session], activeSessionId: 'ghost'),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          expect(tester.takeException(), isNull);
+          expect(find.text('请选择一个连接'), findsOneWidget);
+          await teardownTabs(tester);
+        },
+      );
+    });
+
+    group('tab hover', () {
+      testWidgets(
+        'Given inactive tab, When mouse hovers over it, '
+        'Then close button becomes visible',
+        (tester) async {
+          final notifier = _RecordingTerminalNotifier(
+            TerminalState(
+              sessions: [
+                makeSession('s1', 'Server Alpha'),
+                makeSession('s2', 'local home'),
+              ],
+              activeSessionId: 's1',
+            ),
+          );
+          await pumpTabs(tester, terminalNotifier: notifier);
+
+          final closeButton = find.ancestor(
+            of: find.byIcon(Icons.close).at(1),
+            matching: find.byType(AnimatedOpacity),
+          );
+
+          // 悬停前：非激活 tab 的关闭按钮透明度为 0
+          expect(tester.widget<AnimatedOpacity>(closeButton).opacity, 0.0);
+
+          // 用鼠标指针悬停到第二个 tab
+          final gesture = await tester.createGesture(
+            kind: PointerDeviceKind.mouse,
+          );
+          await gesture.addPointer(location: Offset.zero);
+          await tester.pump();
+          await gesture.moveTo(tester.getCenter(find.text('local home')));
+          await tester.pump();
+
+          expect(tester.widget<AnimatedOpacity>(closeButton).opacity, 1.0);
+
+          await gesture.removePointer();
+          await tester.pump();
           await teardownTabs(tester);
         },
       );
