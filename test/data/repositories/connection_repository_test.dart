@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lbp_ssh/core/constants/app_constants.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/repositories/connection_repository.dart';
 
@@ -295,6 +297,89 @@ void main() {
       final loaded = newRepo.getConnectionById('none-1')!;
       expect(loaded.jumpHost?.host, 'bastion.example.com');
       expect(loaded.socks5Proxy?.host, 'proxy.example.com');
+    });
+  });
+
+  group('ConnectionRepository without configFile', () {
+    late Directory supportDir;
+
+    setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    tearDown(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
+      try {
+        if (await supportDir.exists()) {
+          await supportDir.delete(recursive: true);
+        }
+      } catch (_) {}
+    });
+
+    Future<ConnectionRepository> makeRepo() async {
+      supportDir = await Directory.systemTemp.createTemp('lbp_ssh_support_');
+      // mock path_provider: getApplicationSupportDirectory → supportDir
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async {
+          if (call.method == 'getApplicationSupportDirectory') {
+            return supportDir.path;
+          }
+          return null;
+        },
+      );
+      final repo = ConnectionRepository();
+      await repo.init();
+      return repo;
+    }
+
+    test('init creates config dir and empty config file', () async {
+      final repo = await makeRepo();
+
+      final configDir = Directory(
+        '${supportDir.path}/${AppConstants.configDirName}',
+      );
+      expect(await configDir.exists(), isTrue);
+      final configFile = File('${configDir.path}/ssh_connections.json');
+      expect(await configFile.exists(), isTrue);
+      expect(await configFile.readAsString(), '[]');
+
+      await repo.close();
+    });
+
+    test('init with existing file loads connections', () async {
+      supportDir = await Directory.systemTemp.createTemp('lbp_ssh_support_');
+      final configDir = Directory(
+        '${supportDir.path}/${AppConstants.configDirName}',
+      );
+      await configDir.create(recursive: true);
+      await File('${configDir.path}/ssh_connections.json').writeAsString(
+        '[{"id":"pre-1","name":"Pre Loaded","host":"10.0.0.9",'
+        '"username":"u","authType":"password","port":22}]',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async {
+          if (call.method == 'getApplicationSupportDirectory') {
+            return supportDir.path;
+          }
+          return null;
+        },
+      );
+
+      final repo = ConnectionRepository();
+      await repo.init();
+
+      expect(repo.getConnectionById('pre-1'), isNotNull);
+      expect(repo.getConnectionById('pre-1')!.name, 'Pre Loaded');
+
+      await repo.close();
     });
   });
 }
