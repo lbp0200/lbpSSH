@@ -1,3 +1,6 @@
+- docs: restore CHANGELOG entries wiped by empty-range regeneration (bc14c7b)
+- fix(ci): prevent changelog wipe when tag range is empty (2c561dd)
+- docs: update CHANGELOG (78cac3f)
 - test(connection-form): cover ssh config host selection auto-fill (42a96bd)
 - fix(connection-form): prevent ssh config dropdown button overflow (23aadfd)
 - test: cover sync settings, terminal status bar and key parser (09145d2)
