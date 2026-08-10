@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/data/models/terminal_config.dart';
@@ -843,6 +844,76 @@ void main() {
         expect(inputService.resizeCount, 0);
 
         await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(inputService.resizeCount, 1);
+        expect(inputService.lastResize, (30, 100));
+      },
+    );
+
+    test(
+      'Given session initialized, When graphicsManager accessed, '
+      'Then returns the terminal graphics manager',
+      () {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        expect(session.graphicsManager, same(session.terminal.graphicsManager));
+      },
+    );
+
+    test(
+      'Given output stream emits error, When initialize called, '
+      'Then does not throw',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        inputService.outputController.addError(Exception('out boom'));
+        await Future<void>.delayed(Duration.zero);
+        // onError 分支静默处理，不抛出
+      },
+    );
+
+    test(
+      'Given state stream emits error, When initialize called, '
+      'Then does not throw',
+      () async {
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        inputService.stateController.addError(Exception('state boom'));
+        await Future<void>.delayed(Duration.zero);
+        // onError 分支静默处理，不抛出
+      },
+    );
+
+    testWidgets(
+      'Given resize fired with frame, When post-frame callback runs, '
+      'Then resizes input service',
+      (tester) async {
+        // 先挂载一帧，确保 addPostFrameCallback 在后续 pump 中执行
+        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        final session = TerminalSession(
+          id: 'init-test',
+          name: 'Init',
+          inputService: inputService,
+        );
+        session.initialize();
+
+        session.terminal.onResize?.call(100, 30, 800, 600);
+        // 推进一帧触发 addPostFrameCallback → 立即 resize（并取消防抖定时器）
+        await tester.pump();
         expect(inputService.resizeCount, 1);
         expect(inputService.lastResize, (30, 100));
       },
