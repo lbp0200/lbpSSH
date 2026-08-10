@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:lbp_ssh/core/theme/app_theme.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/screens/connection_form.dart';
@@ -189,6 +191,65 @@ void main() {
           await tester.pumpAndSettle();
 
           expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given connection item, When edit menu tapped, '
+        'Then navigates to ConnectionFormScreen with it',
+        (tester) async {
+          await pumpPage(
+            tester,
+            notifier: _MockConnectionNotifier(
+              ConnectionState(connections: testConnections),
+            ),
+          );
+
+          // 打开第一项的更多菜单并选择「编辑」
+          await tester.tap(find.byIcon(Icons.more_vert).first);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('编辑'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+    });
+
+    group('hover behavior', () {
+      testWidgets(
+        'Given connection item, When mouse hovers over it, '
+        'Then connection info text switches to secondary color',
+        (tester) async {
+          await pumpPage(
+            tester,
+            notifier: _MockConnectionNotifier(
+              ConnectionState(connections: testConnections),
+            ),
+          );
+
+          // 未悬停时使用 textTertiary
+          Text infoText() => tester.widget<Text>(
+            find.text('admin@192.168.1.10:22'),
+          );
+          expect(infoText().style?.color, LinearColors.textTertiary);
+
+          // 悬停
+          final gesture = await tester.createGesture(
+            kind: PointerDeviceKind.mouse,
+          );
+          await gesture.addPointer(location: Offset.zero);
+          addTearDown(gesture.removePointer);
+          await tester.pump();
+          await gesture.moveTo(tester.getCenter(find.text('Server Alpha')));
+          await tester.pumpAndSettle();
+
+          expect(infoText().style?.color, LinearColors.textSecondary);
+
+          // 移出后恢复
+          await gesture.moveTo(const Offset(10, 10));
+          await tester.pumpAndSettle();
+          expect(infoText().style?.color, LinearColors.textTertiary);
         },
       );
     });
