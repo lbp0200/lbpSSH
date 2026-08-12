@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/connection_repository.dart';
 import '../../domain/services/app_config_service.dart';
 import '../../domain/services/import_export_service.dart';
+import '../../domain/services/local_terminal_service.dart';
+import '../../domain/services/ssh_service.dart';
 import '../../domain/services/sync_service.dart';
 import '../../domain/services/terminal_service.dart';
 
@@ -20,6 +22,17 @@ final terminalServiceProvider = Provider<TerminalService>((ref) {
 /// AppConfigService 单例
 final appConfigServiceProvider = Provider<AppConfigService>((ref) {
   return AppConfigService.getInstance();
+});
+
+/// LocalTerminalService 工厂（测试时可 override 注入替身）
+final localTerminalServiceFactoryProvider =
+    Provider<LocalTerminalService Function()>((ref) {
+  return LocalTerminalService.new;
+});
+
+/// SshService 工厂（测试时可 override 注入替身）
+final sshServiceFactoryProvider = Provider<SshService Function()>((ref) {
+  return SshService.new;
 });
 
 /// SyncService 单例

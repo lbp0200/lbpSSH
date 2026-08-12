@@ -64,6 +64,10 @@ class TerminalNotifier extends Notifier<TerminalState> {
 
   TerminalService get _terminalService => ref.read(terminalServiceProvider);
   AppConfigService get _appConfigService => ref.read(appConfigServiceProvider);
+  LocalTerminalService Function() get _localTerminalServiceFactory =>
+      ref.read(localTerminalServiceFactoryProvider);
+  SshService Function() get _sshServiceFactory =>
+      ref.read(sshServiceFactoryProvider);
 
   /// 初始化（创建默认本地终端）
   Future<void> initialize() async {
@@ -77,7 +81,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
   /// 创建本地终端会话
   Future<TerminalSession> createLocalTerminal() async {
     final sessionId = _uuid.v4();
-    final localService = LocalTerminalService();
+    final localService = _localTerminalServiceFactory();
     final terminalConfig = _appConfigService.terminal;
 
     if (terminalConfig.shellPath.isNotEmpty) {
@@ -142,7 +146,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
     final sessionId = _uuid.v4();
     final terminalConfig = _appConfigService.terminal;
 
-    final sshService = SshService();
+    final sshService = _sshServiceFactory();
     _services[sessionId] = sshService;
 
     final name =
@@ -247,7 +251,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
     final username = parts[0];
     final host = parts[1];
 
-    final sshService = SshService();
+    final sshService = _sshServiceFactory();
     _services[sessionId] = sshService;
 
     try {
