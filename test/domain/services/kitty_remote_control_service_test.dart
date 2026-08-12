@@ -346,6 +346,14 @@ void main() {
         expect(capturedTitle, 'cursor:10:20');
       });
 
+      test('parses cursor position from CSI 6n response', () {
+        TerminalInfo? captured;
+        service.onTerminalInfo = (info) => captured = info;
+        service.handleResponse('\x1b[10;20R');
+        expect(captured?.cursorX, 20);
+        expect(captured?.cursorY, 10);
+      });
+
       test('parses screen content response', () {
         BufferContent? captured;
         service.onBufferContent = (content) => captured = content;

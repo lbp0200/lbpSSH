@@ -838,5 +838,27 @@ void main() {
         },
       );
     });
+
+    group('resolvePath with real directories', () {
+      test(
+        'Given real directory with different case, '
+        'When resolvePath called with mismatched case, '
+        'Then resolves to an existing directory',
+        () async {
+          // Arrange (Given) — 真实临时目录
+          final base = await Directory.systemTemp.createTemp('lbpssh_case');
+          addTearDown(() => base.delete(recursive: true));
+          Directory('${base.path}/MyDir').createSync();
+          service.initWorkingDirectory(base.path);
+
+          // Act (When) — 用错误大小写解析
+          final result = service.resolvePath('mydir');
+
+          // Assert (Then) — 大小写敏感 FS 上返回 MyDir，不敏感 FS 上原样返回，
+          // 两者都必须是真实存在的目录
+          expect(Directory(result).existsSync(), isTrue);
+        },
+      );
+    });
   });
 }

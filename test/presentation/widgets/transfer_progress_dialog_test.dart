@@ -236,5 +236,38 @@ void main() {
         expect(find.textContaining('MB'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'Given file size over 1 GB, When rendering, Then formats GB correctly',
+      (WidgetTester tester) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final progressController =
+            StreamController<TransferProgress>.broadcast();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TransferProgressDialog(
+                fileName: 'huge.iso',
+                totalBytes: 3 * 1024 * 1024 * 1024, // 3 GB
+                progressStream: progressController.stream,
+                onCancel: () {},
+              ),
+            ),
+          ),
+        );
+
+        // Verify GB format
+        expect(find.textContaining('GB'), findsOneWidget);
+        expect(find.textContaining('MB'), findsNothing);
+      },
+    );
   });
 }

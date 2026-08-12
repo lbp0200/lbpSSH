@@ -26,6 +26,56 @@ void main() {
       });
     });
 
+    group('UrlAction', () {
+      test('creates with url and optional id', () {
+        const action = UrlAction(url: 'https://example.com', id: 'u1');
+        expect(action.url, 'https://example.com');
+        expect(action.id, 'u1');
+      });
+
+      test('creates with url only', () {
+        const action = UrlAction(url: 'https://example.com');
+        expect(action.url, 'https://example.com');
+        expect(action.id, isNull);
+      });
+    });
+
+    group('FileAction', () {
+      test('creates with path, line and column', () {
+        const action = FileAction(path: '/tmp/a.txt', line: '10', column: '3');
+        expect(action.path, '/tmp/a.txt');
+        expect(action.line, '10');
+        expect(action.column, '3');
+      });
+
+      test('creates with path only', () {
+        const action = FileAction(path: '/tmp/a.txt');
+        expect(action.path, '/tmp/a.txt');
+        expect(action.line, isNull);
+        expect(action.column, isNull);
+      });
+    });
+
+    group('ProgramAction', () {
+      test('creates with program and default arguments', () {
+        const action = ProgramAction(program: 'ls');
+        expect(action.program, 'ls');
+        expect(action.arguments, isEmpty);
+        expect(action.cwd, isNull);
+      });
+
+      test('creates with all fields', () {
+        const action = ProgramAction(
+          program: 'vim',
+          arguments: ['a.txt'],
+          cwd: '/tmp',
+        );
+        expect(action.program, 'vim');
+        expect(action.arguments, ['a.txt']);
+        expect(action.cwd, '/tmp');
+      });
+    });
+
     group('openUrl', () {
       test('writes OSC 5 sequence with URL', () async {
         await service.openUrl('https://example.com');

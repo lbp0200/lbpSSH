@@ -119,6 +119,30 @@ void main() {
     );
 
     test(
+      'Given original config, When calling copyWith with no args, '
+      'Then keeps all original values (fallback branches)',
+      () {
+        final original = DefaultTerminalConfig(
+          execWindows: TerminalType.powershell,
+          execWindowsCustom: 'win-custom',
+          execMac: TerminalType.kitty,
+          execMacCustom: 'mac-custom',
+          execLinux: TerminalType.wezterm,
+          execLinuxCustom: 'linux-custom',
+        );
+
+        final copied = original.copyWith();
+
+        expect(copied.execWindows, TerminalType.powershell);
+        expect(copied.execWindowsCustom, 'win-custom');
+        expect(copied.execMac, TerminalType.kitty);
+        expect(copied.execMacCustom, 'mac-custom');
+        expect(copied.execLinux, TerminalType.wezterm);
+        expect(copied.execLinuxCustom, 'linux-custom');
+      },
+    );
+
+    test(
       'Given powershell terminal type, When calling getWindowsCommand, Then returns powershell.exe',
       () {
         final config = DefaultTerminalConfig(

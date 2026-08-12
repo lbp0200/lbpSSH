@@ -185,5 +185,44 @@ void main() {
       // 重复 close 不应抛出。
       await socket.close();
     });
+
+    test('Given a successful connection, '
+        'When done getter accessed, '
+        'Then returns a Future that completes when socket closes', () async {
+      final proxy = await startSocksServer();
+      addTearDown(proxy.stop);
+
+      final socket = await connectViaSocks5Proxy(
+        '127.0.0.1',
+        proxyPortOf(proxy),
+        '127.0.0.1',
+        targetPort,
+      );
+
+      // done 应返回一个 Future（不抛异常），且 socket 关闭后完成。
+      final done = socket.done;
+      expect(done, isA<Future<void>>());
+
+      await socket.close();
+      await done.timeout(const Duration(seconds: 2), onTimeout: () {});
+    });
+
+    test('Given a successful connection, '
+        'When destroy called, '
+        'Then destroys the underlying socket without throwing', () async {
+      final proxy = await startSocksServer();
+      addTearDown(proxy.stop);
+
+      final socket = await connectViaSocks5Proxy(
+        '127.0.0.1',
+        proxyPortOf(proxy),
+        '127.0.0.1',
+        targetPort,
+      );
+
+      expect(() => socket.destroy(), returnsNormally);
+      // 销毁后重复 destroy 不应抛出。
+      expect(() => socket.destroy(), returnsNormally);
+    });
   });
 }

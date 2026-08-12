@@ -34,6 +34,22 @@ void main() {
   group('SyncNotifier', () {
     group('config', () {
       test(
+        'Given same fields, When comparing statuses, Then equal and same hashCode',
+        () {
+          final config = SyncConfig(accessToken: 'tok');
+          final a = SyncStatus(
+            config: config,
+            lastSyncTime: DateTime(2026),
+          );
+          final b = SyncStatus(
+            config: config,
+            lastSyncTime: DateTime(2026),
+          );
+          expect(a, b);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+      test(
         'Given SyncService with config, When accessing config, Then returns sync config',
         () {
           // Arrange (Given)

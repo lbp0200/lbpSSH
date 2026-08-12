@@ -838,6 +838,69 @@ void main() {
     );
 
     testWidgets(
+      'Given download with progress events, When download runs, '
+      'Then progress dialog shows transferred bytes',
+      (tester) async {
+        final downloadCompleter = Completer<void>();
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false),
+          ],
+        );
+        // mock 在下载期间回调 onProgress,并保持下载挂起直到断言完成
+        when(
+          () => transferService.downloadFile(
+            any(),
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((invocation) {
+          final onProgress =
+              invocation.namedArguments[#onProgress]
+                  as void Function(TransferProgress);
+          onProgress(
+            TransferProgress(
+              fileName: 'a.txt',
+              transferredBytes: 512,
+              totalBytes: 1024,
+              percent: 50,
+              bytesPerSecond: 1024,
+            ),
+          );
+          return downloadCompleter.future;
+        });
+
+        final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+
+        // onProgress 回调已触发,进度对话框显示传输数据
+        expect(find.textContaining('50.0%'), findsOneWidget);
+
+        // 完成下载,对话框关闭并显示成功消息
+        downloadCompleter.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('下载成功'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'Given directory picked, When download menu tapped, '
       'Then downloads file and shows success',
       (tester) async {

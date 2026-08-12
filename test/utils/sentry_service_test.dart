@@ -5,7 +5,7 @@ import 'package:sentry/sentry.dart';
 /// 无网络 transport：接收事件后立即完成，避免真实 HTTP 请求挂起
 class _NoOpTransport implements Transport {
   @override
-  Future<SentryId?> send(SentryEnvelope envelope) async => SentryId.empty();
+  Future<SentryId?> send(SentryEnvelope envelope) async => const SentryId.empty();
 }
 
 void main() {

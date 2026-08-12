@@ -197,4 +197,29 @@ void main() {
       },
     );
   });
+
+  group('AppConfig constructor defaults', () {
+    test(
+      'Given no arguments, When AppConfig constructed, '
+      'Then uses default configs for all fields',
+      () {
+        final config = AppConfig();
+
+        expect(config.terminal.fontFamily, 'JetBrainsMonoNerdFontMono');
+        expect(config.defaultTerminal.execWindows, TerminalType.windowsTerminal);
+        expect(config.ssh.keepaliveInterval, isNotNull);
+      },
+    );
+
+    test(
+      'Given partial arguments, When AppConfig constructed, '
+      'Then keeps provided values and defaults for others',
+      () {
+        final config = AppConfig(terminal: TerminalConfig(fontFamily: 'Mono'));
+
+        expect(config.terminal.fontFamily, 'Mono');
+        expect(config.defaultTerminal.execWindows, TerminalType.windowsTerminal);
+      },
+    );
+  });
 }

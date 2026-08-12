@@ -419,6 +419,41 @@ void main() {
     );
 
     testWidgets(
+      'Given padding field, When number entered, Then padding updates without error',
+      (tester) async {
+        await pumpPage(tester);
+
+        await enterField(tester, '内边距', '24');
+
+        expect(tester.takeException(), isNull);
+        // 输入合法数字后不应报错，预览正常渲染
+        expect(find.text('24'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given keepalive changed, When SSH section 重置 tapped, '
+      'Then keepalive reverts to default',
+      (tester) async {
+        await pumpPage(tester);
+
+        await enterField(tester, 'Keepalive 间隔', '60');
+
+        // 第二个"重置"按钮位于 SSH 连接设置区块
+        await tester.tap(find.text('重置').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('保存 SSH 设置'));
+        await tester.pumpAndSettle();
+
+        expect(mockSshNotifier.lastSaved?.keepaliveInterval, 30000);
+
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
       'Given shell dropdown, When bash selected, Then shellPath saved',
       (tester) async {
         await pumpPage(tester);

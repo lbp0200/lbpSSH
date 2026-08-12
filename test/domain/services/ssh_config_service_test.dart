@@ -201,6 +201,16 @@ Host myserver
       );
 
       test(
+        'Given no file path, When reading config, Then uses default config path',
+        () {
+          // 无 filePath 时走 getDefaultConfigPath() 回退分支
+          final entries = SshConfigService.readConfigFile();
+
+          expect(entries, isA<List<SshConfigEntry>>());
+        },
+      );
+
+      test(
         'Given directory path instead of file, When reading config, Then returns empty list (catch block)',
         () {
           final tempDir = Directory.systemTemp.createTempSync();
@@ -268,6 +278,16 @@ Host myserver
           );
 
           expect(exists, isTrue);
+        },
+      );
+
+      test(
+        'Given no file path, When configFileExists called, Then uses default config path',
+        () {
+          // 无 filePath 时走 getDefaultConfigPath() 回退分支
+          final exists = SshConfigService.configFileExists();
+
+          expect(exists, isA<bool>());
         },
       );
     });

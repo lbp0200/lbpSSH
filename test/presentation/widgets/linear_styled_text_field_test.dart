@@ -334,4 +334,27 @@ void main() {
       expect(find.text('自定义错误'), findsOneWidget);
     });
   });
+
+  group('portValidator', () {
+    test('returns message for null or empty value', () {
+      expect(portValidator(null, '端口'), '请输入端口');
+      expect(portValidator('', '端口'), '请输入端口');
+    });
+
+    test('returns invalid message for non-numeric value', () {
+      expect(portValidator('abc', '端口'), '端口号无效');
+    });
+
+    test('returns invalid message for out-of-range value', () {
+      expect(portValidator('0', '端口'), '端口号无效');
+      expect(portValidator('65536', '端口'), '端口号无效');
+      expect(portValidator('-1', '端口'), '端口号无效');
+    });
+
+    test('returns null for valid port', () {
+      expect(portValidator('22', '端口'), isNull);
+      expect(portValidator('1', '端口'), isNull);
+      expect(portValidator('65535', '端口'), isNull);
+    });
+  });
 }

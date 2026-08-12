@@ -26,6 +26,20 @@ void main() {
       });
     });
 
+    group('TerminalModeState', () {
+      test('creates with mode and isSet', () {
+        const state = TerminalModeState(TerminalMode.autoWrap, true);
+        expect(state.mode, TerminalMode.autoWrap);
+        expect(state.isSet, isTrue);
+      });
+
+      test('creates with mode not set', () {
+        const state = TerminalModeState(TerminalMode.cursorVisible, false);
+        expect(state.mode, TerminalMode.cursorVisible);
+        expect(state.isSet, isFalse);
+      });
+    });
+
     group('setMode', () {
       test('sends CSI h command with mode value', () async {
         await service.setMode(TerminalMode.cursorVisible);

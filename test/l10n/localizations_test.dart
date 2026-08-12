@@ -165,28 +165,11 @@ void main() {
       });
 
       test('shouldReload returns false for same delegate', () {
-        const delegate = _AppLocalizationsDelegateForTest();
-
-        expect(delegate.shouldReload(delegate), isFalse);
+        expect(
+          AppLocalizations.delegate.shouldReload(AppLocalizations.delegate),
+          isFalse,
+        );
       });
     });
   });
-}
-
-/// 测试用:委托实现与 AppLocalizations.delegate 相同,但便于断言
-class _AppLocalizationsDelegateForTest
-    extends LocalizationsDelegate<AppLocalizations> {
-  const _AppLocalizationsDelegateForTest();
-
-  @override
-  bool isSupported(Locale locale) =>
-      ['en', 'zh'].contains(locale.languageCode);
-
-  @override
-  Future<AppLocalizations> load(Locale locale) async {
-    return AppLocalizations(locale);
-  }
-
-  @override
-  bool shouldReload(_AppLocalizationsDelegateForTest old) => false;
 }

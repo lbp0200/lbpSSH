@@ -95,6 +95,14 @@ void main() {
         ).called(1);
       });
 
+      test('includes absolute placement parameter', () async {
+        final data = Uint8List.fromList([0x41]);
+        await service.loadImage(data, placement: ImagePlacement.absolute);
+        verify(
+          () => mockSession.writeRaw('\x1b]71;a=i;id=1;p=absolute;d=QQ==\x1b\\'),
+        ).called(1);
+      });
+
       test('includes width and height when provided', () async {
         final data = Uint8List.fromList([0x41]);
         await service.loadImage(data, width: 100, height: 50);
@@ -157,6 +165,31 @@ void main() {
         verify(
           () => mockSession.writeRaw(
             '\x1b]71;a=i;id=1;w=200;h=100;p=absolute;f=L3RtcC90ZXN0LnBuZw==\x1b\\',
+          ),
+        ).called(1);
+      });
+
+      test('includes x and y coordinates', () async {
+        await service.loadImageFromPath(
+          '/tmp/test.png',
+          x: 10,
+          y: 20,
+        );
+        verify(
+          () => mockSession.writeRaw(
+            '\x1b]71;a=i;id=1;x=10;y=20;f=L3RtcC90ZXN0LnBuZw==\x1b\\',
+          ),
+        ).called(1);
+      });
+
+      test('includes cursor placement parameter', () async {
+        await service.loadImageFromPath(
+          '/tmp/test.png',
+          placement: ImagePlacement.cursor,
+        );
+        verify(
+          () => mockSession.writeRaw(
+            '\x1b]71;a=i;id=1;p=cursor;f=L3RtcC90ZXN0LnBuZw==\x1b\\',
           ),
         ).called(1);
       });

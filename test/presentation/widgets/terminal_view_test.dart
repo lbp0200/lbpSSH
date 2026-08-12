@@ -489,7 +489,7 @@ void main() {
         String method,
         Object? args,
       ) async {
-        final codec = const StandardMethodCodec();
+        const codec = StandardMethodCodec();
         tester.binding.defaultBinaryMessenger.handlePlatformMessage(
           'desktop_drop',
           codec.encodeMethodCall(MethodCall(method, args)),
@@ -605,7 +605,11 @@ void main() {
           await pumpTabs(tester, terminalNotifier: notifier);
 
           await dispatchDrop(tester, 'entered', [700.0, 400.0]);
-          await dispatchDrop(tester, 'performOperation_macos', <Map>[]);
+          await dispatchDrop(
+            tester,
+            'performOperation_macos',
+            <Map<dynamic, dynamic>>[],
+          );
           await tester.pump();
 
           expect(find.textContaining('上传失败'), findsNothing);

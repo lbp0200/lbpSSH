@@ -139,6 +139,39 @@ void main() {
           expect(find.textContaining('跳板机'), findsNothing);
         },
       );
+
+      testWidgets(
+        'Given connection with key auth, When dialog opens, Then shows key auth name',
+        (WidgetTester tester) async {
+          final conn = _createConnection(authType: AuthType.key);
+
+          await pumpDialog(tester, connection: conn, errorMessage: 'test');
+
+          expect(find.textContaining('密钥认证'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given connection with key+password auth, When dialog opens, Then shows combined auth name',
+        (WidgetTester tester) async {
+          final conn = _createConnection(authType: AuthType.keyWithPassword);
+
+          await pumpDialog(tester, connection: conn, errorMessage: 'test');
+
+          expect(find.textContaining('密钥+密码认证'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given connection with sshConfig auth, When dialog opens, Then shows SSH Config name',
+        (WidgetTester tester) async {
+          final conn = _createConnection(authType: AuthType.sshConfig);
+
+          await pumpDialog(tester, connection: conn, errorMessage: 'test');
+
+          expect(find.textContaining('SSH Config'), findsOneWidget);
+        },
+      );
     });
 
     group('solution hints', () {

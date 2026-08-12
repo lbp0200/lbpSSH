@@ -321,6 +321,49 @@ void main() {
       );
 
       testWidgets(
+        'Given preview with multiple connections of different auth types, '
+        'When preview shown, Then renders auth icons and separators',
+        (tester) async {
+          final notifier = _MockImportExportNotifier(
+            const ImportExportStatusData(),
+          )..importResult = [
+            SshConnection(
+              id: 'c1',
+              name: 'Key Server',
+              host: '10.0.0.1',
+              username: 'ops',
+              authType: AuthType.key,
+            ),
+            SshConnection(
+              id: 'c2',
+              name: 'KeyPass Server',
+              host: '10.0.0.2',
+              username: 'ops',
+              authType: AuthType.keyWithPassword,
+            ),
+            SshConnection(
+              id: 'c3',
+              name: 'SshConfig Server',
+              host: '10.0.0.3',
+              username: 'ops',
+              authType: AuthType.sshConfig,
+            ),
+          ];
+          await pumpScreen(tester, notifier: notifier);
+
+          await tester.tap(find.widgetWithText(ElevatedButton, '导入配置'));
+          await tester.pumpAndSettle();
+
+          // 三种认证类型的图标（页面其他区域可能也有 key 图标）
+          expect(find.byIcon(Icons.key), findsAtLeastNWidgets(1));
+          expect(find.byIcon(Icons.vpn_key), findsAtLeastNWidgets(1));
+          expect(find.byIcon(Icons.settings), findsAtLeastNWidgets(1));
+          // 列表项之间的分隔线（3 项 → 2 条分隔线）
+          expect(find.byType(Divider), findsNWidgets(2));
+        },
+      );
+
+      testWidgets(
         'Given import fails, When import button is tapped, Then shows error snackbar',
         (tester) async {
           final notifier = _MockImportExportNotifier(

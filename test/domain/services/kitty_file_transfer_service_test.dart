@@ -1049,6 +1049,66 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
           }
         },
       );
+
+      test(
+        'Given session emitting start and chunk events, When downloadFile called, '
+        'Then writes data and completes on end',
+        () async {
+          final progressEvents = <TransferProgress>[];
+          final downloadFuture = service.downloadFile(
+            '/remote/file.txt',
+            '${tempDir.path}/downloaded.txt',
+            onProgress: progressEvents.add,
+          );
+
+          // Emit start + chunk + end events to drive the message handler
+          fileTransferController.add(
+            FileTransferEvent(
+              type: 'start',
+              fileId: 'f1',
+              fileName: 'file.txt',
+              fileSize: 5,
+            ),
+          );
+          fileTransferController.add(
+            FileTransferEvent(
+              type: 'chunk',
+              fileId: 'f1',
+              data: Uint8List.fromList([104, 101, 108, 108, 111]), // 'hello'
+            ),
+          );
+          fileTransferController.add(FileTransferEvent(type: 'end'));
+
+          await downloadFuture;
+
+          // 数据已写入本地文件
+          final written = await File(
+            '${tempDir.path}/downloaded.txt',
+          ).readAsBytes();
+          expect(written, [104, 101, 108, 108, 111]);
+          // onProgress 回调被触发且带 totalBytes
+          expect(progressEvents, isNotEmpty);
+          expect(progressEvents.last.totalBytes, 5);
+        },
+      );
+
+      test(
+        'Given session emitting error event, When downloadFile called, '
+        'Then rethrows the error',
+        () async {
+          final downloadFuture = service.downloadFile(
+            '/remote/file.txt',
+            '${tempDir.path}/downloaded.txt',
+          );
+
+          fileTransferController.addError(Exception('transfer failed'));
+
+          await expectLater(
+            downloadFuture,
+            throwsA(isA<Exception>()),
+          );
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -1331,6 +1391,41 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
             onProgress: progress,
           );
 
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=data'))),
+          ).called(1);
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+          ).called(1);
+        },
+      );
+
+      test(
+        'Given directory containing a nested file in subdirectory, '
+        'When sendDirectory called, '
+        'Then recurses into subdirectory and sends nested file',
+        () async {
+          // 在子目录中创建文件，触发 sendEntity 的 Directory 分支
+          // 递归循环（listSync 返回非空 children）
+          await File('${tempDir.path}/subdir/inner.txt').writeAsString('nested');
+
+          final dirName = tempDir.path.split('/').last;
+          final service = KittyFileTransferService(
+            session: mockSession,
+            initialPath: '/home/user',
+          );
+          final progress = _mockProgressCallback();
+
+          await service.sendDirectory(
+            localPath: tempDir.path,
+            remotePath: '/home/user/$dirName',
+            onProgress: progress,
+          );
+
+          // 子目录的目录元数据 + 嵌套文件的数据块
+          verify(
+            () => mockSession.writeRaw(any(that: contains('ft=directory'))),
+          ).called(greaterThanOrEqualTo(2));
           verify(
             () => mockSession.writeRaw(any(that: contains('ac=data'))),
           ).called(1);

@@ -182,6 +182,19 @@ void main() {
         ).called(1);
       });
 
+      test('saves with selection area and svg format', () async {
+        await service.saveScreenshot(
+          '/tmp/shot.svg',
+          area: ScreenshotArea.selection,
+          format: ScreenshotFormat.svg,
+        );
+        verify(
+          () => mockSession.writeRaw(
+            '\x1b]20;screenshot:save:/tmp/shot.svg:area=selection:format=svg\x1b\\\\',
+          ),
+        ).called(1);
+      });
+
       test('throws when session is null', () async {
         final nullService = KittyScreenshotService();
         expect(
@@ -206,6 +219,15 @@ void main() {
         verify(
           () => mockSession.writeRaw(
             '\x1b]20;screenshot:clipboard:area=window\x1b\\\\',
+          ),
+        ).called(1);
+      });
+
+      test('copies selection area', () async {
+        await service.copyToClipboard(area: ScreenshotArea.selection);
+        verify(
+          () => mockSession.writeRaw(
+            '\x1b]20;screenshot:clipboard:area=selection\x1b\\\\',
           ),
         ).called(1);
       });

@@ -48,6 +48,43 @@ void main() {
           expect(state.searchQuery, '');
         },
       );
+
+      test(
+        'Given same fields, When comparing states, Then equal and same hashCode',
+        () {
+          final connections = [
+            SshConnection(
+              id: 'conn1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+          final a = ConnectionState(
+            error: 'err',
+            searchQuery: 'q',
+            connections: connections,
+          );
+          final b = ConnectionState(
+            error: 'err',
+            searchQuery: 'q',
+            connections: connections,
+          );
+          expect(a, b);
+          expect(a.hashCode, b.hashCode);
+        },
+      );
+
+      test(
+        'Given different error, When comparing states, Then not equal',
+        () {
+          const a = ConnectionState(error: 'a');
+          const b = ConnectionState(error: 'b');
+          expect(a == b, isFalse);
+          expect(a.hashCode == b.hashCode, isFalse);
+        },
+      );
     });
 
     group('loadConnections', () {
@@ -185,6 +222,33 @@ void main() {
           verify(() => mockRepo.saveConnection(connection)).called(1);
           // getAllConnections: _load microtask + loadConnections
           verify(() => mockRepo.getAllConnections()).called(2);
+        },
+      );
+
+      test(
+        'Given saveConnection throws, When updateConnection called, '
+        'Then sets error and rethrows',
+        () async {
+          final connection = SshConnection(
+            id: 'conn1',
+            name: 'Updated Server',
+            host: '192.168.1.1',
+            username: 'user1',
+            authType: AuthType.password,
+          );
+          when(
+            () => mockRepo.saveConnection(connection),
+          ).thenThrow(Exception('save boom'));
+
+          expect(
+            () => container
+                .read(connectionProvider.notifier)
+                .updateConnection(connection),
+            throwsException,
+          );
+          final state = container.read(connectionProvider);
+          expect(state.error, isNotNull);
+          expect(state.error, contains('更新连接失败'));
         },
       );
     });

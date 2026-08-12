@@ -536,6 +536,13 @@ void main() {
       });
     });
 
+    group('setBackgroundColor', () {
+      test('sends OSC 11 with color', () async {
+        await service.setBackgroundColor('#1e1e2e');
+        verify(() => mockSession.writeRaw('\x1b]11;#1e1e2e\x1b\\\\')).called(1);
+      });
+    });
+
     group('setCursorColor', () {
       test('sends OSC 12 with color', () async {
         await service.setCursorColor('#ff0000');
