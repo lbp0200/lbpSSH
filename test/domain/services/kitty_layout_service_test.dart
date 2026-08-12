@@ -352,6 +352,81 @@ void main() {
       test('ignores malformed response without error', () {
         expect(() => service.handleLayoutResponse('20;;;'), returnsNormally);
       });
+
+      test('parses single window response', () {
+        service.handleLayoutResponse('20;windows:1:My Window');
+
+        expect(service.windows.length, 1);
+        expect(service.windows.first.id, '1');
+        expect(service.windows.first.title, 'My Window');
+        expect(service.windows.first.isActive, isFalse);
+      });
+
+      test('parses multiple windows separated by semicolons', () {
+        service.handleLayoutResponse('20;windows:1:Alpha;2:Beta;3:Gamma');
+
+        expect(service.windows.length, 3);
+        expect(service.windows[0].id, '1');
+        expect(service.windows[0].title, 'Alpha');
+        expect(service.windows[1].id, '2');
+        expect(service.windows[1].title, 'Beta');
+        expect(service.windows[2].id, '3');
+        expect(service.windows[2].title, 'Gamma');
+      });
+
+      test('replaces previous window list on new response', () {
+        service.handleLayoutResponse('20;windows:1:Old');
+        service.handleLayoutResponse('20;windows:2:New');
+
+        expect(service.windows.length, 1);
+        expect(service.windows.first.id, '2');
+        expect(service.windows.first.title, 'New');
+      });
+
+      test('skips malformed window entries without error', () {
+        expect(
+          () => service.handleLayoutResponse('20;windows:1:Valid;;no-colon'),
+          returnsNormally,
+        );
+
+        expect(service.windows.length, 1);
+        expect(service.windows.first.id, '1');
+        expect(service.windows.first.title, 'Valid');
+      });
+
+      test('clears windows when response has no entries', () {
+        service.handleLayoutResponse('20;windows:1:Alpha');
+        service.handleLayoutResponse('20;windows:');
+
+        expect(service.windows, isEmpty);
+      });
+    });
+
+    group('focusWindow state update', () {
+      test('marks focused window active and others inactive', () async {
+        service.handleLayoutResponse('20;windows:1:Alpha;2:Beta;3:Gamma');
+
+        await service.focusWindow('2');
+
+        expect(service.windows[0].isActive, isFalse);
+        expect(service.windows[1].isActive, isTrue);
+        expect(service.windows[2].isActive, isFalse);
+        verify(
+          () => mockSession.writeRaw('\x1b]20;window:focus:2\x1b\\\\'),
+        ).called(1);
+      });
+
+      test('keeps window metadata unchanged when updating active flag', () async {
+        service.handleLayoutResponse('20;windows:9:Node;10:Vim');
+
+        await service.focusWindow('9');
+
+        expect(service.windows[0].id, '9');
+        expect(service.windows[0].title, 'Node');
+        expect(service.windows[0].isActive, isTrue);
+        expect(service.windows[1].title, 'Vim');
+        expect(service.windows[1].isActive, isFalse);
+      });
     });
   });
 }

@@ -262,9 +262,27 @@ class KittyLayoutService extends KittyServiceBase {
               _currentLayout = const LayoutConfig(type: LayoutType.vertical);
               break;
           }
-        } else if (parts.isNotEmpty && parts[0].startsWith('window:')) {
+        } else if (parts.isNotEmpty && parts[0].startsWith('windows:')) {
           // 窗口响应
-          // 解析窗口列表
+          // 格式: windows:id1:title1;id2:title2
+          // 第一个部分包含 "windows:" 前缀及第一个窗口
+          final windowParts = <String>[
+            parts[0].substring('windows:'.length),
+            ...parts.sublist(1),
+          ];
+
+          final windows = <WindowInfo>[];
+          for (final part in windowParts) {
+            if (part.isEmpty) continue;
+            final idx = part.indexOf(':');
+            if (idx <= 0) continue;
+            final id = part.substring(0, idx);
+            final title = part.substring(idx + 1);
+            windows.add(WindowInfo(id: id, title: title));
+          }
+          _windows
+            ..clear()
+            ..addAll(windows);
         }
       }
     } catch (e) {
