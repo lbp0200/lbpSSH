@@ -86,15 +86,78 @@ Future<SSHSocket> connectViaSocks5Proxy(
 /// SSH 连接状态
 enum SshConnectionState { disconnected, connecting, connected, error }
 
+/// SSHClient 工厂签名（测试时可注入替身，默认使用真实 [SSHClient]）
+typedef SSHClientFactory = SSHClient Function(
+  SSHSocket socket, {
+  required String username,
+  SSHPasswordRequestHandler? onPasswordRequest,
+  List<SSHKeyPair>? identities,
+  Duration? keepAliveInterval,
+});
+
+/// SSH socket 连接器签名（测试时可注入替身，默认使用 [SSHSocket.connect]）
+typedef SSHSocketConnector = Future<SSHSocket> Function(
+  String host,
+  int port, {
+  Duration? timeout,
+});
+
 /// SSH 连接服务
 class SshService implements TerminalInputService {
   final AppConfigService? _appConfigService;
+  final SSHClientFactory? _clientFactory;
+  final SSHSocketConnector? _socketConnector;
 
-  SshService({AppConfigService? appConfigService})
-    : _appConfigService = appConfigService;
+  SshService({
+    AppConfigService? appConfigService,
+    SSHClientFactory? clientFactory,
+    SSHSocketConnector? socketConnector,
+  })  : _appConfigService = appConfigService,
+        _clientFactory = clientFactory,
+        _socketConnector = socketConnector;
 
   AppConfigService get _config =>
       _appConfigService ?? AppConfigService.getInstance();
+
+  /// 连接 SSH socket（优先使用注入的连接器，默认 [SSHSocket.connect]）
+  Future<SSHSocket> _connectSocket(
+    String host,
+    int port, {
+    Duration? timeout,
+  }) {
+    final connector = _socketConnector;
+    if (connector != null) {
+      return connector(host, port, timeout: timeout);
+    }
+    return SSHSocket.connect(host, port, timeout: timeout);
+  }
+
+  /// 创建 SSH 客户端（优先使用注入的工厂，默认 [SSHClient]）
+  SSHClient _createClient(
+    SSHSocket socket, {
+    required String username,
+    SSHPasswordRequestHandler? onPasswordRequest,
+    List<SSHKeyPair>? identities,
+    Duration? keepAliveInterval,
+  }) {
+    final factory = _clientFactory;
+    if (factory != null) {
+      return factory(
+        socket,
+        username: username,
+        onPasswordRequest: onPasswordRequest,
+        identities: identities,
+        keepAliveInterval: keepAliveInterval,
+      );
+    }
+    return SSHClient(
+      socket,
+      username: username,
+      onPasswordRequest: onPasswordRequest,
+      identities: identities,
+      keepAliveInterval: keepAliveInterval ?? const Duration(seconds: 10),
+    );
+  }
 
   SSHClient? _client;
   final _stateController = StreamController<SshConnectionState>.broadcast();
@@ -221,7 +284,7 @@ class SshService implements TerminalInputService {
           timeout: timeout,
         );
       } else {
-        socket = await SSHSocket.connect(
+        socket = await _connectSocket(
           connection.host,
           connection.port,
           timeout: timeout,
@@ -299,7 +362,7 @@ class SshService implements TerminalInputService {
               timeout: timeout,
             );
           } else {
-            socket = await SSHSocket.connect(
+            socket = await _connectSocket(
               targetHost,
               targetPort,
               timeout: timeout,
@@ -354,7 +417,7 @@ class SshService implements TerminalInputService {
         await _connectViaJumpHost(connection);
       } else {
         // 直接连接到目标服务器，创建 SSH 客户端
-        _client = SSHClient(
+        _client = _createClient(
           socket,
           username: connection.username,
           onPasswordRequest: connection.authType == AuthType.password
@@ -575,7 +638,7 @@ class SshService implements TerminalInputService {
     // 1. 连接到跳板机
     _outputController.add('正在连接到跳板机 ${jumpHost.host}:${jumpHost.port}...\r\n');
 
-    final jumpSocket = await SSHSocket.connect(jumpHost.host, jumpHost.port);
+    final jumpSocket = await _connectSocket(jumpHost.host, jumpHost.port);
 
     // 根据跳板机的认证方式准备认证信息
     String? jumpPassword;
@@ -623,7 +686,7 @@ class SshService implements TerminalInputService {
     }
 
     // 创建跳板机SSH客户端
-    final jumpClient = SSHClient(
+    final jumpClient = _createClient(
       jumpSocket,
       username: jumpHost.username,
       onPasswordRequest: jumpHost.authType == AuthType.password
@@ -653,7 +716,7 @@ class SshService implements TerminalInputService {
     // 3. 通过隧道连接到目标服务器
     _outputController.add('通过跳板机连接到目标服务器...\r\n');
 
-    final targetSocket = await SSHSocket.connect('localhost', localPort);
+    final targetSocket = await _connectSocket('localhost', localPort);
 
     // 创建目标服务器的SSH客户端
     // 注意：这里需要重新创建identities，因为前面的局部变量已经超出作用域
@@ -678,7 +741,7 @@ class SshService implements TerminalInputService {
         break;
     }
 
-    _client = SSHClient(
+    _client = _createClient(
       targetSocket,
       username: connection.username,
       onPasswordRequest: connection.authType == AuthType.password
