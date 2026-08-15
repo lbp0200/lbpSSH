@@ -34,7 +34,7 @@ dependencies:
   # 国际化
   flutter_localizations:
     sdk: flutter
-  intl: ^0.20.2
+  intl: ^0.20.3
 
   # App info
   package_info_plus: ^10.1.0
