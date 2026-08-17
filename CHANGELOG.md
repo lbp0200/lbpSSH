@@ -1,3 +1,5 @@
+- fix(deps): pin file_picker to 12.0.0-beta.7 and fix committed lockfile (08172fb)
+- docs: update CHANGELOG (c36fb7b)
 - fix(ci): resolve test failures on Linux and Windows runners (8ca4caf)
 - test: extend coverage across services and widgets (c94fefa)
 - chore(constants): remove unused appName and defaultSshPort (4e9afb7)
