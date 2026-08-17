@@ -11,10 +11,11 @@ import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/screens/connection_form.dart';
 
 /// 创建一个 exists() 为 true 但 readAsString 抛错的"不可读"文件（跨平台）。
-/// POSIX 用 chmod 000；Windows 无 POSIX 权限位，改用 icacls 拒绝读权限。
+/// POSIX 用 chmod 000；Windows 用 icacls 仅拒绝"读数据"权限 (RD)——
+/// 若拒绝泛读权限 (R)，File.exists() 也会失败，应用会走"文件不存在"分支。
 void makeFileUnreadable(File file) {
   if (Platform.isWindows) {
-    Process.runSync('icacls', [file.path, '/deny', 'Everyone:(R)']);
+    Process.runSync('icacls', [file.path, '/deny', 'Everyone:(RD)']);
   } else {
     Process.runSync('chmod', ['000', file.path]);
   }
