@@ -85,7 +85,7 @@ class LocalTerminalService implements TerminalInputService {
       String basePath = '/';
       for (int i = 1; i < parts.length - 1; i++) {
         if (parts[i].isEmpty) continue;
-        basePath = '$basePath/${parts[i]}';
+        basePath = basePath == '/' ? '/${parts[i]}' : '$basePath/${parts[i]}';
         final baseDir = Directory(basePath);
         if (!baseDir.existsSync()) {
           return path; // 返回原始路径

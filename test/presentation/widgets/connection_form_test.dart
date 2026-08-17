@@ -10,6 +10,23 @@ import 'package:lbp_ssh/domain/services/ssh_config_service.dart';
 import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
 import 'package:lbp_ssh/presentation/screens/connection_form.dart';
 
+/// 创建一个 exists() 为 true 但 readAsString 抛错的"不可读"文件（跨平台）。
+/// POSIX 用 chmod 000；Windows 无 POSIX 权限位，改用 icacls 拒绝读权限。
+void makeFileUnreadable(File file) {
+  if (Platform.isWindows) {
+    Process.runSync('icacls', [file.path, '/deny', 'Everyone:(R)']);
+  } else {
+    Process.runSync('chmod', ['000', file.path]);
+  }
+}
+
+/// 恢复文件权限，保证测试结束后临时目录可被递归删除。
+void restoreFilePermissions(File file) {
+  if (Platform.isWindows) {
+    Process.runSync('icacls', [file.path, '/remove:d', 'Everyone']);
+  }
+}
+
 /// Fake FilePickerPlatform：可配置 pickFiles 返回值
 class _FakeFilePickerPlatform extends FilePickerPlatform {
   FilePickerResult? pickResult;
@@ -502,8 +519,9 @@ void main() {
         final tempDir = Directory.systemTemp.createTempSync('lbpssh_noread');
         final file = File('${tempDir.path}/noperm')
           ..writeAsStringSync('secret key');
-        Process.runSync('chmod', ['000', file.path]);
+        makeFileUnreadable(file);
         addTearDown(() {
+          restoreFilePermissions(file);
           try {
             tempDir.deleteSync(recursive: true);
           } catch (_) {}
@@ -717,8 +735,9 @@ void main() {
           final tempDir = Directory.systemTemp.createTempSync('lbpssh_noread');
           final file = File('${tempDir.path}/noperm')
             ..writeAsStringSync('secret key');
-          Process.runSync('chmod', ['000', file.path]);
+          makeFileUnreadable(file);
           addTearDown(() {
+            restoreFilePermissions(file);
             try {
               tempDir.deleteSync(recursive: true);
             } catch (_) {}

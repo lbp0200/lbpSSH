@@ -152,8 +152,11 @@ void main() {
       // 接受连接但故意不回应的“哑”代理。
       final silent = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(silent.close);
+      // 订阅并消费数据以保持连接存活，但不回写任何响应。
+      // （Windows 上不订阅的 accepted Socket 可能被回收导致连接关闭，
+      //  客户端会收到 SocksClientConnectionClosedException 而非等待超时。）
       silent.listen((socket) {
-        // 不响应任何数据
+        socket.listen((_) {});
       });
 
       await expectLater(
