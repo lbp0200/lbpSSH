@@ -1,3 +1,5 @@
+- fix(test): deny only read-data on Windows for unreadable key file (9382297)
+- docs: update CHANGELOG (99e38d2)
 - fix(deps): pin file_picker to 12.0.0-beta.7 and fix committed lockfile (08172fb)
 - docs: update CHANGELOG (c36fb7b)
 - fix(ci): resolve test failures on Linux and Windows runners (8ca4caf)
