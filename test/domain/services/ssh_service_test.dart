@@ -1383,6 +1383,65 @@ void main() {
 
       service.dispose();
     });
+
+    test('Given connected, '
+        'When stdout emits more than the buffer max size, '
+        'Then buffer is flushed immediately', () async {
+      // Arrange
+      final (service, _, session) = await connectSuccess();
+      final outputs = <String>[];
+      service.outputStream.listen(outputs.add);
+
+      // Act — 写入超过 65536 字节，触发 _flushOutputBuffer 立即刷出
+      final bigChunk = 'x' * 70000;
+      session.stdoutCtrl.add(utf8.encode(bigChunk));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      // Assert — 大块数据被立即冲刷到输出流
+      expect(outputs.join(), contains(bigChunk));
+      // 仍保持连接状态（flush 不触发断开）
+      expect(service.state, SshConnectionState.connected);
+
+      service.dispose();
+    });
+
+    test('Given connected, '
+        'When stdout stream closes, '
+        'Then session is disconnected', () async {
+      // Arrange
+      final (service, _, session) = await connectSuccess();
+      final outputs = <String>[];
+      service.outputStream.listen(outputs.add);
+
+      // Act — stdout onDone → _onSessionDone
+      await session.stdoutCtrl.close();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      // Assert
+      expect(service.state, SshConnectionState.disconnected);
+      expect(outputs.join(), contains('连接已断开'));
+
+      service.dispose();
+    });
+
+    test('Given connected, '
+        'When stderr stream closes, '
+        'Then session stays connected', () async {
+      // Arrange
+      final (service, _, session) = await connectSuccess();
+      final outputs = <String>[];
+      service.outputStream.listen(outputs.add);
+
+      // Act — stderr onDone 为空实现，不影响连接状态
+      await session.stderrCtrl.close();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      // Assert
+      expect(service.state, SshConnectionState.connected);
+      expect(outputs, isEmpty);
+
+      service.dispose();
+    });
   });
 
   // -------------------------------------------------------------------------

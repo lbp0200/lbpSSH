@@ -758,9 +758,13 @@ void main() {
           // Arrange (Given) — 用真实 sleep 进程的 pid 让 lsof 返回真实 cwd
           final proc = await Process.start('sleep', ['10']);
           addTearDown(() => proc.kill());
-          when(() => mockPty.pid).thenReturn(proc.pid);
           final svc = makeService();
+          // makeService() 默认 pid=4242，这里覆盖为真实进程 pid
+          when(() => mockPty.pid).thenReturn(proc.pid);
+          String? displayedDir;
           String? actualDir;
+          // 必须注册 onDirectoryChange，否则 sendInput 不会触发 cd 检测
+          svc.onDirectoryChange = (d) => displayedDir = d;
           svc.onActualDirectoryChange = (d) => actualDir = d;
 
           // Act (When) — cd 命令触发 500ms 后的 lsof 查询
@@ -769,7 +773,9 @@ void main() {
           svc.sendInput('\n');
           await Future<void>.delayed(const Duration(milliseconds: 700));
 
-          // Assert (Then) — lsof 返回真实目录；若环境无 lsof 则静默，不断言
+          // Assert (Then) — 立即回调收到用户输入的目录；
+          // lsof 返回真实目录；若环境无 lsof 则静默，不断言
+          expect(displayedDir, '/tmp');
           expect(actualDir?.startsWith('/') ?? true, isTrue);
 
           exitCodeCompleter.complete(0);

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lbp_ssh/tui/tui_config_path.dart';
 
@@ -32,6 +34,19 @@ void main() {
       final file = resolveTuiConfigFile(const {});
 
       expect(file.path, './.lbpSSH/ssh_connections.json');
+    });
+
+    test('Given no env argument, '
+        'Then uses Platform.environment for resolution', () {
+      // 不传 env → 走 `env ?? Platform.environment` 默认分支
+      final file = resolveTuiConfigFile();
+
+      final home = Platform.environment['HOME'];
+      if (home != null) {
+        expect(file.path, '$home/.lbpSSH/ssh_connections.json');
+      } else {
+        expect(file.path, './.lbpSSH/ssh_connections.json');
+      }
     });
   });
 }

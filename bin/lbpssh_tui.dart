@@ -5,6 +5,7 @@ import 'package:utopia_tui/utopia_tui.dart';
 import 'package:lbp_ssh/data/models/ssh_connection.dart';
 import 'package:lbp_ssh/data/repositories/connection_repository.dart';
 import 'package:lbp_ssh/tui/tui_config_path.dart';
+import 'package:lbp_ssh/tui/ssh_launcher.dart';
 import 'package:lbp_ssh/tui/tui_controller.dart';
 import 'package:lbp_ssh/tui/tui_router.dart';
 import 'package:lbp_ssh/tui/key_parser.dart';
@@ -102,18 +103,12 @@ Future<void> _runSsh(SshConnection conn) async {
   );
   stdout.writeln('Type "exit" or press Ctrl+D to return.\n');
 
-  try {
-    final result = await Process.run('ssh', [
-      '-p',
-      conn.port.toString(),
-      '${conn.username}@${conn.host}',
-    ], runInShell: true);
-    if (result.exitCode != 0 && result.stderr.toString().isNotEmpty) {
-      stderr.writeln(result.stderr);
-      await Future<void>.delayed(const Duration(seconds: 2));
+  final result = await launchSsh(conn);
+  if (!result.succeeded) {
+    final msg = result.errorMessage;
+    if (msg != null && msg.isNotEmpty) {
+      stderr.writeln(msg);
     }
-  } catch (e) {
-    stderr.writeln('SSH failed: $e');
     await Future<void>.delayed(const Duration(seconds: 2));
   }
 }
