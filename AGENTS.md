@@ -76,7 +76,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 
 import '../../data/models/ssh_connection.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
+import '../providers/connection_provider.dart';
 ```
 
 ### Naming Conventions

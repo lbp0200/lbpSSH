@@ -9,22 +9,18 @@ import 'app_config_service.dart';
 import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
 
-/// 将任何 Socket 适配为 SSHSocket
+/// 将 SOCKS5 连接适配为 SSHSocket
+///
+/// socks5_proxy 在握手阶段已通过 `asBroadcastStream()` 监听了 socket，
+/// 因此这里直接复用其广播流，不能再对原始 socket 调用 [Socket.listen]，
+/// 否则会抛出 "Stream has already been listened to" 错误。
 class _Socks5ProxySocket implements SSHSocket {
   final Socket _socket;
-  late final Stream<Uint8List> _stream;
-  late final StreamController<Uint8List> _controller;
-  StreamSubscription<Object>? _subscription;
+  final Stream<Uint8List> _stream;
 
-  _Socks5ProxySocket(Socket socket) : _socket = socket {
-    _controller = StreamController<Uint8List>.broadcast();
-    _stream = _controller.stream;
-    _subscription = _socket.listen(
-      (data) => _controller.add(data),
-      onError: (Object e) => _controller.addError(e),
-      onDone: () => _controller.close(),
-    );
-  }
+  _Socks5ProxySocket(Socket socket, Stream<Uint8List> stream)
+      : _socket = socket,
+        _stream = stream;
 
   @override
   Stream<Uint8List> get stream => _stream;
@@ -36,16 +32,13 @@ class _Socks5ProxySocket implements SSHSocket {
   Future<void> get done => _socket.done;
 
   @override
-  Future<void> close() async {
-    await _subscription?.cancel();
-    await _controller.close();
-    await _socket.close();
-  }
+  Future<void> close() => _socket.close();
+
+  @override
+  Future<void> flush() => _socket.flush();
 
   @override
   void destroy() {
-    _subscription?.cancel();
-    _controller.close();
     _socket.destroy();
   }
 
@@ -85,21 +78,86 @@ Future<SSHSocket> connectViaSocks5Proxy(
   ).timeout(timeout ?? const Duration(seconds: 30));
 
   // 包装为 SSHSocket
-  return _Socks5ProxySocket(socksSocket.socket);
+  // socksSocket.stream 是 socks5_proxy 内部的广播流（握手时已监听 socket），
+  // 直接复用，避免对原始 socket 二次 listen。
+  return _Socks5ProxySocket(socksSocket.socket, socksSocket.stream);
 }
 
 /// SSH 连接状态
 enum SshConnectionState { disconnected, connecting, connected, error }
 
+/// SSHClient 工厂签名（测试时可注入替身，默认使用真实 [SSHClient]）
+typedef SSHClientFactory = SSHClient Function(
+  SSHSocket socket, {
+  required String username,
+  SSHPasswordRequestHandler? onPasswordRequest,
+  List<SSHKeyPair>? identities,
+  Duration? keepAliveInterval,
+});
+
+/// SSH socket 连接器签名（测试时可注入替身，默认使用 [SSHSocket.connect]）
+typedef SSHSocketConnector = Future<SSHSocket> Function(
+  String host,
+  int port, {
+  Duration? timeout,
+});
+
 /// SSH 连接服务
 class SshService implements TerminalInputService {
   final AppConfigService? _appConfigService;
+  final SSHClientFactory? _clientFactory;
+  final SSHSocketConnector? _socketConnector;
 
-  SshService({AppConfigService? appConfigService})
-    : _appConfigService = appConfigService;
+  SshService({
+    AppConfigService? appConfigService,
+    SSHClientFactory? clientFactory,
+    SSHSocketConnector? socketConnector,
+  })  : _appConfigService = appConfigService,
+        _clientFactory = clientFactory,
+        _socketConnector = socketConnector;
 
   AppConfigService get _config =>
       _appConfigService ?? AppConfigService.getInstance();
+
+  /// 连接 SSH socket（优先使用注入的连接器，默认 [SSHSocket.connect]）
+  Future<SSHSocket> _connectSocket(
+    String host,
+    int port, {
+    Duration? timeout,
+  }) {
+    final connector = _socketConnector;
+    if (connector != null) {
+      return connector(host, port, timeout: timeout);
+    }
+    return SSHSocket.connect(host, port, timeout: timeout);
+  }
+
+  /// 创建 SSH 客户端（优先使用注入的工厂，默认 [SSHClient]）
+  SSHClient _createClient(
+    SSHSocket socket, {
+    required String username,
+    SSHPasswordRequestHandler? onPasswordRequest,
+    List<SSHKeyPair>? identities,
+    Duration? keepAliveInterval,
+  }) {
+    final factory = _clientFactory;
+    if (factory != null) {
+      return factory(
+        socket,
+        username: username,
+        onPasswordRequest: onPasswordRequest,
+        identities: identities,
+        keepAliveInterval: keepAliveInterval,
+      );
+    }
+    return SSHClient(
+      socket,
+      username: username,
+      onPasswordRequest: onPasswordRequest,
+      identities: identities,
+      keepAliveInterval: keepAliveInterval ?? const Duration(seconds: 10),
+    );
+  }
 
   SSHClient? _client;
   final _stateController = StreamController<SshConnectionState>.broadcast();
@@ -113,6 +171,8 @@ class SshService implements TerminalInputService {
   // 性能优化：输出缓冲和批处理
   final _outputBuffer = StringBuffer();
   Timer? _outputTimer;
+  static const _outputBufferMaxSize = 65536;
+  static const _outputFlushInterval = Duration(milliseconds: 16);
 
   // 是否已显示过 Last login 信息
   bool _hasShownLastLogin = false;
@@ -156,43 +216,52 @@ class SshService implements TerminalInputService {
     return null;
   }
 
-  /// 性能优化：批量输出处理
+  /// 性能优化：批量输出处理（固定间隔刷新，不停顿）
   void _scheduleOutputFlush() {
-    _outputTimer?.cancel();
-    _outputTimer = Timer(const Duration(milliseconds: 10), () {
-      if (_isDisposed || _outputController.isClosed) return;
-
-      var output = _outputBuffer.toString();
-      _outputBuffer.clear();
-
-      // 过滤重复的 Last login 行
-      if (!_hasShownLastLogin && output.contains('Last login:')) {
-        _hasShownLastLogin = true;
-        // 保留第一行（Last login），删除后续的
-        final lines = output.split('\n');
-        final lastLoginLines = <String>[];
-        final otherLines = <String>[];
-        bool foundLastLogin = false;
-
-        for (final line in lines) {
-          if (line.startsWith('Last login:')) {
-            if (!foundLastLogin) {
-              lastLoginLines.add(line);
-              foundLastLogin = true;
-            }
-            // 跳过重复的 Last login 行
-          } else {
-            otherLines.add(line);
-          }
-        }
-
-        output = [...lastLoginLines, ...otherLines].join('\n');
-      }
-
-      if (output.isNotEmpty) {
-        _outputController.add(output);
-      }
+    _outputTimer ??= Timer.periodic(_outputFlushInterval, (_) {
+      _flushOutputBuffer();
     });
+  }
+
+  void _flushOutputBuffer() {
+    if (_isDisposed || _outputController.isClosed) return;
+
+    if (_outputBuffer.isEmpty) {
+      _outputTimer?.cancel();
+      _outputTimer = null;
+      return;
+    }
+
+    var output = _outputBuffer.toString();
+    _outputBuffer.clear();
+
+    // 过滤重复的 Last login 行 — 避免 split('\n') 整个缓冲
+    if (!_hasShownLastLogin && output.contains('Last login:')) {
+      _hasShownLastLogin = true;
+      // 按行扫描，只保留第一个 Last login 行
+      var result = StringBuffer();
+      var start = 0;
+      var foundLastLogin = false;
+      while (start < output.length) {
+        var end = output.indexOf('\n', start);
+        if (end == -1) end = output.length;
+        final line = output.substring(start, end);
+        if (line.startsWith('Last login:')) {
+          if (!foundLastLogin) {
+            result.writeln(line);
+            foundLastLogin = true;
+          }
+        } else {
+          result.writeln(line);
+        }
+        start = end + 1;
+      }
+      output = result.toString().trimRight();
+    }
+
+    if (output.isNotEmpty) {
+      _outputController.add(output);
+    }
   }
 
   /// 连接到 SSH 服务器
@@ -215,7 +284,7 @@ class SshService implements TerminalInputService {
           timeout: timeout,
         );
       } else {
-        socket = await SSHSocket.connect(
+        socket = await _connectSocket(
           connection.host,
           connection.port,
           timeout: timeout,
@@ -293,7 +362,7 @@ class SshService implements TerminalInputService {
               timeout: timeout,
             );
           } else {
-            socket = await SSHSocket.connect(
+            socket = await _connectSocket(
               targetHost,
               targetPort,
               timeout: timeout,
@@ -348,7 +417,7 @@ class SshService implements TerminalInputService {
         await _connectViaJumpHost(connection);
       } else {
         // 直接连接到目标服务器，创建 SSH 客户端
-        _client = SSHClient(
+        _client = _createClient(
           socket,
           username: connection.username,
           onPasswordRequest: connection.authType == AuthType.password
@@ -393,9 +462,12 @@ class SshService implements TerminalInputService {
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
             (data) {
-              // 性能优化：批量处理输出
               _outputBuffer.write(data);
-              _scheduleOutputFlush();
+              if (_outputBuffer.length > _outputBufferMaxSize) {
+                _flushOutputBuffer();
+              } else {
+                _scheduleOutputFlush();
+              }
             },
             onError: (Object error) {
               if (!_isDisposed && !_outputController.isClosed) {
@@ -414,7 +486,8 @@ class SshService implements TerminalInputService {
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
             (data) {
-              _outputController.add(data);
+              _outputBuffer.write(data);
+              _scheduleOutputFlush();
             },
             onError: (Object error) {
               if (!_isDisposed && !_outputController.isClosed) {
@@ -502,6 +575,11 @@ class SshService implements TerminalInputService {
     if (_isDisposed) return;
 
     try {
+      // 刷新剩余输出缓冲
+      _outputTimer?.cancel();
+      _outputTimer = null;
+      _flushOutputBuffer();
+
       _session?.close();
       _session = null;
 
@@ -535,6 +613,10 @@ class SshService implements TerminalInputService {
   /// SSH session 意外断开时调用（由 _session.done 触发）
   void _onSessionDone() {
     if (_isDisposed) return;
+    // 刷新剩余输出缓冲
+    _outputTimer?.cancel();
+    _outputTimer = null;
+    _flushOutputBuffer();
     if (_sessionDoneCompleter?.isCompleted == false) {
       _sessionDoneCompleter?.complete();
     }
@@ -556,7 +638,7 @@ class SshService implements TerminalInputService {
     // 1. 连接到跳板机
     _outputController.add('正在连接到跳板机 ${jumpHost.host}:${jumpHost.port}...\r\n');
 
-    final jumpSocket = await SSHSocket.connect(jumpHost.host, jumpHost.port);
+    final jumpSocket = await _connectSocket(jumpHost.host, jumpHost.port);
 
     // 根据跳板机的认证方式准备认证信息
     String? jumpPassword;
@@ -604,7 +686,7 @@ class SshService implements TerminalInputService {
     }
 
     // 创建跳板机SSH客户端
-    final jumpClient = SSHClient(
+    final jumpClient = _createClient(
       jumpSocket,
       username: jumpHost.username,
       onPasswordRequest: jumpHost.authType == AuthType.password
@@ -634,7 +716,7 @@ class SshService implements TerminalInputService {
     // 3. 通过隧道连接到目标服务器
     _outputController.add('通过跳板机连接到目标服务器...\r\n');
 
-    final targetSocket = await SSHSocket.connect('localhost', localPort);
+    final targetSocket = await _connectSocket('localhost', localPort);
 
     // 创建目标服务器的SSH客户端
     // 注意：这里需要重新创建identities，因为前面的局部变量已经超出作用域
@@ -659,7 +741,7 @@ class SshService implements TerminalInputService {
         break;
     }
 
-    _client = SSHClient(
+    _client = _createClient(
       targetSocket,
       username: connection.username,
       onPasswordRequest: connection.authType == AuthType.password

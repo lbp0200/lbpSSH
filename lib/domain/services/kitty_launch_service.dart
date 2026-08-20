@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 启动类型
 enum LaunchType {
@@ -35,13 +35,9 @@ class LaunchParams {
 /// 启动服务
 ///
 /// 通过 OSC 6 和 launch 功能实现在终端内启动程序
-class KittyLaunchService {
-  final TerminalSession? _session;
+class KittyLaunchService extends KittyServiceBase {
 
-  KittyLaunchService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyLaunchService({super.session});
 
   /// 启动程序
   ///
@@ -60,10 +56,6 @@ class KittyLaunchService {
     String? env,
     bool? hold,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 ; launch 参数
     String cmd = '\x1b]6;';
 
@@ -120,7 +112,7 @@ class KittyLaunchService {
     }
 
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 在新标签页中启动程序
@@ -162,13 +154,9 @@ class KittyLaunchService {
 
   /// 打开 URL
   Future<void> openUrl(String url) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 使用 launch 打开 URL
     final cmd = '\x1b]6;type=os;u=$url\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 打开文件
@@ -182,66 +170,42 @@ class KittyLaunchService {
     String? body,
     String? sound,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 6 ; notification
     String cmd = '\x1b]6;type=notification';
     cmd += ';title=$title';
     if (body != null) cmd += ';b=$body';
     if (sound != null) cmd += ';s=$sound';
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求激活终端窗口
   Future<void> activateWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     const cmd = '\x1b]6;activate=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求最小化窗口
   Future<void> minimizeWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     const cmd = '\x1b]6;minimize=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求最大化窗口
   Future<void> maximizeWindow() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     const cmd = '\x1b]6;maximize=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求全屏
   Future<void> setFullscreen(bool enable) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final cmd = '\x1b]6;fullscreen=${enable ? "1" : "0"}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 请求设置窗口标题
   Future<void> setWindowTitle(String title) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final cmd = '\x1b]6;title=$title\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 }

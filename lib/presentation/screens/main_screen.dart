@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
-import '../providers_riverpod/terminal_provider_riverpod.dart';
+import '../providers/terminal_provider.dart';
 import '../screens/sftp_browser_screen.dart';
 import '../widgets/collapsible_sidebar.dart';
 import '../widgets/terminal_view.dart';

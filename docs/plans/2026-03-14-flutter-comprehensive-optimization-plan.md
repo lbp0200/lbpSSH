@@ -8,6 +8,8 @@
 
 **Tech Stack:** Flutter 3.10+, Provider (当前) → Riverpod 2.0, kterm, dartssh2, mocktail
 
+**实施状态：** ⚠️ 大部分完成 — Chunk 1（RepaintBoundary + `terminal_view_performance_test.dart`）、Chunk 2（Riverpod 迁移已完成，`providers/` 目录落地）、Chunk 4（a11y 测试 + l10n 国际化）、Chunk 5（golden/benchmarks/integration 测试）均已落地；**任务 3.1 终端分屏未实施**（代码中无 splitView/分屏实现）
+
 ---
 
 ## Chunk 1: 性能优化与渲染改进

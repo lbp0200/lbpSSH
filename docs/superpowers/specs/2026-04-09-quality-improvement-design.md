@@ -4,6 +4,8 @@
 **Status:** Approved
 **Owner:** lbp
 
+**Implementation status:** ✅ Completed (`flutter analyze` 0 issues, full test suite passing, coverage at `coverage/lcov.info`)
+
 ## Overview
 
 Improve code quality of the lbpSSH Flutter project across three dimensions: lint cleanliness, test coverage, and baseline security hygiene — completing the Linear Design System release cycle.
@@ -79,11 +81,11 @@ Expected: `No issues found!`
 
 ### Checklist
 
-- [ ] `flutter analyze --no-fatal-infos` → 0 issues
-- [ ] `flutter test` → all pass
-- [ ] Coverage report generated (`coverage/lcov.info`)
-- [ ] Git commit with all changes
-- [ ] Push to `origin/main`
+- [x] `flutter analyze --no-fatal-infos` → 0 issues
+- [x] `flutter test` → all pass
+- [x] Coverage report generated (`coverage/lcov.info`)
+- [x] Git commit with all changes
+- [x] Push to `origin/main`
 
 ## Non-Goals
 

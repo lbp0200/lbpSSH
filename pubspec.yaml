@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and build-number is used as the build suffix.
-version: 1.7.3
+version: 1.9.5
 
 environment:
   sdk: ^3.10.7
@@ -36,19 +36,14 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
 
-  # UI
-  cupertino_icons: ^1.0.9
-
   # App info
-  package_info_plus: ^9.0.0
+  package_info_plus: ^10.1.0
 
   # SSH 客户端
-  dartssh2: ^2.13.0
-
-  # 数据存储（已迁移到 JSON 文件）
+  dartssh2: ^2.18.0
 
   # 终端模拟器
-  kterm: ^1.2.0
+  kterm: ^1.5.5
   flutter_pty: ^0.4.0+2
 
   # 状态管理
@@ -58,7 +53,7 @@ dependencies:
   dio: ^5.9.2
 
   # 加密
-  encrypt: ^5.0.3
+  pointycastle: ^4.0.0
 
   # 错误追踪
   sentry: ^9.20.0
@@ -81,14 +76,8 @@ dependencies:
   # UUID 生成
   uuid: ^4.5.3
 
-  # 骨架屏
-  shimmer: ^3.0.0
-
   # 文件选择器
-  file_picker: ^10.3.10
-
-  # 桌面通知
-  flutter_local_notifications: ^21.0.0
+  file_picker: 12.0.0-beta.7
 
   # 窗口管理
   window_manager: ^0.5.1
@@ -120,10 +109,10 @@ dev_dependencies:
   test: any
 
 flutter_launcher_icons:
-  image_path: "assets/icon/app_icon.png" # 你的原图路径（必须是 1024x1024）# 只启用 Windows、macOS、Linux 三个桌面平台
+  image_path: "assets/icon/app_icon.png" # 原图路径（必须是 1024x1024）
   windows:
     generate: true
-    # icon_size: 256       # 可选，Windows 图标大小，范围 48~256，默认 48，建议 256 更清晰
+    # icon_size: 256 # 可选，Windows 图标大小，范围 48~256，默认 48，建议 256 更清晰
   macos:
     generate: true
   linux:

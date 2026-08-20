@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../core/theme/app_theme.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
+import '../providers/connection_provider.dart';
 import '../screens/connection_form.dart';
 
 class ConnectionList extends ConsumerWidget {
@@ -36,6 +36,16 @@ class ConnectionList extends ConsumerWidget {
     final connections = provider.filteredConnections;
 
     if (connections.isEmpty) {
+      if (isCompact) {
+        return Center(
+          child: IconButton(
+            onPressed: () => _showConnectionForm(context, null),
+            icon: const Icon(Icons.add),
+            tooltip: '添加连接',
+            color: LinearColors.textPrimary.withValues(alpha: 0.6),
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

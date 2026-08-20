@@ -20,7 +20,7 @@
 - **SSH 连接管理** - 添加、编辑、删除 SSH 连接配置
 - **多种认证方式** - 密码、密钥、密钥+密码
 - **跳板机支持** - 通过跳板机连接到目标服务器
-- **终端模拟器** - 基于 xterm 的完整交互式终端体验
+- **终端模拟器** - 基于 kterm 的完整交互式终端体验
 - **多标签页** - 同时管理多个 SSH 连接
 - **配置同步** - 支持同步到 Gitee Gist 或 GitHub Gist
 - **加密存储** - 敏感信息本地加密存储
@@ -260,15 +260,17 @@ lib/
 ├── core/                        # 核心配置
 │   ├── theme/                   # 主题配置
 │   └── constants/               # 常量定义
-├── data:                         # 数据层
+├── data/                         # 数据层
 │   ├── models/                  # 数据模型
 │   └── repositories/             # 数据仓库
-├── domain:                       # 业务逻辑层
+├── domain/                       # 业务逻辑层
 │   └── services/                # 业务服务
-├── presentation:                  # 展示层
+├── l10n/                         # 本地化(ARB 文件)
+├── presentation/                 # 展示层
 │   ├── screens/                 # 页面
 │   ├── widgets/                 # 组件
 │   └── providers/               # 状态管理
+├── tui/                          # TUI 模式(终端界面)
 └── utils/                        # 工具类
 ```
 
@@ -280,12 +282,18 @@ lib/
 |------|------|
 | Flutter | UI 框架 |
 | dartssh2 | SSH 客户端 |
-| xterm | 终端模拟器 |
+| kterm | 终端模拟器 |
 | flutter_pty | 伪终端支持 |
 | flutter_riverpod | 状态管理 |
 | dio | HTTP 客户端 |
-| encrypt | 加密 |
+| pointycastle | 加密 |
+| sentry | 错误追踪 |
 | shared_preferences | 本地存储 |
+| socks5_proxy | SOCKS5 代理支持 |
+| window_manager | 窗口管理 |
+| file_picker | 文件导入导出 |
+| url_launcher | 打开外部链接 |
+| utopia_tui | TUI 框架 |
 
 ---
 

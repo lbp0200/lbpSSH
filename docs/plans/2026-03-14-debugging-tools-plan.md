@@ -6,6 +6,8 @@
 
 **Tech Stack:** Flutter DevTools, performance_monitor
 
+**实施状态：** ⚠️ 未实施 — 未创建 `performance_service.dart` / `memory_helper.dart`。该计划中的示例仅为 `developer.log` 空壳封装，实际价值有限；如需性能分析建议直接用 Flutter DevTools 或 Sentry，勿按此计划创建空类。
+
 ---
 
 ## 任务 1: 添加性能监控服务

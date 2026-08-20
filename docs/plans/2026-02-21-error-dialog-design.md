@@ -1,5 +1,7 @@
 # 错误详情对话框设计
 
+**实施状态：** ✅ 已完成（`error_dialog.dart` / `error_detail_dialog.dart` 已落地，错误提示已迁移至 `sync_settings.dart`、`connection_form.dart` 等）
+
 ## 背景
 
 用户反馈：使用中发现错误，错误信息在下方提示，很快就消失，而且无法复制，导致问题无法排查。
@@ -92,8 +94,8 @@ Future<void> showErrorDialog(
 
 ## 验收标准
 
-- [ ] 创建 `error_dialog.dart` 包含 ErrorDialog 和 showErrorDialog
-- [ ] 对话框显示错误信息和 stack trace
-- [ ] 支持复制完整报告到剪贴板
-- [ ] 支持打开 GitHub Issues 页面
-- [ ] 至少迁移 3 处现有错误提示
+- [x] 创建 `error_dialog.dart` 包含 ErrorDialog 和 showErrorDialog
+- [x] 对话框显示错误信息和 stack trace
+- [x] 支持复制完整报告到剪贴板
+- [x] 支持打开 GitHub Issues 页面
+- [x] 至少迁移 3 处现有错误提示

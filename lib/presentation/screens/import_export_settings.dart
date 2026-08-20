@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/import_export_service.dart';
-import '../providers_riverpod/import_export_provider_riverpod.dart';
+import '../providers/import_export_provider.dart';
 
 /// 导入导出设置界面
 class ImportExportSettingsScreen extends ConsumerStatefulWidget {
@@ -441,7 +441,8 @@ class _ImportExportSettingsScreenState
       }
 
       setState(() {
-        _importedConnections = connections;
+        // 持有副本，避免 clear() 污染调用方传入的列表
+        _importedConnections = List.of(connections);
         _showImportPreview = true;
       });
     } catch (e) {
@@ -501,7 +502,8 @@ class _ImportExportSettingsScreenState
 
         setState(() {
           _showImportPreview = false;
-          _importedConnections.clear();
+          // 重新赋值而非 clear()：不清除传给 notifier 的列表对象
+          _importedConnections = [];
         });
       }
     } catch (e) {
@@ -519,7 +521,7 @@ class _ImportExportSettingsScreenState
   void _clearImportPreview() {
     setState(() {
       _showImportPreview = false;
-      _importedConnections.clear();
+      _importedConnections = [];
     });
     ref.read(importExportProvider.notifier).resetStatus();
   }

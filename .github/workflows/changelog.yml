@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Generate and push CHANGELOG
@@ -21,10 +21,36 @@ jobs:
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -n "$PREVIOUS_TAG" ]; then
-            git log "$PREVIOUS_TAG..HEAD" --no-merges --pretty=format:"- %s (%h)" > CHANGELOG.md
+            NEW_ENTRIES=$(git log "$PREVIOUS_TAG..HEAD" --no-merges --pretty=format:"- %s (%h)")
           else
-            git log --no-merges --pretty=format:"- %s (%h)" > CHANGELOG.md
+            NEW_ENTRIES=$(git log --no-merges --pretty=format:"- %s (%h)")
           fi
+
+          # 最近 tag 之后没有新提交（如 release 提交本身即 tag 所指）时，
+          # 不要重写 CHANGELOG.md，避免把文件清空
+          if [ -z "$NEW_ENTRIES" ]; then
+            echo "No new commits since last tag; CHANGELOG.md left unchanged."
+            exit 0
+          fi
+
+          # 增量合并：新条目前置，已存在的条目（按 hash 去重）不再重复追加
+          TMP=$(mktemp)
+          grep -oE '\([0-9a-f]{7,40}\)' CHANGELOG.md 2>/dev/null | tr -d '()' | sort -u > "$TMP.existing"
+          : > "$TMP.new"
+          printf '%s\n' "$NEW_ENTRIES" | while IFS= read -r line; do
+            HASH=$(printf '%s' "$line" | grep -oE '\([0-9a-f]{7,40}\)' | tr -d '()')
+            if [ -n "$HASH" ] && grep -qF "$HASH" "$TMP.existing"; then
+              continue
+            fi
+            printf '%s\n' "$line" >> "$TMP.new"
+          done
+          if [ ! -s "$TMP.new" ]; then
+            echo "All commits already listed; CHANGELOG.md unchanged."
+            exit 0
+          fi
+          cat "$TMP.new" CHANGELOG.md 2>/dev/null > "$TMP.out" && mv "$TMP.out" CHANGELOG.md
+          rm -f "$TMP" "$TMP.existing" "$TMP.new"
+
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add CHANGELOG.md

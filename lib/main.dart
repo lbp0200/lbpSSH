@@ -11,7 +11,7 @@ import 'domain/services/sync_service.dart';
 import 'domain/services/app_config_service.dart';
 import 'domain/services/import_export_service.dart';
 import 'l10n/app_localizations.dart';
-import 'presentation/providers_riverpod/service_providers.dart';
+import 'presentation/providers/service_providers.dart';
 import 'presentation/screens/main_screen.dart';
 import 'utils/sentry_service.dart';
 
