@@ -1,0 +1,769 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lbp_ssh/core/theme/app_theme.dart';
+import 'package:lbp_ssh/data/models/ssh_connection.dart';
+import 'package:lbp_ssh/presentation/providers/connection_provider.dart';
+import 'package:lbp_ssh/presentation/screens/connection_form.dart';
+import 'package:lbp_ssh/presentation/widgets/connection_list.dart';
+
+class _MockConnectionNotifier extends ConnectionNotifier {
+  final ConnectionState _state;
+  final List<String> deletedIds = [];
+  _MockConnectionNotifier(this._state);
+
+  @override
+  ConnectionState build() => _state;
+
+  @override
+  Future<void> deleteConnection(String id) async {
+    deletedIds.add(id);
+  }
+}
+
+void main() {
+  Widget createTestWidget({
+    List<SshConnection> connections = const [],
+    String? error,
+    bool isLoading = false,
+    bool isCompact = false,
+    void Function(SshConnection)? onConnectionTap,
+    void Function(SshConnection)? onSftpTap,
+  }) {
+    final state = ConnectionState(
+      isLoading: isLoading,
+      error: error,
+      connections: connections,
+    );
+
+    return MaterialApp(
+      home: Scaffold(
+        body: ProviderScope(
+          overrides: [
+            connectionProvider.overrideWith(
+              () => _MockConnectionNotifier(state),
+            ),
+          ],
+          child: ConnectionList(
+            isCompact: isCompact,
+            onConnectionTap: onConnectionTap ?? (_) {},
+            onSftpTap: onSftpTap ?? (_) {},
+          ),
+        ),
+      ),
+    );
+  }
+
+  group('ConnectionList Widget', () {
+    group('loading state', () {
+      testWidgets(
+        'Given isLoading is true, When rendered, Then shows CircularProgressIndicator',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(isLoading: true));
+
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        },
+      );
+    });
+
+    group('error state', () {
+      testWidgets(
+        'Given error is not null, When rendered, Then shows error message',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          const errorMessage = 'Test error message';
+          await tester.pumpWidget(createTestWidget(error: errorMessage));
+
+          expect(find.text(errorMessage), findsOneWidget);
+        },
+      );
+    });
+
+    group('empty state', () {
+      testWidgets(
+        'Given empty connections, When rendered, Then shows empty state UI',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(connections: []));
+
+          expect(find.text('暂无连接配置'), findsOneWidget);
+          expect(find.text('添加连接'), findsOneWidget);
+          expect(find.byIcon(Icons.dns_outlined), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given empty connections and isCompact, When rendered, Then shows compact add button without overflow',
+        (tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(
+            createTestWidget(connections: [], isCompact: true),
+          );
+
+          // 紧凑模式：只有图标按钮，没有带文字的 FilledButton（避免 60px 宽度溢出）
+          expect(find.byType(FilledButton), findsNothing);
+          expect(find.byType(IconButton), findsOneWidget);
+          expect(find.byIcon(Icons.add), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
+        'Given empty connections, When rendered, Then shows FilledButton',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(connections: []));
+
+          expect(find.byType(FilledButton), findsOneWidget);
+        },
+      );
+    });
+
+    group('with connections', () {
+      testWidgets(
+        'Given connections exist, When rendered, Then shows ListView',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+            SshConnection(
+              id: '2',
+              name: 'Server 2',
+              host: '192.168.1.2',
+              username: 'user2',
+              authType: AuthType.key,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          expect(find.byType(ListView), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given multiple connections, When rendered, Then shows connection host info',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.100',
+              username: 'admin',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          // Verify host info format
+          expect(find.text('admin@192.168.1.100:22'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given isCompact is true, When rendered, Then uses compact layout',
+        (WidgetTester tester) async {
+          // Set up screen size
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(
+            createTestWidget(connections: connections, isCompact: true),
+          );
+
+          // In compact mode, terminal icon should exist
+          expect(find.byIcon(Icons.terminal), findsOneWidget);
+        },
+      );
+
+      testWidgets('Given non-compact mode, When rendered, Then shows FAB', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final connections = [
+          SshConnection(
+            id: '1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+
+        await tester.pumpWidget(createTestWidget(connections: connections));
+
+        // FAB should be visible in non-compact mode
+        expect(find.byIcon(Icons.add), findsOneWidget);
+      });
+
+      testWidgets('Given compact mode, When rendered, Then does not show FAB', (
+        WidgetTester tester,
+      ) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final connections = [
+          SshConnection(
+            id: '1',
+            name: 'Server 1',
+            host: '192.168.1.1',
+            username: 'user1',
+            authType: AuthType.password,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          createTestWidget(connections: connections, isCompact: true),
+        );
+
+        // FAB should not be visible in compact mode
+        expect(find.byIcon(Icons.add), findsNothing);
+      });
+    });
+
+    group('hover state', () {
+      testWidgets(
+        'Given connection item, When mouse hovers, Then shows hover styling',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Hover Test Server',
+              host: '192.168.1.1',
+              username: 'user',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+          await tester.pump();
+
+          // Find the connection item by text
+          final itemFinder = find.text('Hover Test Server');
+          expect(itemFinder, findsOneWidget);
+
+          // Verify connection card is rendered
+          expect(find.byType(InkWell), findsWidgets);
+        },
+      );
+    });
+
+    group('focus state', () {
+      testWidgets(
+        'Given connection item, When focused via Tab, Then shows focus styling',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Focus Test Server',
+              host: '192.168.1.1',
+              username: 'user',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+          await tester.pump();
+
+          // 初始状态：边框为默认色，宽度 1（无焦点）
+          BoxDecoration initialDecoration() {
+            final container = tester.widget<AnimatedContainer>(
+              find.byType(AnimatedContainer).first,
+            );
+            return container.decoration! as BoxDecoration;
+          }
+
+          final initialBorder = initialDecoration().border! as Border;
+          expect(initialBorder.top.color, isNot(LinearColors.accentInteractive));
+          expect(initialBorder.top.width, 1);
+
+          // Press Tab to move focus
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+
+          // 聚焦后：边框变为焦点色，宽度 2（_isFocused 生效）
+          final focusedBorder =
+              (initialDecoration().border! as Border);
+          expect(
+            focusedBorder.top.color,
+            LinearColors.accentInteractive,
+          );
+          expect(focusedBorder.top.width, 2);
+
+          // InkWell 应存在且可聚焦
+          expect(find.byType(InkWell), findsWidgets);
+        },
+      );
+    });
+
+    group('text contrast', () {
+      testWidgets(
+        'Given connection with long name, When rendered, Then text is properly styled',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          // Test with very long connection name
+          final connections = [
+            SshConnection(
+              id: '1',
+              name:
+                  'Very Long Server Name That Should Be Truncated With Ellipsis',
+              host: 'very-long-hostname.example.com',
+              port: 22222,
+              username: 'verylongusername',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          // Text should be present (possibly truncated)
+          expect(find.textContaining('Very Long Server'), findsOneWidget);
+
+          // Host info should also be present
+          expect(
+            find.textContaining('verylongusername@very-long-hostname'),
+            findsOneWidget,
+          );
+        },
+      );
+    });
+
+    group('empty state icon', () {
+      testWidgets(
+        'Given no connections, When rendered, Then empty state icon is visible',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(connections: []));
+
+          // Find the empty state icon
+          final iconFinder = find.byIcon(Icons.dns_outlined);
+          expect(iconFinder, findsOneWidget);
+
+          // Verify the icon has appropriate size
+          final icon = tester.widget<Icon>(iconFinder);
+          expect(icon.size, 56);
+        },
+      );
+    });
+
+    group('add connection button', () {
+      testWidgets(
+        'Given empty connections, When add button tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(createTestWidget(connections: []));
+
+          await tester.tap(find.text('添加连接'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given connections exist, When FAB tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          // 点击右下角浮动添加按钮（tooltip 添加连接）
+          await tester.tap(find.byTooltip('添加连接'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given empty connections and compact mode, When add icon tapped, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(
+            createTestWidget(connections: [], isCompact: true),
+          );
+
+          await tester.tap(find.byIcon(Icons.add));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+    });
+
+    group('compact callbacks', () {
+      testWidgets(
+        'Given compact item, When tapped, Then onConnectionTap is called',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Compact 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+          final tapped = <String>[];
+
+          await tester.pumpWidget(
+            createTestWidget(
+              connections: connections,
+              isCompact: true,
+              onConnectionTap: (c) => tapped.add(c.id),
+            ),
+          );
+
+          await tester.tap(find.text('Compact 1'));
+          await tester.pump();
+
+          expect(tapped, ['1']);
+        },
+      );
+
+      testWidgets(
+        'Given compact item, When SFTP icon tapped, Then onSftpTap is called',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Compact 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+          final sftpTapped = <String>[];
+
+          await tester.pumpWidget(
+            createTestWidget(
+              connections: connections,
+              isCompact: true,
+              onSftpTap: (c) => sftpTapped.add(c.id),
+            ),
+          );
+
+          await tester.tap(find.byIcon(Icons.folder_copy_outlined));
+          await tester.pump();
+
+          expect(sftpTapped, ['1']);
+        },
+      );
+    });
+
+    group('edit and delete menu', () {
+      testWidgets(
+        'Given item menu open, When edit selected, Then opens connection form',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('编辑'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ConnectionFormScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given item menu open, When delete confirmed, Then notifier deletes connection',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+
+          // 确认对话框
+          expect(find.text('确认删除'), findsOneWidget);
+          expect(find.textContaining('确定要删除连接 "Server 1" 吗'), findsOneWidget);
+
+          await tester.tap(find.text('删除').last);
+          await tester.pumpAndSettle();
+
+          // 获取 notifier 验证删除调用
+          final notifier = ProviderScope.containerOf(
+            tester.element(find.byType(ConnectionList)),
+          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          expect(notifier.deletedIds, ['1']);
+          expect(find.text('连接已删除'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'Given item menu open, When delete cancelled, Then notifier does not delete',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Server 1',
+              host: '192.168.1.1',
+              username: 'user1',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+
+          await tester.tap(find.byIcon(Icons.more_vert));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('取消'));
+          await tester.pumpAndSettle();
+
+          final notifier = ProviderScope.containerOf(
+            tester.element(find.byType(ConnectionList)),
+          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          expect(notifier.deletedIds, isEmpty);
+        },
+      );
+    });
+
+    group('hover state toggle', () {
+      testWidgets(
+        'Given connection item, When mouse enters, Then hover styling applies',
+        (WidgetTester tester) async {
+          tester.view.physicalSize = const Size(1000, 1000);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final connections = [
+            SshConnection(
+              id: '1',
+              name: 'Hover Item',
+              host: '192.168.1.1',
+              username: 'user',
+              authType: AuthType.password,
+            ),
+          ];
+
+          await tester.pumpWidget(createTestWidget(connections: connections));
+          await tester.pump();
+
+          // 移动鼠标进入条目区域触发 onEnter
+          final gesture = await tester.createGesture(
+            kind: PointerDeviceKind.mouse,
+          );
+          await gesture.addPointer(location: Offset.zero);
+          await tester.pump();
+          await gesture.moveTo(
+            tester.getCenter(find.text('Hover Item')),
+          );
+          await tester.pump();
+
+          // hover 后颜色切换为 fillSurfaceHover
+          final container = tester.widget<AnimatedContainer>(
+            find.byType(AnimatedContainer).first,
+          );
+          final decoration = container.decoration! as BoxDecoration;
+          expect(decoration.color, LinearColors.fillSurfaceHover);
+
+          await gesture.removePointer();
+          await tester.pump();
+        },
+      );
+    });
+  });
+}

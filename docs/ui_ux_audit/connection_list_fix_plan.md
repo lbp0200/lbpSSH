@@ -2,7 +2,8 @@
 
 **创建日期：** 2026-04-11  
 **来源审计：** [`docs/ui_ux_audit/connection_list_visual_audit_2026-04-11.md`](../ui_ux_audit/connection_list_visual_audit_2026-04-11.md)  
-**受影响组件：** `lib/presentation/widgets/connection_list.dart`
+**受影响组件：** `lib/presentation/widgets/connection_list.dart`  
+**实施状态：** ✅ 2026-08-06 已全部实施(P0 焦点反馈、P1 图标对比度),测试覆盖见下文
 
 ---
 
@@ -129,19 +130,19 @@ color: LinearColors.textSecondary  // 直接使用 #d0d6e0
 ## 📅 实施步骤
 
 ### 阶段 1：修复键盘焦点（P0）
-- [ ] 1.1 在 `_ConnectionListItemState` 中添加 `_isFocused` 变量
-- [ ] 1.2 修改 `InkWell` 添加 `onFocusChange` 回调
-- [ ] 1.3 添加 `focusColor` 参数
-- [ ] 1.4 更新 `AnimatedContainer` 的 `border` 逻辑，支持焦点状态
-- [ ] 1.5 运行 `flutter test` 验证无回归
+- [x] 1.1 在 `_ConnectionListItemState` 中添加 `_isFocused` 变量
+- [x] 1.2 修改 `InkWell` 添加 `onFocusChange` 回调
+- [x] 1.3 添加 `focusColor` 参数
+- [x] 1.4 更新 `AnimatedContainer` 的 `border` 逻辑，支持焦点状态
+- [x] 1.5 运行 `flutter test` 验证无回归
 
 ### 阶段 2：优化空状态图标（P1）
-- [ ] 2.1 修改 `connection_list.dart:47` 的图标颜色
-- [ ] 2.2 手动启动应用，视觉验证空状态可读性
-- [ ] 2.3 运行 widget 测试确保无破坏
+- [x] 2.1 修改 `connection_list.dart:47` 的图标颜色（alpha 0.2 → 0.5，方案 A）
+- [x] 2.2 手动启动应用，视觉验证空状态可读性
+- [x] 2.3 运行 widget 测试确保无破坏
 
 ### 阶段 3：回归测试
-- [ ] 3.1 运行全部 widget tests：`flutter test test/widgets/`
+- [x] 3.1 运行全部 widget tests：`flutter test test/presentation/widgets/`
 - [ ] 3.2 运行 golden tests：`flutter test --update-goldens`
 - [ ] 3.3 集成测试（如存在）：验证键盘 Tab 导航
 - [ ] 3.4 在不同主题（深色/浅色）下人工验证
@@ -150,12 +151,12 @@ color: LinearColors.textSecondary  // 直接使用 #d0d6e0
 
 ## 🔬 验证清单
 
-- [ ] **键盘导航：** 按 Tab 键切换连接项，焦点边框清晰可见（2px accentInteractive 色）
-- [ ] **焦点颜色：** 焦点颜色与 hover 颜色有明确区分（焦点更深/边框更粗）
-- [ ] **空状态图标：** 在深色背景下，服务器图标清晰可辨
-- [ ] **Hover 状态：** 鼠标悬停时，无布局抖动，颜色平滑过渡
-- [ ] **长文本：** 超长连接名仍正确省略，无溢出
-- [ ] **所有测试通过：** `flutter test` 无失败
+- [x] **键盘导航：** 按 Tab 键切换连接项，焦点边框清晰可见（2px accentInteractive 色）
+- [x] **焦点颜色：** 焦点颜色与 hover 颜色有明确区分（焦点更深/边框更粗）
+- [x] **空状态图标：** 在深色背景下，服务器图标清晰可辨（alpha 0.5）
+- [x] **Hover 状态：** 鼠标悬停时，无布局抖动，颜色平滑过渡
+- [x] **长文本：** 超长连接名仍正确省略，无溢出
+- [x] **所有测试通过：** `flutter test` 无失败
 - [ ] **Golden 无差异：** 无意外视觉变化
 
 ---

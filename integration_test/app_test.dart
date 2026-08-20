@@ -7,7 +7,7 @@ import 'package:lbp_ssh/domain/services/terminal_service.dart';
 import 'package:lbp_ssh/domain/services/sync_service.dart';
 import 'package:lbp_ssh/domain/services/app_config_service.dart';
 import 'package:lbp_ssh/domain/services/import_export_service.dart';
-import 'package:lbp_ssh/presentation/providers_riverpod/service_providers.dart';
+import 'package:lbp_ssh/presentation/providers/service_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 Widget _buildApp() {

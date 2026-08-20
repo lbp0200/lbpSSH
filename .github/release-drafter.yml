@@ -1,12 +1,45 @@
 name-template: 'v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
-  - title: 'Features'
-    label: 'feature'
-  - title: 'Bug Fixes'
-    label: 'bug'
-  - title: 'Maintenance'
-    label: 'chore'
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'feat'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'bug'
+      - 'fix'
+  - title: '🧰 Maintenance'
+    labels:
+      - 'chore'
+      - 'docs'
+      - 'refactor'
+      - 'ci'
+      - 'perf'
+      - 'test'
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'feature'
+      - 'feat'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'bug'
+      - 'fix'
+      - 'chore'
+      - 'docs'
+      - 'refactor'
+      - 'ci'
+      - 'perf'
+      - 'test'
+  default: patch
 template: |
   ## Changes
+
   $CHANGES

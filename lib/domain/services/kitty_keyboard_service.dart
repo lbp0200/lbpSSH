@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 键盘事件类型
 enum KeyboardEventType {
@@ -50,8 +50,7 @@ typedef KeyboardEventCallback = void Function(KeyboardEvent event);
 /// 键盘协议服务
 ///
 /// 通过 OSC 1, 2, 200, 201 控制序列实现键盘事件处理
-class KittyKeyboardService {
-  final TerminalSession? _session;
+class KittyKeyboardService extends KittyServiceBase {
 
   // 回调
   KeyboardEventCallback? onKeyPress;
@@ -59,21 +58,14 @@ class KittyKeyboardService {
   KeyboardEventCallback? onTextInput;
   KeyboardEventCallback? onModifierChange;
 
-  KittyKeyboardService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyKeyboardService({super.session});
 
   /// 发送文本到终端
   ///
   /// [text] - 要发送的文本
   Future<void> sendText(String text) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 直接写入文本
-    _session.writeRaw(text);
+    writeRaw(text);
   }
 
   /// 发送按键
@@ -84,10 +76,6 @@ class KittyKeyboardService {
     String key, {
     ModifierKeys modifiers = const ModifierKeys(),
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 构建按键序列
     String sequence = '';
 
@@ -99,7 +87,7 @@ class KittyKeyboardService {
     // 添加键名
     sequence += key;
 
-    _session.writeRaw(sequence);
+    writeRaw(sequence);
   }
 
   /// 发送功能键
@@ -184,7 +172,7 @@ class KittyKeyboardService {
     }
 
     // 光标键使用 ESC [ 序列
-    _session?.writeRaw('\x1b[$key');
+    writeRawIfConnected('\x1b[$key');
   }
 
   /// 发送 Home/End
@@ -203,7 +191,7 @@ class KittyKeyboardService {
         throw Exception('无效的键: $key');
     }
 
-    _session?.writeRaw('\x1b$seq');
+    writeRawIfConnected('\x1b$seq');
   }
 
   /// 发送 Page Up/Down
@@ -222,51 +210,47 @@ class KittyKeyboardService {
         throw Exception('无效的方向: $direction');
     }
 
-    _session?.writeRaw('\x1b$seq');
+    writeRawIfConnected('\x1b$seq');
   }
 
   /// 发送 Insert
   Future<void> sendInsert() async {
-    _session?.writeRaw('\x1b[2~');
+    writeRawIfConnected('\x1b[2~');
   }
 
   /// 发送 Delete
   Future<void> sendDelete() async {
-    _session?.writeRaw('\x1b[3~');
+    writeRawIfConnected('\x1b[3~');
   }
 
   /// 发送 Tab
   Future<void> sendTab({bool shift = false}) async {
     if (shift) {
-      _session?.writeRaw('\x1b[Z');
+      writeRawIfConnected('\x1b[Z');
     } else {
-      _session?.writeRaw('\t');
+      writeRawIfConnected('\t');
     }
   }
 
   /// 发送 Enter
   Future<void> sendEnter() async {
-    _session?.writeRaw('\r');
+    writeRawIfConnected('\r');
   }
 
   /// 发送 Escape
   Future<void> sendEscape() async {
-    _session?.writeRaw('\x1b');
+    writeRawIfConnected('\x1b');
   }
 
   /// 发送退格键
   Future<void> sendBackspace() async {
-    _session?.writeRaw('\x7f');
+    writeRawIfConnected('\x7f');
   }
 
   /// 设置修饰键状态
   ///
   /// [modifiers] - 修饰键状态
   Future<void> setModifierKeys(ModifierKeys modifiers) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 200 ; modifier_state
     String state = '';
     if (modifiers.shift) state += 'shift+';
@@ -279,18 +263,14 @@ class KittyKeyboardService {
     }
 
     final cmd = '\x1b]200;$state\x1b\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询修饰键状态
   Future<void> queryModifierKeys() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 200 ; ?
     const cmd = '\x1b]200;?\x1b\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理键盘响应

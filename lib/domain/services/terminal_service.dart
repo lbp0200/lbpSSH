@@ -140,9 +140,10 @@ class TerminalSession {
     // 格式: ac=xxx;id=xxx;fid=xxx;n=xxx;size=xxx;d=xxx
     final params = <String, String>{};
     for (final arg in args) {
-      final parts = arg.split('=');
-      if (parts.length == 2) {
-        params[parts[0]] = parts[1];
+      // 只在第一个 '=' 处分割，因为 base64 值本身可能包含 '=' 填充符
+      final eqIndex = arg.indexOf('=');
+      if (eqIndex > 0) {
+        params[arg.substring(0, eqIndex)] = arg.substring(eqIndex + 1);
       }
     }
 

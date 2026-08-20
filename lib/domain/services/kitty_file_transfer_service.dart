@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 
 import '../../data/models/file_item.dart';
 import 'file_list_parser.dart';
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 import 'ssh_service.dart';
 
 /// 压缩类型
@@ -279,22 +279,17 @@ class KittyFileTransferEncoder {
 /// Kitty 文件传输服务
 ///
 /// 通过 SSH 终端发送 OSC 5113 控制序列实现文件传输
-class KittyFileTransferService {
+class KittyFileTransferService extends KittyServiceBase {
   final KittyFileTransferEncoder _encoder = const KittyFileTransferEncoder();
-  final TerminalSession? _session;
   String _currentPath;
   SftpClient? _sftpClient;
   IOSink? _activeDownloadSink;
 
-  KittyFileTransferService({TerminalSession? session, String initialPath = '/'})
-    : _session = session,
-      _currentPath = initialPath;
+  KittyFileTransferService({super.session, String initialPath = '/'})
+    : _currentPath = initialPath;
 
   /// 当前路径
   String get currentPath => _currentPath;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
 
   /// 是否支持 Kitty 协议
   bool get supportsKittyProtocol => false;
@@ -304,7 +299,7 @@ class KittyFileTransferService {
     if (_sftpClient != null) return _sftpClient;
 
     // 尝试从 inputService 获取 SFTP 客户端
-    final inputService = _session?.inputService;
+    final inputService = sessionOrNull?.inputService;
     if (inputService == null) return null;
 
     // 检查是否是 SshService
@@ -316,10 +311,6 @@ class KittyFileTransferService {
 
   /// 获取当前目录文件列表
   Future<List<FileItem>> listCurrentDirectory() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 尝试使用 SFTP 协议获取文件列表
     final sftp = await _getSftpClient();
     if (sftp != null) {
@@ -356,7 +347,7 @@ class KittyFileTransferService {
 
     // 使用 shell 命令作为回退方案
     const lsCommand = 'ls -la';
-    final output = await _session.inputService.executeCommand(
+    final output = await session.inputService.executeCommand(
       'cd "$_currentPath" && $lsCommand',
       silent: true,
     );
@@ -374,7 +365,7 @@ class KittyFileTransferService {
     // 文件类型
     if ((mode & 0x4000) != 0) {
       buffer.write('d');
-    } else if ((mode & 0xA000) != 0) {
+    } else if ((mode & 0xF000) == 0xA000) {
       buffer.write('l');
     } else {
       buffer.write('-');
@@ -400,7 +391,7 @@ class KittyFileTransferService {
 
   /// 进入目录
   Future<void> changeDirectory(String path) async {
-    if (_session == null) {
+    if (sessionOrNull == null) {
       throw Exception('未连接到终端');
     }
 
@@ -415,7 +406,7 @@ class KittyFileTransferService {
 
   /// 返回上级目录
   Future<void> goUp() async {
-    if (_session == null) {
+    if (sessionOrNull == null) {
       throw Exception('未连接到终端');
     }
     if (_currentPath == '/') return;
@@ -437,12 +428,8 @@ class KittyFileTransferService {
     }
 
     // 回退到 shell 命令
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final path = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
-    await _session.executeCommand('mkdir "$path"');
+    await session.executeCommand('mkdir "$path"');
   }
 
   /// 删除文件
@@ -454,11 +441,7 @@ class KittyFileTransferService {
     }
 
     // 回退到 shell 命令
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
-    await _session.executeCommand('rm "$path"');
+    await session.executeCommand('rm "$path"');
   }
 
   /// 删除目录
@@ -470,11 +453,7 @@ class KittyFileTransferService {
     }
 
     // 回退到 shell 命令
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
-    await _session.executeCommand('rmdir "$path"');
+    await session.executeCommand('rmdir "$path"');
   }
 
   /// 下载文件
@@ -487,7 +466,7 @@ class KittyFileTransferService {
     String localPath, {
     TransferProgressCallback? onProgress,
   }) async {
-    if (_session == null) {
+    if (sessionOrNull == null) {
       throw Exception('未连接到终端，无法下载文件。请确保已建立 SSH 连接。');
     }
 
@@ -507,7 +486,7 @@ class KittyFileTransferService {
     final completer = Completer<void>();
 
     // 监听文件传输事件
-    final subscription = _session.fileTransferStream.listen(
+    final subscription = session.fileTransferStream.listen(
       (event) async {
         switch (event.type) {
           case 'start':
@@ -552,7 +531,7 @@ class KittyFileTransferService {
     );
 
     // 发送接收会话请求
-    _session.writeRaw('\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\');
+    writeRaw('\x1b]5113;ac=recv;id=$transferId;f=$remotePath\x1b\\');
 
     // 等待传输完成或超时
     try {
@@ -568,14 +547,14 @@ class KittyFileTransferService {
 
   /// 检查远程是否支持 Kitty 协议
   Future<ProtocolSupportResult> checkProtocolSupport() async {
-    if (_session == null) {
+    if (sessionOrNull == null) {
       return ProtocolSupportResult(isSupported: false, errorMessage: '未连接到终端');
     }
 
     // 尝试执行 ki version 命令
     // 如果不支持，将返回 "command not found" 或类似错误
     try {
-      final output = await _session.inputService.executeCommand(
+      final output = await session.inputService.executeCommand(
         'ki version',
         silent: true,
       );
@@ -613,7 +592,7 @@ class KittyFileTransferService {
     String? bypass,
     int quiet = 0,
   }) async {
-    if (_session == null) {
+    if (sessionOrNull == null) {
       throw Exception('未连接到终端，无法发送文件。请确保已建立 SSH 连接。');
     }
 
@@ -636,7 +615,7 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(
+    writeRaw(
       _encoder.createSendSession(
         transferId,
         compression: compression,
@@ -646,7 +625,7 @@ class KittyFileTransferService {
     );
 
     // 2. 发送文件元数据
-    _session.writeRaw(
+    writeRaw(
       _encoder.createFileMetadata(
         sessionId: transferId,
         fileId: fileId,
@@ -661,7 +640,7 @@ class KittyFileTransferService {
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
-      _session.writeRaw(
+      writeRaw(
         _encoder.createDataChunk(
           sessionId: transferId,
           fileId: fileId,
@@ -686,7 +665,7 @@ class KittyFileTransferService {
     }
 
     // 4. 结束会话
-    _session.writeRaw(_encoder.createFinishSession(transferId));
+    writeRaw(_encoder.createFinishSession(transferId));
   }
 
   /// 发送符号链接
@@ -698,10 +677,6 @@ class KittyFileTransferService {
     String? bypass,
     int quiet = 0,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final link = Link(localPath);
     if (!await link.exists()) {
       throw Exception('符号链接不存在: $localPath');
@@ -713,7 +688,7 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(
+    writeRaw(
       _encoder.createSendSession(
         transferId,
         compression: compression,
@@ -723,7 +698,7 @@ class KittyFileTransferService {
     );
 
     // 2. 发送符号链接元数据
-    _session.writeRaw(
+    writeRaw(
       _encoder.createFileMetadata(
         sessionId: transferId,
         fileId: fileId,
@@ -735,10 +710,10 @@ class KittyFileTransferService {
     );
 
     // 3. 发送结束
-    _session.writeRaw(_encoder.createEndData(transferId, fileId));
+    writeRaw(_encoder.createEndData(transferId, fileId));
 
     // 4. 结束会话
-    _session.writeRaw(_encoder.createFinishSession(transferId));
+    writeRaw(_encoder.createFinishSession(transferId));
 
     onProgress(
       TransferProgress(
@@ -760,10 +735,6 @@ class KittyFileTransferService {
     String? bypass,
     int quiet = 0,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final dir = Directory(localPath);
     if (!await dir.exists()) {
       throw Exception('目录不存在: $localPath');
@@ -772,7 +743,7 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. 开始发送会话
-    _session.writeRaw(
+    writeRaw(
       _encoder.createSendSession(
         transferId,
         compression: compression,
@@ -791,7 +762,7 @@ class KittyFileTransferService {
           final fileId = 'f${DateTime.now().millisecondsSinceEpoch}';
           final fileSize = await f.length();
 
-          _session.writeRaw(
+          writeRaw(
             _encoder.createFileMetadata(
               sessionId: transferId,
               fileId: fileId,
@@ -803,7 +774,7 @@ class KittyFileTransferService {
           final stream = f.openRead();
           int transferred = 0;
           await for (final chunk in stream) {
-            _session.writeRaw(
+            writeRaw(
               _encoder.createDataChunk(
                 sessionId: transferId,
                 fileId: fileId,
@@ -825,7 +796,7 @@ class KittyFileTransferService {
 
         case Directory d:
           final dirId = 'd${DateTime.now().millisecondsSinceEpoch}';
-          _session.writeRaw(
+          writeRaw(
             _encoder.createDirectoryMetadata(
               sessionId: transferId,
               fileId: dirId,
@@ -843,7 +814,7 @@ class KittyFileTransferService {
         case Link l:
           final target = await l.target();
           final linkId = 'l${DateTime.now().millisecondsSinceEpoch}';
-          _session.writeRaw(
+          writeRaw(
             _encoder.createFileMetadata(
               sessionId: transferId,
               fileId: linkId,
@@ -858,7 +829,7 @@ class KittyFileTransferService {
 
     // 发送根目录
     final dirName = p.basename(localPath);
-    _session.writeRaw(
+    writeRaw(
       _encoder.createDirectoryMetadata(
         sessionId: transferId,
         fileId: 'root',
@@ -875,7 +846,7 @@ class KittyFileTransferService {
     }
 
     // 结束会话
-    _session.writeRaw(_encoder.createFinishSession(transferId));
+    writeRaw(_encoder.createFinishSession(transferId));
 
     onProgress(
       TransferProgress(
@@ -900,10 +871,6 @@ class KittyFileTransferService {
     String? bypass,
     int quiet = 0,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     final file = File(localPath);
     if (!await file.exists()) {
       throw Exception('文件不存在: $localPath');
@@ -915,7 +882,7 @@ class KittyFileTransferService {
     final transferId = 't${DateTime.now().millisecondsSinceEpoch}';
 
     // 开始发送会话
-    _session.writeRaw(
+    writeRaw(
       _encoder.createSendSession(
         transferId,
         compression: compression,
@@ -925,7 +892,7 @@ class KittyFileTransferService {
     );
 
     // 发送文件元数据（带权限和时间）
-    _session.writeRaw(
+    writeRaw(
       _encoder.createFileMetadata(
         sessionId: transferId,
         fileId: fileId,
@@ -943,7 +910,7 @@ class KittyFileTransferService {
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
     await for (final chunk in stream) {
-      _session.writeRaw(
+      writeRaw(
         _encoder.createDataChunk(
           sessionId: transferId,
           fileId: fileId,
@@ -968,16 +935,12 @@ class KittyFileTransferService {
     }
 
     // 结束会话
-    _session.writeRaw(_encoder.createFinishSession(transferId));
+    writeRaw(_encoder.createFinishSession(transferId));
   }
 
   /// 取消传输
   Future<void> cancelTransfer(String transferId) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
-    _session.writeRaw(_encoder.createCancelSession(transferId));
+    writeRaw(_encoder.createCancelSession(transferId));
   }
 
   /// 清理资源（关闭活动文件流）

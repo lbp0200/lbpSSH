@@ -20,7 +20,7 @@ Cross-platform SSH Terminal Manager
 - **SSH Connection Management** - Add, edit, delete SSH connections
 - **Multiple Authentication Methods** - Password, Private Key, Private Key + Password
 - **Jump Host Support** - Connect through jump/bastion hosts
-- **Terminal Emulator** - Full interactive terminal based on xterm
+- **Terminal Emulator** - Full interactive terminal based on kterm
 - **Multi-tab Support** - Manage multiple SSH connections simultaneously
 - **Configuration Sync** - Sync to Gitee Gist or GitHub Gist
 - **Encrypted Storage** - Sensitive data encrypted locally
@@ -256,10 +256,12 @@ lib/
 │   └── repositories/             # Repositories
 ├── domain/                       # Business logic
 │   └── services/                # Services
-├── presentation:                  # Presentation layer
+├── l10n/                         # Localization (ARB files)
+├── presentation/                 # Presentation layer
 │   ├── screens/                 # Screens
 │   ├── widgets/                 # Widgets
 │   └── providers/               # State management
+├── tui/                          # TUI mode (terminal UI)
 └── utils/                        # Utilities
 ```
 
@@ -271,12 +273,18 @@ lib/
 |------------|---------|
 | Flutter | Cross-platform UI |
 | dartssh2 | SSH Client |
-| xterm | Terminal Emulator |
+| kterm | Terminal Emulator |
 | flutter_pty | PTY Support |
 | flutter_riverpod | State Management |
 | dio | HTTP Client |
-| encrypt | Encryption |
+| pointycastle | Encryption |
+| sentry | Error Tracking |
 | shared_preferences | Local Storage |
+| socks5_proxy | SOCKS5 Proxy Support |
+| window_manager | Window Management |
+| file_picker | File Import/Export |
+| url_launcher | Open External Links |
+| utopia_tui | TUI Framework |
 
 ---
 

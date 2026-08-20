@@ -6,6 +6,8 @@
 
 **Tech Stack:** dart_code_metrics, GitHub Actions
 
+**实施状态：** ⚠️ 不实施 — dart_code_metrics 已于 2023 年宣布 sunset 并停止维护（pub.dev 标注 discontinued），项目改用 `flutter_lints` + 严格 analyzer 选项（见 `analysis_options.yaml`）。此计划过期，勿再按此执行。
+
 ---
 
 ## Chunk 1: dart_code_metrics 集成

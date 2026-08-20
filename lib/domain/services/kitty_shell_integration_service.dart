@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// Shell 提示符类型
 enum PromptType {
@@ -13,8 +13,7 @@ enum PromptType {
 /// Shell 集成服务
 ///
 /// 通过 OSC 133 控制序列实现 Shell 集成功能
-class KittyShellIntegrationService {
-  final TerminalSession? _session;
+class KittyShellIntegrationService extends KittyServiceBase {
 
   // 回调
   void Function(String prompt, PromptType type)? onPrompt;
@@ -22,22 +21,15 @@ class KittyShellIntegrationService {
   void Function(int exitStatus)? onExitStatus;
   void Function(String workingDirectory)? onWorkingDirectory;
 
-  KittyShellIntegrationService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyShellIntegrationService({super.session});
 
   /// 发送命令提示符查询
   ///
   /// 查询当前 Shell 的提示符格式
   Future<void> queryPrompt() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; A
     const cmd = '\x1b]133;A\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送命令完成信号
@@ -48,88 +40,60 @@ class KittyShellIntegrationService {
     required String commandLine,
     required int exitStatus,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; C ; command=command_line ; status=exit_status
     final cmd =
         '\x1b]133;C;command=${_encode(commandLine)};status=$exitStatus\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送命令失败信号
   ///
   /// [commandLine] - 失败的命令
   Future<void> sendCommandFailed(String commandLine) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; C ; command=command_line ; status=1
     final cmd = '\x1b]133;C;command=${_encode(commandLine)};status=1\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送命令开始信号
   ///
   /// [commandLine] - 要执行的命令
   Future<void> sendCommandStarted(String commandLine) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; S ; command=command_line
     final cmd = '\x1b]133;S;command=${_encode(commandLine)}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送工作目录变化
   ///
   /// [path] - 新工作目录路径
   Future<void> sendWorkingDirectory(String path) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; D ; path
     final cmd = '\x1b]133;D;$path\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询当前工作目录
   Future<void> queryWorkingDirectory() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; D ; ?
     const cmd = '\x1b]133;D;?\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送命令行内容
   ///
   /// 用于外部程序获取当前命令行
   Future<void> sendCommandLine(String commandLine) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; F ; command=command_line
     final cmd = '\x1b]133;F;command=${_encode(commandLine)}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 查询命令行
   Future<void> queryCommandLine() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 格式: OSC 133 ; F ; ?
     const cmd = '\x1b]133;F;?\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送提示符样式
@@ -140,10 +104,6 @@ class KittyShellIntegrationService {
     PromptType promptType, {
     Map<String, String>? styles,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String typeChar;
     switch (promptType) {
       case PromptType.command:
@@ -167,7 +127,7 @@ class KittyShellIntegrationService {
       }
     }
     cmd += '\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 处理 Shell 响应

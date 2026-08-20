@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 搜索方向
 enum SearchDirection {
@@ -48,8 +48,7 @@ typedef SearchResultCallback = void Function(SearchResult result);
 /// 扩展搜索服务
 ///
 /// 实现终端扩展搜索功能
-class KittySearchService {
-  final TerminalSession? _session;
+class KittySearchService extends KittyServiceBase {
 
   // 回调
   SearchResultCallback? onSearchResult;
@@ -58,10 +57,7 @@ class KittySearchService {
   SearchOptions _currentOptions = const SearchOptions();
   String _lastSearchText = '';
 
-  KittySearchService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittySearchService({super.session});
 
   /// 获取当前搜索选项
   SearchOptions get currentOptions => _currentOptions;
@@ -76,10 +72,6 @@ class KittySearchService {
     SearchDirection direction = SearchDirection.forward,
     SearchOptions? options,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     _lastSearchText = text;
     if (options != null) {
       _currentOptions = options;
@@ -99,7 +91,7 @@ class KittySearchService {
 
     // 发送搜索
     final dirChar = direction == SearchDirection.forward ? '/' : '?';
-    _session.writeRaw('$dirChar$text$searchSeq\r');
+    writeRaw('$dirChar$text$searchSeq\r');
   }
 
   /// 查找下一个
@@ -201,12 +193,8 @@ class KittySearchService {
 
   /// 清除搜索
   Future<void> clearSearch() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 发送 Escape 清除搜索
-    _session.writeRaw('\x1b');
+    writeRaw('\x1b');
     _lastSearchText = '';
   }
 
@@ -214,13 +202,9 @@ class KittySearchService {
   ///
   /// [enable] - 是否高亮
   Future<void> setHighlight(bool enable) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 某些终端支持通过 OSC 控制高亮
     final cmd = '\x1b]搜索结果;highlight=${enable ? "on" : "off"}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 获取搜索历史

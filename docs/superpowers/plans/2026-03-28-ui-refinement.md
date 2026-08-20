@@ -1,10 +1,12 @@
 # UI Refinement Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Refined Modern UI overhaul — deeper dark palette, consistent spacing system, component polish for cards/buttons/inputs/sidebar/tabs.
 
 **Architecture:** Update `lib/core/theme/app_theme.dart` with semantic color tokens and spacing constants, then refactor widgets to use theme-aware tokens instead of manual `isDark` checks.
+
+**Status:** ✅ Completed (`LinearColors`/`LinearSpacing` tokens in `app_theme.dart`, adopted across screens/widgets)
 
 **Tech Stack:** Flutter, Material 3
 
@@ -28,7 +30,7 @@
 **Files:**
 - Modify: `lib/core/theme/app_theme.dart`
 
-- [ ] **Step 1: Add semantic color constants**
+- [x] **Step 1: Add semantic color constants**
 
 Replace the entire `app_theme.dart` content with updated version including new semantic color tokens:
 
@@ -252,12 +254,12 @@ class AppTheme {
 }
 ```
 
-- [ ] **Step 2: Run analyze to check for errors**
+- [x] **Step 2: Run analyze to check for errors**
 
 Run: `flutter analyze lib/core/theme/app_theme.dart`
 Expected: No errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/core/theme/app_theme.dart
@@ -271,11 +273,11 @@ git commit -m "refactor(theme): add semantic colors and spacing constants"
 **Files:**
 - Modify: `lib/presentation/widgets/connection_list.dart:1-398`
 
-- [ ] **Step 1: Read current file to understand structure**
+- [x] **Step 1: Read current file to understand structure**
 
 Read: `lib/presentation/widgets/connection_list.dart`
 
-- [ ] **Step 2: Replace connection_list.dart with theme-aware version**
+- [x] **Step 2: Replace connection_list.dart with theme-aware version**
 
 Replace the entire file with this content:
 
@@ -651,17 +653,17 @@ class _CompactConnectionItem extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 3: Run analyze to check for errors**
+- [x] **Step 3: Run analyze to check for errors**
 
 Run: `flutter analyze lib/presentation/widgets/connection_list.dart`
 Expected: No errors
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `flutter test test/widgets/connection_list_test.dart`
 Expected: All tests pass
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/presentation/widgets/connection_list.dart
@@ -675,11 +677,11 @@ git commit -m "refactor(UI): use theme-aware colors in connection_list"
 **Files:**
 - Modify: `lib/presentation/widgets/collapsible_sidebar.dart:1-292`
 
-- [ ] **Step 1: Read current file**
+- [x] **Step 1: Read current file**
 
 Read: `lib/presentation/widgets/collapsible_sidebar.dart`
 
-- [ ] **Step 2: Replace with theme-aware version**
+- [x] **Step 2: Replace with theme-aware version**
 
 Replace the entire file with this content:
 
@@ -971,12 +973,12 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
 }
 ```
 
-- [ ] **Step 3: Run analyze**
+- [x] **Step 3: Run analyze**
 
 Run: `flutter analyze lib/presentation/widgets/collapsible_sidebar.dart`
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add lib/presentation/widgets/collapsible_sidebar.dart
@@ -990,7 +992,7 @@ git commit -m "refactor(UI): use theme-aware colors in collapsible_sidebar"
 **Files:**
 - Modify: `lib/presentation/widgets/terminal_view.dart` (only the UI parts, not the terminal logic)
 
-- [ ] **Step 1: Read the file to identify specific lines needing changes**
+- [x] **Step 1: Read the file to identify specific lines needing changes**
 
 Run: `grep -n "isDark\|Colors.grey\|withValues" lib/presentation/widgets/terminal_view.dart`
 
@@ -999,7 +1001,7 @@ Expected output shows lines using:
 - `Colors.grey` for dark mode styling
 - `withValues(alpha: X)` for opacity
 
-- [ ] **Step 2: Update specific UI sections**
+- [x] **Step 2: Update specific UI sections**
 
 The following sections in `terminal_view.dart` need updates:
 
@@ -1056,17 +1058,17 @@ SizedBox(
 ),
 ```
 
-- [ ] **Step 3: Run analyze**
+- [x] **Step 3: Run analyze**
 
 Run: `flutter analyze lib/presentation/widgets/terminal_view.dart`
 Expected: No errors
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `flutter test test/widgets/terminal_status_bar_test.dart`
 Expected: All tests pass
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_view.dart
@@ -1080,15 +1082,15 @@ git commit -m "refactor(UI): use theme-aware colors in terminal_view"
 **Files:**
 - Modify: `lib/presentation/screens/connection_form.dart`
 
-- [ ] **Step 1: Search for manual color usage**
+- [x] **Step 1: Search for manual color usage**
 
 Run: `grep -n "isDark\|Colors.grey" lib/presentation/screens/connection_form.dart`
 
-- [ ] **Step 2: Read relevant sections**
+- [x] **Step 2: Read relevant sections**
 
 Read sections of `connection_form.dart` that contain `isDark` checks.
 
-- [ ] **Step 3: Update the UI sections**
+- [x] **Step 3: Update the UI sections**
 
 Replace manual `isDark` color checks with theme-aware tokens. The pattern to find:
 
@@ -1105,12 +1107,12 @@ color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
 borderColor: Theme.of(context).dividerColor,
 ```
 
-- [ ] **Step 4: Run analyze**
+- [x] **Step 4: Run analyze**
 
 Run: `flutter analyze lib/presentation/screens/connection_form.dart`
 Expected: No errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/presentation/screens/connection_form.dart
@@ -1124,20 +1126,20 @@ git commit -m "refactor(UI): use theme-aware colors in connection_form"
 **Files:**
 - Modify: `lib/presentation/widgets/shimmer_loading.dart`
 
-- [ ] **Step 1: Check if shimmer_loading needs updates**
+- [x] **Step 1: Check if shimmer_loading needs updates**
 
 Run: `grep -n "isDark\|Colors.grey" lib/presentation/widgets/shimmer_loading.dart`
 
-- [ ] **Step 2: Update if needed**
+- [x] **Step 2: Update if needed**
 
 If manual color checks exist, replace with theme-aware tokens.
 
-- [ ] **Step 3: Run analyze**
+- [x] **Step 3: Run analyze**
 
 Run: `flutter analyze lib/presentation/widgets/shimmer_loading.dart`
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add lib/presentation/widgets/shimmer_loading.dart
@@ -1148,22 +1150,22 @@ git commit -m "refactor(UI): use theme-aware colors in shimmer_loading"
 
 ## Task 7: Final Verification
 
-- [ ] **Step 1: Run full analyze**
+- [x] **Step 1: Run full analyze**
 
 Run: `flutter analyze --no-fatal-infos`
 Expected: No errors (infos are acceptable)
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 Run: `flutter test`
 Expected: All tests pass
 
-- [ ] **Step 3: Check for remaining anti-patterns**
+- [x] **Step 3: Check for remaining anti-patterns**
 
 Run: `grep -rn "Colors.grey\|isDark ?" lib/presentation/ --include="*.dart" | grep -v "_test.dart"`
 Expected: No matches (or only legitimate uses)
 
-- [ ] **Step 4: Final commit if needed**
+- [x] **Step 4: Final commit if needed**
 
 ```bash
 git add -A && git commit -m "refactor(UI): complete refined modern theme updates"
@@ -1175,11 +1177,11 @@ git add -A && git commit -m "refactor(UI): complete refined modern theme updates
 
 After completing all tasks:
 
-- [ ] All `Colors.grey.shadeXXX` removed from widgets in dark mode
-- [ ] All manual `isDark ? Colors.white : Colors.black` removed from widgets
-- [ ] All explicit hex colors like `#FFFFFF` replaced with theme tokens
-- [ ] All scattered `AppTheme.accentGreen` replaced with `Theme.of(context).colorScheme.primary`
-- [ ] Spacing constants used (`AppTheme.spacingSm`, `AppTheme.spacingMd`, etc.)
-- [ ] Border radius consistent (8px cards, 6px buttons/inputs)
-- [ ] Tab height reduced to 40px
-- [ ] All tests pass
+- [x] All `Colors.grey.shadeXXX` removed from widgets in dark mode
+- [x] All manual `isDark ? Colors.white : Colors.black` removed from widgets
+- [x] All explicit hex colors like `#FFFFFF` replaced with theme tokens
+- [x] All scattered `AppTheme.accentGreen` replaced with `Theme.of(context).colorScheme.primary`
+- [x] Spacing constants used (`AppTheme.spacingSm`, `AppTheme.spacingMd`, etc.)
+- [x] Border radius consistent (8px cards, 6px buttons/inputs)
+- [x] Tab height reduced to 40px
+- [x] All tests pass

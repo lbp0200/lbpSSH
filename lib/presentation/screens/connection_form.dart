@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/ssh_config_service.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
+import '../providers/connection_provider.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/linear_styled_text_field.dart';
 
@@ -132,7 +132,7 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
   // 选择私钥文件
   Future<void> _pickPrivateKeyFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      FilePickerResult? result = await FilePicker.pickFiles();
 
       if (result != null && result.files.single.path != null) {
         final filePath = result.files.single.path!;
@@ -628,6 +628,9 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
               if (_sshConfigEntries.isNotEmpty) ...[
                 DropdownButtonFormField<String?>(
                   initialValue: _selectedSshConfigHost,
+                  // 按钮占满可用宽度，配合 selectedItemBuilder 的省略号收缩，
+                  // 避免长主机名把按钮横向撑爆
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: '选择 SSH Config 主机',
                     labelStyle: const TextStyle(
@@ -670,21 +673,42 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
                     ..._sshConfigEntries.map(
                       (entry) => DropdownMenuItem<String?>(
                         value: entry.hostName,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(entry.hostName),
-                            if (entry.actualHost != null || entry.user != null)
+                        child: ConstrainedBox(
+                          // 多主机配置行（如 "Host a.com b.com c.com"）较长，
+                          // 约束宽度并省略号截断，避免下拉框横向溢出
+                          constraints: const BoxConstraints(maxWidth: 280),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: LinearColors.textTertiary,
-                                ),
+                                entry.hostName,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                          ],
+                              if (entry.actualHost != null || entry.user != null)
+                                Text(
+                                  '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: LinearColors.textTertiary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
                         ),
+                      ),
+                    ),
+                  ],
+                  // 按钮态单行展示：InputDecorator 高度有限，两行内容会垂直溢出；
+                  // 菜单展开态仍使用 items 中的两行（主机名 + 副标题）
+                  selectedItemBuilder: (context) => [
+                    const Text('-- 选择主机 --'),
+                    ..._sshConfigEntries.map(
+                      (entry) => Text(
+                        entry.hostName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

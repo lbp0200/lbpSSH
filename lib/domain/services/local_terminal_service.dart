@@ -4,8 +4,22 @@ import 'dart:io';
 import 'package:flutter_pty/flutter_pty.dart';
 import 'terminal_input_service.dart';
 
+/// PTY 启动函数签名（默认使用 [Pty.start]，测试时可注入替身）
+typedef PtyStarter = Pty Function(
+  String executable, {
+  List<String> arguments,
+  String? workingDirectory,
+  Map<String, String>? environment,
+  int rows,
+});
+
 /// 本地终端服务 - 使用 PTY 实现
 class LocalTerminalService implements TerminalInputService {
+  LocalTerminalService({PtyStarter? ptyStarter})
+      : _ptyStarter = ptyStarter ?? Pty.start;
+
+  final PtyStarter _ptyStarter;
+
   Pty? _pty;
   final _outputController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
@@ -71,7 +85,7 @@ class LocalTerminalService implements TerminalInputService {
       String basePath = '/';
       for (int i = 1; i < parts.length - 1; i++) {
         if (parts[i].isEmpty) continue;
-        basePath = '$basePath/${parts[i]}';
+        basePath = basePath == '/' ? '/${parts[i]}' : '$basePath/${parts[i]}';
         final baseDir = Directory(basePath);
         if (!baseDir.existsSync()) {
           return path; // 返回原始路径
@@ -176,7 +190,7 @@ class LocalTerminalService implements TerminalInputService {
           Directory.current.path;
 
       // 使用 PTY 启动进程
-      final pty = Pty.start(
+      final pty = _ptyStarter(
         shell,
         arguments: arguments,
         workingDirectory: workingDirectory,
@@ -406,7 +420,9 @@ class LocalTerminalService implements TerminalInputService {
     if (_pty != null) {
       try {
         // 发送 Ctrl+D (EOF) 信号
-        sendInput('\x04');
+        // 注意：不能走 sendInput —— _isShuttingDown 已置位，
+        // sendInput 内的 !_isShuttingDown 守卫会拦截写入。
+        _pty!.write(const Utf8Encoder().convert('\x04'));
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
         if (_pty != null) {

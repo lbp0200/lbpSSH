@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_config.dart';
 import '../../data/models/terminal_config.dart';
-import '../providers_riverpod/app_config_provider_riverpod.dart';
+import '../providers/app_config_provider.dart';
 
 class TerminalSettingsPage extends ConsumerStatefulWidget {
   const TerminalSettingsPage({super.key});
@@ -206,7 +206,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                       if (fontWeight != null &&
                           fontWeight >= 100 &&
                           fontWeight <= 900) {
-                        _config = _config.copyWith(fontWeight: fontWeight);
+                        setState(() {
+                          _config = _config.copyWith(fontWeight: fontWeight);
+                        });
                       }
                     },
                   ),
@@ -232,9 +234,11 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                     onChanged: (value) {
                       final letterSpacing = double.tryParse(value);
                       if (letterSpacing != null) {
-                        _config = _config.copyWith(
-                          letterSpacing: letterSpacing,
-                        );
+                        setState(() {
+                          _config = _config.copyWith(
+                            letterSpacing: letterSpacing,
+                          );
+                        });
                       }
                     },
                   ),
@@ -256,7 +260,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                     onChanged: (value) {
                       final lineHeight = double.tryParse(value);
                       if (lineHeight != null) {
-                        _config = _config.copyWith(lineHeight: lineHeight);
+                        setState(() {
+                          _config = _config.copyWith(lineHeight: lineHeight);
+                        });
                       }
                     },
                   ),
@@ -280,7 +286,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
               onChanged: (value) {
                 final padding = int.tryParse(value);
                 if (padding != null && padding >= 0) {
-                  _config = _config.copyWith(padding: padding);
+                  setState(() {
+                    _config = _config.copyWith(padding: padding);
+                  });
                 }
               },
             ),
@@ -309,7 +317,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                       fillColor: LinearColors.fillSurface,
                     ),
                     onChanged: (value) {
-                      _config = _config.copyWith(backgroundColor: value);
+                      setState(() {
+                        _config = _config.copyWith(backgroundColor: value);
+                      });
                     },
                   ),
                 ),
@@ -325,7 +335,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                       fillColor: LinearColors.fillSurface,
                     ),
                     onChanged: (value) {
-                      _config = _config.copyWith(foregroundColor: value);
+                      setState(() {
+                        _config = _config.copyWith(foregroundColor: value);
+                      });
                     },
                   ),
                 ),
@@ -342,7 +354,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                 fillColor: LinearColors.fillSurface,
               ),
               onChanged: (value) {
-                _config = _config.copyWith(cursorColor: value);
+                setState(() {
+                  _config = _config.copyWith(cursorColor: value);
+                });
               },
             ),
             const SizedBox(height: LinearSpacing.spacing32),
@@ -354,21 +368,24 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
               ),
             ),
             const SizedBox(height: LinearSpacing.spacing16),
-            SwitchListTile(
-              title: const Text(
-                '启用 Kitty 协议',
-                style: TextStyle(color: LinearColors.textPrimary),
+            Material(
+              type: MaterialType.transparency,
+              child: SwitchListTile(
+                title: const Text(
+                  '启用 Kitty 协议',
+                  style: TextStyle(color: LinearColors.textPrimary),
+                ),
+                subtitle: const Text(
+                  '发送终端设备属性查询 (\\x1b[>1u)，让支持 Kitty 协议的应用（如 Neovim）自动启用高级特性。关闭此选项可兼容老旧终端设备。',
+                  style: TextStyle(color: LinearColors.textTertiary),
+                ),
+                value: _config.enableKittyProtocol,
+                onChanged: (value) {
+                  setState(() {
+                    _config = _config.copyWith(enableKittyProtocol: value);
+                  });
+                },
               ),
-              subtitle: const Text(
-                '发送终端设备属性查询 (\\x1b[>1u)，让支持 Kitty 协议的应用（如 Neovim）自动启用高级特性。关闭此选项可兼容老旧终端设备。',
-                style: TextStyle(color: LinearColors.textTertiary),
-              ),
-              value: _config.enableKittyProtocol,
-              onChanged: (value) {
-                setState(() {
-                  _config = _config.copyWith(enableKittyProtocol: value);
-                });
-              },
             ),
             const SizedBox(height: LinearSpacing.spacing32),
             Row(
@@ -846,8 +863,10 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                 value != 'programming_header' &&
                 value != 'system_header' &&
                 value != 'divider_item') {
-              _fontFamilyController.text = value;
-              _config = _config.copyWith(fontFamily: value);
+              setState(() {
+                _fontFamilyController.text = value;
+                _config = _config.copyWith(fontFamily: value);
+              });
             }
           },
         ),
@@ -865,7 +884,9 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                   fillColor: LinearColors.fillSurface,
                 ),
                 onChanged: (value) {
-                  _config = _config.copyWith(fontFamily: value);
+                  setState(() {
+                    _config = _config.copyWith(fontFamily: value);
+                  });
                 },
               ),
             ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
-import '../providers_riverpod/connection_provider_riverpod.dart';
+import '../providers/connection_provider.dart';
 import 'connection_form.dart';
 
 class ConnectionManagementPage extends ConsumerWidget {

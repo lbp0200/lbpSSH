@@ -1,10 +1,12 @@
 # lbpSSH Linear Design System Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement complete Linear design system for lbpSSH - a dark-mode-first SSH terminal manager with near-black backgrounds, indigo-violet accent, translucent surfaces, and semi-transparent borders.
 
 **Architecture:** Flutter desktop app using Provider for state management. The redesign replaces the existing blue-accent theme with Linear's color system while maintaining the existing app structure and functionality. Components are updated in 6 phases from theme foundation to detailed widgets.
+
+**Status:** ✅ Completed (`LinearColors`/`LinearSpacing`/`LinearRadius`/`LinearDuration` all live in `app_theme.dart`, 173+ usages across screens)
 
 **Tech Stack:** Flutter 3.10.7+, Provider, Material 3, kterm terminal emulator
 
@@ -32,7 +34,7 @@
 **Files:**
 - Modify: `lib/core/theme/app_theme.dart`
 
-- [ ] **Step 1: Add Linear color constants**
+- [x] **Step 1: Add Linear color constants**
 
 Replace the entire `AppTheme` class with:
 
@@ -102,7 +104,7 @@ class LinearDuration {
 }
 ```
 
-- [ ] **Step 2: Update darkTheme with Linear palette**
+- [x] **Step 2: Update darkTheme with Linear palette**
 
 Replace `darkTheme` with:
 
@@ -260,7 +262,7 @@ static ThemeData darkTheme = ThemeData(
 );
 ```
 
-- [ ] **Step 3: Add backward-compatible aliases**
+- [x] **Step 3: Add backward-compatible aliases**
 
 Add at the end of `AppTheme` class (before closing brace):
 
@@ -284,12 +286,12 @@ static const double spacingXl = 24.0;
 static const double spacingXxl = 32.0;
 ```
 
-- [ ] **Step 4: Run flutter analyze to verify**
+- [x] **Step 4: Run flutter analyze to verify**
 
 Run: `flutter analyze lib/core/theme/app_theme.dart`
 Expected: No errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/core/theme/app_theme.dart
@@ -314,7 +316,7 @@ Linear Design System Phase 1"
 **Files:**
 - Modify: `lib/presentation/widgets/collapsible_sidebar.dart`
 
-- [ ] **Step 1: Update imports and remove old spacing usage**
+- [x] **Step 1: Update imports and remove old spacing usage**
 
 Change imports to use Linear constants:
 
@@ -328,7 +330,7 @@ import '../screens/app_settings_screen.dart';
 import 'connection_list.dart';
 ```
 
-- [ ] **Step 2: Update container decoration**
+- [x] **Step 2: Update container decoration**
 
 Replace the sidebar container decoration:
 
@@ -355,7 +357,7 @@ return Container(
 );
 ```
 
-- [ ] **Step 3: Update icon button hover effect**
+- [x] **Step 3: Update icon button hover effect**
 
 Replace `_buildIconButton` with:
 
@@ -389,7 +391,7 @@ Widget _buildIconButton({
 }
 ```
 
-- [ ] **Step 4: Update search field styling**
+- [x] **Step 4: Update search field styling**
 
 Replace `_buildSearchField` with Linear input style:
 
@@ -434,7 +436,7 @@ Widget _buildSearchField(ThemeData theme) {
 }
 ```
 
-- [ ] **Step 5: Update bottom bar styling**
+- [x] **Step 5: Update bottom bar styling**
 
 Replace `_buildBottomBar` with:
 
@@ -475,7 +477,7 @@ Widget _buildBottomBar(ThemeData theme, bool isCompactMode) {
 }
 ```
 
-- [ ] **Step 6: Update header styling**
+- [x] **Step 6: Update header styling**
 
 Replace `_buildExpandedHeader` with:
 
@@ -501,12 +503,12 @@ Widget _buildExpandedHeader(ThemeData theme, ColorScheme colorScheme) {
 }
 ```
 
-- [ ] **Step 7: Run flutter analyze**
+- [x] **Step 7: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/widgets/collapsible_sidebar.dart`
 Expected: No errors
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add lib/presentation/widgets/collapsible_sidebar.dart
@@ -527,7 +529,7 @@ Linear Design System Phase 2"
 **Files:**
 - Modify: `lib/presentation/widgets/connection_list.dart`
 
-- [ ] **Step 1: Update imports**
+- [x] **Step 1: Update imports**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -538,7 +540,7 @@ import '../providers/connection_provider.dart';
 import '../screens/connection_form.dart';
 ```
 
-- [ ] **Step 2: Replace _ConnectionListItem with Linear floating card**
+- [x] **Step 2: Replace _ConnectionListItem with Linear floating card**
 
 Replace entire `_ConnectionListItem` class:
 
@@ -708,7 +710,7 @@ class _ConnectionListItemState extends State<_ConnectionListItem> {
 }
 ```
 
-- [ ] **Step 3: Replace _CompactConnectionItem styling**
+- [x] **Step 3: Replace _CompactConnectionItem styling**
 
 Replace `_CompactConnectionItem` with Linear-styled version:
 
@@ -793,7 +795,7 @@ class _CompactConnectionItem extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 4: Update empty state styling**
+- [x] **Step 4: Update empty state styling**
 
 Replace empty state in `ConnectionList.build`:
 
@@ -827,7 +829,7 @@ if (connections.isEmpty) {
 }
 ```
 
-- [ ] **Step 5: Update FAB styling**
+- [x] **Step 5: Update FAB styling**
 
 Replace FAB with Linear ghost style:
 
@@ -852,7 +854,7 @@ if (!isCompact)
   ),
 ```
 
-- [ ] **Step 6: Update delete confirmation dialog**
+- [x] **Step 6: Update delete confirmation dialog**
 
 Replace `_deleteConnection` dialog with Linear styling:
 
@@ -901,12 +903,12 @@ Future<void> _deleteConnection(
 }
 ```
 
-- [ ] **Step 7: Run flutter analyze**
+- [x] **Step 7: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/widgets/connection_list.dart`
 Expected: No errors
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add lib/presentation/widgets/connection_list.dart
@@ -930,7 +932,7 @@ Linear Design System Phase 2"
 **Files:**
 - Modify: `lib/presentation/widgets/terminal_view.dart`
 
-- [ ] **Step 1: Update TerminalTabsView build method - tab bar styling**
+- [x] **Step 1: Update TerminalTabsView build method - tab bar styling**
 
 Replace the Container decoration in the tab bar section:
 
@@ -983,7 +985,7 @@ Container(
 ),
 ```
 
-- [ ] **Step 2: Replace _TerminalTab with Linear pill style**
+- [x] **Step 2: Replace _TerminalTab with Linear pill style**
 
 Replace entire `_TerminalTab` class:
 
@@ -1080,7 +1082,7 @@ class _TerminalTabState extends State<_TerminalTab> {
 }
 ```
 
-- [ ] **Step 3: Update empty state in TerminalTabsView**
+- [x] **Step 3: Update empty state in TerminalTabsView**
 
 Replace the empty state Column:
 
@@ -1134,12 +1136,12 @@ if (sessions.isEmpty) {
 }
 ```
 
-- [ ] **Step 4: Run flutter analyze**
+- [x] **Step 4: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/widgets/terminal_view.dart`
 Expected: No errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_view.dart
@@ -1163,11 +1165,11 @@ Linear Design System Phase 3"
 **Files:**
 - Modify: `lib/presentation/widgets/terminal_status_bar.dart`
 
-- [ ] **Step 1: Read current file**
+- [x] **Step 1: Read current file**
 
 Run: `flutter analyze lib/presentation/widgets/terminal_status_bar.dart`
 
-- [ ] **Step 2: Update status bar styling**
+- [x] **Step 2: Update status bar styling**
 
 Replace the status bar container with translucent Linear style:
 
@@ -1192,7 +1194,7 @@ Container(
 )
 ```
 
-- [ ] **Step 3: Update text and icon colors**
+- [x] **Step 3: Update text and icon colors**
 
 Replace any hardcoded colors with Linear colors:
 
@@ -1202,12 +1204,12 @@ Replace any hardcoded colors with Linear colors:
 // Active/success states use LinearColors.success
 ```
 
-- [ ] **Step 4: Run flutter analyze**
+- [x] **Step 4: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/widgets/terminal_status_bar.dart`
 Expected: No errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/presentation/widgets/terminal_status_bar.dart
@@ -1229,9 +1231,9 @@ Linear Design System Phase 4"
 **Files:**
 - Modify: `lib/presentation/screens/app_settings_screen.dart`
 
-- [ ] **Step 1: Read current navigation rail section**
+- [x] **Step 1: Read current navigation rail section**
 
-- [ ] **Step 2: Replace NavigationRail with Linear sidebar**
+- [x] **Step 2: Replace NavigationRail with Linear sidebar**
 
 Replace the NavigationRail section:
 
@@ -1282,7 +1284,7 @@ Container(
 ),
 ```
 
-- [ ] **Step 3: Add _LinearNavItem widget**
+- [x] **Step 3: Add _LinearNavItem widget**
 
 Add this class before `_AppSettingsScreenState`:
 
@@ -1367,7 +1369,7 @@ class _LinearNavItemState extends State<_LinearNavItem> {
 }
 ```
 
-- [ ] **Step 4: Remove VerticalDivider and update layout**
+- [x] **Step 4: Remove VerticalDivider and update layout**
 
 Replace:
 ```dart
@@ -1382,12 +1384,12 @@ Container(
 ),
 ```
 
-- [ ] **Step 5: Run flutter analyze**
+- [x] **Step 5: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/screens/app_settings_screen.dart`
 Expected: No errors
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/presentation/screens/app_settings_screen.dart
@@ -1410,9 +1412,9 @@ Linear Design System Phase 5"
 **Files:**
 - Modify: `lib/presentation/widgets/error_dialog.dart`
 
-- [ ] **Step 1: Read current file**
+- [x] **Step 1: Read current file**
 
-- [ ] **Step 2: Update dialog container styling**
+- [x] **Step 2: Update dialog container styling**
 
 Replace `AlertDialog` with Linear-styled version:
 
@@ -1435,14 +1437,14 @@ return AlertDialog(
 );
 ```
 
-- [ ] **Step 3: Update content colors**
+- [x] **Step 3: Update content colors**
 
 Replace hardcoded colors:
 - `theme.colorScheme.error` → `LinearColors.error`
 - `theme.colorScheme.surfaceVariant` → `LinearColors.panel`
 - `theme.colorScheme.errorContainer` → `LinearColors.error.withValues(alpha: 0.1)`
 
-- [ ] **Step 4: Update action buttons**
+- [x] **Step 4: Update action buttons**
 
 Replace action buttons with Linear ghost style:
 
@@ -1475,12 +1477,12 @@ actions: [
 ],
 ```
 
-- [ ] **Step 5: Run flutter analyze**
+- [x] **Step 5: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/widgets/error_dialog.dart`
 Expected: No errors
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/presentation/widgets/error_dialog.dart
@@ -1500,9 +1502,9 @@ Linear Design System Phase 6"
 **Files:**
 - Modify: `lib/presentation/screens/connection_form.dart`
 
-- [ ] **Step 1: Read current file**
+- [x] **Step 1: Read current file**
 
-- [ ] **Step 2: Update form section styling**
+- [x] **Step 2: Update form section styling**
 
 Look for `TextFormField` decorations and replace with Linear input style:
 
@@ -1531,7 +1533,7 @@ TextFormField(
 )
 ```
 
-- [ ] **Step 3: Update submit button**
+- [x] **Step 3: Update submit button**
 
 Replace submit button with Linear primary style:
 
@@ -1559,7 +1561,7 @@ ElevatedButton(
 ),
 ```
 
-- [ ] **Step 4: Update card/section containers**
+- [x] **Step 4: Update card/section containers**
 
 Replace card backgrounds:
 
@@ -1575,12 +1577,12 @@ Container(
 )
 ```
 
-- [ ] **Step 5: Run flutter analyze**
+- [x] **Step 5: Run flutter analyze**
 
 Run: `flutter analyze lib/presentation/screens/connection_form.dart`
 Expected: No errors
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/presentation/screens/connection_form.dart
@@ -1598,17 +1600,17 @@ Linear Design System Phase 6"
 
 ## Final Verification
 
-- [ ] **Step 1: Run full flutter analyze**
+- [x] **Step 1: Run full flutter analyze**
 
 Run: `flutter analyze`
 Expected: No errors (warnings about unused imports OK)
 
-- [ ] **Step 2: Build to verify**
+- [x] **Step 2: Build to verify**
 
 Run: `flutter build macos --debug --no-tree-shake-icons`
 Expected: Build succeeds
 
-- [ ] **Step 3: Commit final changes**
+- [x] **Step 3: Commit final changes**
 
 ```bash
 git add -A

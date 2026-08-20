@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'terminal_service.dart';
+import 'kitty_service_base.dart';
 
 /// 终端信息
 class TerminalInfo {
@@ -38,28 +38,20 @@ class BufferContent {
 /// 远程控制服务
 ///
 /// 通过 OSC 5xx 控制序列实现远程控制终端
-class KittyRemoteControlService {
-  final TerminalSession? _session;
+class KittyRemoteControlService extends KittyServiceBase {
 
   // 回调
   void Function(TerminalInfo)? onTerminalInfo;
   void Function(BufferContent)? onBufferContent;
   void Function(String)? onResponse;
 
-  KittyRemoteControlService({TerminalSession? session}) : _session = session;
-
-  /// 是否已连接
-  bool get isConnected => _session != null;
+  KittyRemoteControlService({super.session});
 
   /// 获取终端标题
   Future<String?> getTitle() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 21 ; t - 请求窗口标题
     const cmd = '\x1b]21;t\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     // 等待响应 (异步)
     return null; // 实际响应通过回调处理
@@ -67,13 +59,9 @@ class KittyRemoteControlService {
 
   /// 获取终端尺寸
   Future<TerminalInfo> getSize() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 发送 DA (Device Attributes) 请求
-    _session.writeRaw('\x1b[c');
-    _session.writeRaw('\x1b[6n');
+    writeRaw('\x1b[c');
+    writeRaw('\x1b[6n');
 
     // 等待响应
     // 响应格式: ESC [ rows ; cols R
@@ -84,36 +72,24 @@ class KittyRemoteControlService {
 
   /// 获取光标位置
   Future<void> getCursorPosition() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // CSI 6n - 查询光标位置
-    _session.writeRaw('\x1b[6n');
+    writeRaw('\x1b[6n');
   }
 
   /// 获取前台进程
   Future<String?> getForegroundProcess() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 9 ; c - 查询前台进程
     const cmd = '\x1b]9;c\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     return null;
   }
 
   /// 获取剪贴板内容
   Future<String?> getClipboard() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 52 ; c - 获取剪贴板
     const cmd = '\x1b]52;c;?\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
 
     return null;
   }
@@ -122,35 +98,23 @@ class KittyRemoteControlService {
   ///
   /// [text] - 剪贴板内容
   Future<void> setClipboard(String text) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 52 ; c ; base64_text - 设置剪贴板
     final encoded = base64Encode(utf8.encode(text));
     final cmd = '\x1b]52;c;$encoded\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 发送文本到终端
   ///
   /// [text] - 要发送的文本
   Future<void> sendText(String text) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
-    _session.writeRaw(text);
+    writeRaw(text);
   }
 
   /// 发送按键到终端
   ///
   /// [key] - 键名
   Future<void> sendKey(String key) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // 特殊键映射
     final specialKeys = {
       'enter': '\r',
@@ -170,7 +134,7 @@ class KittyRemoteControlService {
     };
 
     final sequence = specialKeys[key.toLowerCase()] ?? key;
-    _session.writeRaw(sequence);
+    writeRaw(sequence);
   }
 
   /// 发送 Ctrl+C
@@ -193,10 +157,6 @@ class KittyRemoteControlService {
     String key, {
     ModifierKey modifier = ModifierKey.none,
   }) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     String prefix = '';
     switch (modifier) {
       case ModifierKey.ctrl:
@@ -212,20 +172,16 @@ class KittyRemoteControlService {
         break;
     }
 
-    _session.writeRaw('$prefix$key');
+    writeRaw('$prefix$key');
   }
 
   /// 读取屏幕内容
   ///
   /// [lines] - 行数 (-1 表示全部)
   Future<void> readScreen({int lines = -1}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5114 ; R - 读取屏幕
     final cmd = '\x1b]5114;R${lines > 0 ? ";n=$lines" : ""}\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 读取缓冲区内容
@@ -233,42 +189,26 @@ class KittyRemoteControlService {
   /// [startLine] - 起始行
   /// [lines] - 行数
   Future<void> readBuffer({int startLine = 0, int lines = 100}) async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // OSC 5114 ; B - 读取缓冲区
     final cmd = '\x1b]5114;B;s=$startLine;n=$lines\x1b\\\\';
-    _session.writeRaw(cmd);
+    writeRaw(cmd);
   }
 
   /// 清除屏幕
   Future<void> clearScreen() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // ESC [ 2 J - 清除整个屏幕
-    _session.writeRaw('\x1b[2J');
+    writeRaw('\x1b[2J');
   }
 
   /// 清除行
   Future<void> clearLine() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
     // ESC [ 2 K - 清除整行
-    _session.writeRaw('\x1b[2K');
+    writeRaw('\x1b[2K');
   }
 
   /// 发送终端 Bell
   Future<void> sendBell() async {
-    if (_session == null) {
-      throw Exception('未连接到终端');
-    }
-
-    _session.writeRaw('\x07');
+    writeRaw('\x07');
   }
 
   /// 处理远程控制响应
