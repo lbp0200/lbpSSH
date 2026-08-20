@@ -1,3 +1,5 @@
+- chore(deps): bump release-drafter/release-drafter from 6 to 7 (#42) (6a98458)
+- chore(deps): bump softprops/action-gh-release from 2 to 3 (#39) (bbfacbf)
 - fix(test): deny only read-data on Windows for unreadable key file (9382297)
 - docs: update CHANGELOG (99e38d2)
 - fix(deps): pin file_picker to 12.0.0-beta.7 and fix committed lockfile (08172fb)
