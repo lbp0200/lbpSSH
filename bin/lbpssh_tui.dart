@@ -108,8 +108,8 @@ Future<void> _runSsh(SshConnection conn) async {
     final msg = result.errorMessage;
     if (msg != null && msg.isNotEmpty) {
       stderr.writeln(msg);
+      await Future<void>.delayed(const Duration(seconds: 2));
     }
-    await Future<void>.delayed(const Duration(seconds: 2));
   }
 }
 

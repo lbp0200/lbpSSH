@@ -1,5 +1,6 @@
 import 'dart:io';
-import '../../data/models/ssh_connection.dart';
+
+import 'package:lbp_ssh/data/models/ssh_connection.dart';
 
 /// ssh 启动结果
 class SshLaunchResult {
