@@ -495,9 +495,10 @@ packages:
   kterm:
     dependency: "direct main"
     description:
-      path: "/Users/lbp/Projects/kterm.dart"
-      relative: false
-    source: path
+      name: kterm
+      sha256: e8b1c1a19dfeb27a6fca136f38b84949f530b12929e1ceee9d7f5c6156d497ab
+      url: "https://pub.flutter-io.cn"
+    source: hosted
     version: "1.5.5"
   leak_tracker:
     dependency: transitive
