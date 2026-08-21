@@ -1,3 +1,7 @@
+- fix: revert pubspec.lock kterm source from local path to hosted pub (8dd4a08)
+- style: apply dart format to entire codebase (555e961)
+- refactor(tui): extract ssh launcher for testability and add coverage (dca7643)
+- docs: update CHANGELOG (5bb5c3a)
 - chore(deps): bump release-drafter/release-drafter from 6 to 7 (#42) (6a98458)
 - chore(deps): bump softprops/action-gh-release from 2 to 3 (#39) (bbfacbf)
 - fix(test): deny only read-data on Windows for unreadable key file (9382297)
