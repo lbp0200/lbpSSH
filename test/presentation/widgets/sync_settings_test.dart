@@ -82,16 +82,11 @@ void main() {
           () => notifier ?? _RecordingSyncNotifier(const SyncStatus()),
         ),
       ],
-      child: const MaterialApp(
-        home: Scaffold(body: SyncSettingsScreen()),
-      ),
+      child: const MaterialApp(home: Scaffold(body: SyncSettingsScreen())),
     );
   }
 
-  Future<void> pumpScreen(
-    WidgetTester tester, {
-    SyncNotifier? notifier,
-  }) async {
+  Future<void> pumpScreen(WidgetTester tester, {SyncNotifier? notifier}) async {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -133,10 +128,7 @@ void main() {
           await pumpScreen(
             tester,
             notifier: _RecordingSyncNotifier(
-              SyncStatus(
-                config: savedConfig,
-                lastSyncTime: lastSync,
-              ),
+              SyncStatus(config: savedConfig, lastSyncTime: lastSync),
             ),
           );
 
@@ -155,9 +147,7 @@ void main() {
         (tester) async {
           await pumpScreen(
             tester,
-            notifier: _RecordingSyncNotifier(
-              SyncStatus(config: savedConfig),
-            ),
+            notifier: _RecordingSyncNotifier(SyncStatus(config: savedConfig)),
           );
 
           final switchTile = tester.widget<SwitchListTile>(
@@ -393,23 +383,19 @@ void main() {
         },
       );
 
-      testWidgets(
-        'Given test connection fails, When test connection tapped, '
-        'Then shows error dialog',
-        (tester) async {
-          final notifier = _RecordingSyncNotifier(
-            SyncStatus(config: savedConfig),
-          )..failOperations = true;
-          await pumpScreen(tester, notifier: notifier);
+      testWidgets('Given test connection fails, When test connection tapped, '
+          'Then shows error dialog', (tester) async {
+        final notifier = _RecordingSyncNotifier(SyncStatus(config: savedConfig))
+          ..failOperations = true;
+        await pumpScreen(tester, notifier: notifier);
 
-          await tester.ensureVisible(find.text('测试连接'));
-          await tester.tap(find.text('测试连接'));
-          await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('测试连接'));
+        await tester.tap(find.text('测试连接'));
+        await tester.pumpAndSettle();
 
-          expect(find.text('连接测试失败'), findsOneWidget);
-          expect(find.textContaining('network error'), findsWidgets);
-        },
-      );
+        expect(find.text('连接测试失败'), findsOneWidget);
+        expect(find.textContaining('network error'), findsWidgets);
+      });
     });
 
     group('save failure', () {
@@ -447,34 +433,31 @@ void main() {
         },
       );
 
-      testWidgets(
-        'Given autoSync on, When interval entered, '
-        'Then saved config uses the interval',
-        (tester) async {
-          final notifier = _RecordingSyncNotifier(
-            SyncStatus(config: savedConfig),
-          );
-          await pumpScreen(tester, notifier: notifier);
+      testWidgets('Given autoSync on, When interval entered, '
+          'Then saved config uses the interval', (tester) async {
+        final notifier = _RecordingSyncNotifier(
+          SyncStatus(config: savedConfig),
+        );
+        await pumpScreen(tester, notifier: notifier);
 
-          // 输入间隔前先关闭自动同步再打开，确保间隔字段可见
-          final switchTile = find.byType(SwitchListTile);
-          await tester.ensureVisible(switchTile);
-          await tester.tap(switchTile); // off -> 间隔字段消失
-          await tester.pumpAndSettle();
-          await tester.tap(switchTile); // on -> 间隔字段出现
-          await tester.pumpAndSettle();
+        // 输入间隔前先关闭自动同步再打开，确保间隔字段可见
+        final switchTile = find.byType(SwitchListTile);
+        await tester.ensureVisible(switchTile);
+        await tester.tap(switchTile); // off -> 间隔字段消失
+        await tester.pumpAndSettle();
+        await tester.tap(switchTile); // on -> 间隔字段出现
+        await tester.pumpAndSettle();
 
-          await tester.enterText(
-            find.widgetWithText(TextFormField, '同步间隔（分钟）'),
-            '30',
-          );
-          await tester.tap(find.text('保存配置'));
-          await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextFormField, '同步间隔（分钟）'),
+          '30',
+        );
+        await tester.tap(find.text('保存配置'));
+        await tester.pumpAndSettle();
 
-          expect(notifier.savedConfigs, hasLength(1));
-          expect(notifier.savedConfigs.first.syncIntervalMinutes, 30);
-        },
-      );
+        expect(notifier.savedConfigs, hasLength(1));
+        expect(notifier.savedConfigs.first.syncIntervalMinutes, 30);
+      });
     });
 
     group('create token', () {
@@ -485,26 +468,27 @@ void main() {
           final launchedUrls = <String>[];
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/url_launcher'),
-            (call) async {
-              if (call.method == 'launch') {
-                launchedUrls.add(
-                  (call.arguments as Map<dynamic, dynamic>)['url'] as String,
-                );
-                return true;
-              }
-              if (call.method == 'canLaunch') {
-                return true;
-              }
-              return null;
-            },
-          );
+                const MethodChannel('plugins.flutter.io/url_launcher'),
+                (call) async {
+                  if (call.method == 'launch') {
+                    launchedUrls.add(
+                      (call.arguments as Map<dynamic, dynamic>)['url']
+                          as String,
+                    );
+                    return true;
+                  }
+                  if (call.method == 'canLaunch') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
           addTearDown(() {
             TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
                 .setMockMethodCallHandler(
-              const MethodChannel('plugins.flutter.io/url_launcher'),
-              null,
-            );
+                  const MethodChannel('plugins.flutter.io/url_launcher'),
+                  null,
+                );
           });
 
           await pumpScreen(tester);
@@ -515,9 +499,7 @@ void main() {
 
           expect(
             launchedUrls,
-            contains(
-              'https://github.com/settings/tokens/new?scopes=gist',
-            ),
+            contains('https://github.com/settings/tokens/new?scopes=gist'),
           );
         },
       );

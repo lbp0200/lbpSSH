@@ -19,8 +19,8 @@ class _Socks5ProxySocket implements SSHSocket {
   final Stream<Uint8List> _stream;
 
   _Socks5ProxySocket(Socket socket, Stream<Uint8List> stream)
-      : _socket = socket,
-        _stream = stream;
+    : _socket = socket,
+      _stream = stream;
 
   @override
   Stream<Uint8List> get stream => _stream;
@@ -87,20 +87,18 @@ Future<SSHSocket> connectViaSocks5Proxy(
 enum SshConnectionState { disconnected, connecting, connected, error }
 
 /// SSHClient 工厂签名（测试时可注入替身，默认使用真实 [SSHClient]）
-typedef SSHClientFactory = SSHClient Function(
-  SSHSocket socket, {
-  required String username,
-  SSHPasswordRequestHandler? onPasswordRequest,
-  List<SSHKeyPair>? identities,
-  Duration? keepAliveInterval,
-});
+typedef SSHClientFactory =
+    SSHClient Function(
+      SSHSocket socket, {
+      required String username,
+      SSHPasswordRequestHandler? onPasswordRequest,
+      List<SSHKeyPair>? identities,
+      Duration? keepAliveInterval,
+    });
 
 /// SSH socket 连接器签名（测试时可注入替身，默认使用 [SSHSocket.connect]）
-typedef SSHSocketConnector = Future<SSHSocket> Function(
-  String host,
-  int port, {
-  Duration? timeout,
-});
+typedef SSHSocketConnector =
+    Future<SSHSocket> Function(String host, int port, {Duration? timeout});
 
 /// SSH 连接服务
 class SshService implements TerminalInputService {
@@ -112,19 +110,15 @@ class SshService implements TerminalInputService {
     AppConfigService? appConfigService,
     SSHClientFactory? clientFactory,
     SSHSocketConnector? socketConnector,
-  })  : _appConfigService = appConfigService,
-        _clientFactory = clientFactory,
-        _socketConnector = socketConnector;
+  }) : _appConfigService = appConfigService,
+       _clientFactory = clientFactory,
+       _socketConnector = socketConnector;
 
   AppConfigService get _config =>
       _appConfigService ?? AppConfigService.getInstance();
 
   /// 连接 SSH socket（优先使用注入的连接器，默认 [SSHSocket.connect]）
-  Future<SSHSocket> _connectSocket(
-    String host,
-    int port, {
-    Duration? timeout,
-  }) {
+  Future<SSHSocket> _connectSocket(String host, int port, {Duration? timeout}) {
     final connector = _socketConnector;
     if (connector != null) {
       return connector(host, port, timeout: timeout);

@@ -115,19 +115,18 @@ void main() {
         },
       );
 
-      testWidgets(
-        'Given error, When rendered, Then shows error message',
-        (tester) async {
-          await pumpPage(
-            tester,
-            notifier: _MockConnectionNotifier(
-              const ConnectionState(error: '加载失败: boom'),
-            ),
-          );
+      testWidgets('Given error, When rendered, Then shows error message', (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          notifier: _MockConnectionNotifier(
+            const ConnectionState(error: '加载失败: boom'),
+          ),
+        );
 
-          expect(find.text('加载失败: boom'), findsOneWidget);
-        },
-      );
+        expect(find.text('加载失败: boom'), findsOneWidget);
+      });
 
       testWidgets(
         'Given connections, When rendered, Then shows connection list items',
@@ -194,64 +193,59 @@ void main() {
         },
       );
 
-      testWidgets(
-        'Given connection item, When edit menu tapped, '
-        'Then navigates to ConnectionFormScreen with it',
-        (tester) async {
-          await pumpPage(
-            tester,
-            notifier: _MockConnectionNotifier(
-              ConnectionState(connections: testConnections),
-            ),
-          );
+      testWidgets('Given connection item, When edit menu tapped, '
+          'Then navigates to ConnectionFormScreen with it', (tester) async {
+        await pumpPage(
+          tester,
+          notifier: _MockConnectionNotifier(
+            ConnectionState(connections: testConnections),
+          ),
+        );
 
-          // 打开第一项的更多菜单并选择「编辑」
-          await tester.tap(find.byIcon(Icons.more_vert).first);
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('编辑'));
-          await tester.pumpAndSettle();
+        // 打开第一项的更多菜单并选择「编辑」
+        await tester.tap(find.byIcon(Icons.more_vert).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('编辑'));
+        await tester.pumpAndSettle();
 
-          expect(find.byType(ConnectionFormScreen), findsOneWidget);
-        },
-      );
+        expect(find.byType(ConnectionFormScreen), findsOneWidget);
+      });
     });
 
     group('hover behavior', () {
-      testWidgets(
-        'Given connection item, When mouse hovers over it, '
-        'Then connection info text switches to secondary color',
-        (tester) async {
-          await pumpPage(
-            tester,
-            notifier: _MockConnectionNotifier(
-              ConnectionState(connections: testConnections),
-            ),
-          );
+      testWidgets('Given connection item, When mouse hovers over it, '
+          'Then connection info text switches to secondary color', (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          notifier: _MockConnectionNotifier(
+            ConnectionState(connections: testConnections),
+          ),
+        );
 
-          // 未悬停时使用 textTertiary
-          Text infoText() => tester.widget<Text>(
-            find.text('admin@192.168.1.10:22'),
-          );
-          expect(infoText().style?.color, LinearColors.textTertiary);
+        // 未悬停时使用 textTertiary
+        Text infoText() =>
+            tester.widget<Text>(find.text('admin@192.168.1.10:22'));
+        expect(infoText().style?.color, LinearColors.textTertiary);
 
-          // 悬停
-          final gesture = await tester.createGesture(
-            kind: PointerDeviceKind.mouse,
-          );
-          await gesture.addPointer(location: Offset.zero);
-          addTearDown(gesture.removePointer);
-          await tester.pump();
-          await gesture.moveTo(tester.getCenter(find.text('Server Alpha')));
-          await tester.pumpAndSettle();
+        // 悬停
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await tester.pump();
+        await gesture.moveTo(tester.getCenter(find.text('Server Alpha')));
+        await tester.pumpAndSettle();
 
-          expect(infoText().style?.color, LinearColors.textSecondary);
+        expect(infoText().style?.color, LinearColors.textSecondary);
 
-          // 移出后恢复
-          await gesture.moveTo(const Offset(10, 10));
-          await tester.pumpAndSettle();
-          expect(infoText().style?.color, LinearColors.textTertiary);
-        },
-      );
+        // 移出后恢复
+        await gesture.moveTo(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        expect(infoText().style?.color, LinearColors.textTertiary);
+      });
     });
 
     group('delete flow', () {

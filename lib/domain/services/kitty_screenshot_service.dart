@@ -21,7 +21,6 @@ typedef ScreenshotCallback = void Function(Uint8List data);
 ///
 /// 实现终端截图功能
 class KittyScreenshotService extends KittyServiceBase {
-
   // 回调
   ScreenshotCallback? onScreenshot;
 

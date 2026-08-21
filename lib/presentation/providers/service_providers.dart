@@ -27,8 +27,8 @@ final appConfigServiceProvider = Provider<AppConfigService>((ref) {
 /// LocalTerminalService 工厂（测试时可 override 注入替身）
 final localTerminalServiceFactoryProvider =
     Provider<LocalTerminalService Function()>((ref) {
-  return LocalTerminalService.new;
-});
+      return LocalTerminalService.new;
+    });
 
 /// SshService 工厂（测试时可 override 注入替身）
 final sshServiceFactoryProvider = Provider<SshService Function()>((ref) {

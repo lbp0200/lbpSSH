@@ -5,18 +5,19 @@ import 'package:flutter_pty/flutter_pty.dart';
 import 'terminal_input_service.dart';
 
 /// PTY 启动函数签名（默认使用 [Pty.start]，测试时可注入替身）
-typedef PtyStarter = Pty Function(
-  String executable, {
-  List<String> arguments,
-  String? workingDirectory,
-  Map<String, String>? environment,
-  int rows,
-});
+typedef PtyStarter =
+    Pty Function(
+      String executable, {
+      List<String> arguments,
+      String? workingDirectory,
+      Map<String, String>? environment,
+      int rows,
+    });
 
 /// 本地终端服务 - 使用 PTY 实现
 class LocalTerminalService implements TerminalInputService {
   LocalTerminalService({PtyStarter? ptyStarter})
-      : _ptyStarter = ptyStarter ?? Pty.start;
+    : _ptyStarter = ptyStarter ?? Pty.start;
 
   final PtyStarter _ptyStarter;
 

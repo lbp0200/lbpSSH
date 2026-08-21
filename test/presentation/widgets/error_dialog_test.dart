@@ -309,11 +309,11 @@ void main() {
         final clipboardTexts = <String>[];
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData') {
-            clipboardTexts.add((call.arguments as Map)['text'] as String);
-          }
-          return null;
-        });
+              if (call.method == 'Clipboard.setData') {
+                clipboardTexts.add((call.arguments as Map)['text'] as String);
+              }
+              return null;
+            });
 
         await pumpErrorDialog(
           tester,
@@ -337,40 +337,37 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given feedback button, When tapped, '
-      'Then copies report and shows issues state',
-      (tester) async {
-        // Mock url_launcher 平台通道
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(
-          const MethodChannel('plugins.flutter.io/url_launcher'),
-          (call) async {
-            if (call.method == 'canLaunch' || call.method == 'launch') {
-              return true;
-            }
-            return null;
-          },
-        );
+    testWidgets('Given feedback button, When tapped, '
+        'Then copies report and shows issues state', (tester) async {
+      // Mock url_launcher 平台通道
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/url_launcher'),
+            (call) async {
+              if (call.method == 'canLaunch' || call.method == 'launch') {
+                return true;
+              }
+              return null;
+            },
+          );
 
-        await pumpErrorDialog(
-          tester,
-          title: 'Feedback',
-          error: 'disk full',
-          stackTrace: StackTrace.fromString('stack here'),
-        );
+      await pumpErrorDialog(
+        tester,
+        title: 'Feedback',
+        error: 'disk full',
+        stackTrace: StackTrace.fromString('stack here'),
+      );
 
-        await tester.tap(find.text('反馈问题'));
-        await tester.pump();
+      await tester.tap(find.text('反馈问题'));
+      await tester.pump();
 
-        // 按钮文案切换为「已复制，前往 Issues」
-        expect(find.text('已复制，前往 Issues'), findsOneWidget);
+      // 按钮文案切换为「已复制，前往 Issues」
+      expect(find.text('已复制，前往 Issues'), findsOneWidget);
 
-        // 等待 3 秒 timer 恢复按钮文案
-        await tester.pump(const Duration(seconds: 3));
-        expect(find.text('反馈问题'), findsOneWidget);
-      },
-    );
+      // 等待 3 秒 timer 恢复按钮文案
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('反馈问题'), findsOneWidget);
+    });
 
     testWidgets(
       'Given error section, When header tapped, Then collapses and expands',

@@ -108,10 +108,7 @@ void main() {
     });
 
     test('parses mixed ASCII and multibyte UTF-8', () {
-      expect(
-        parseKeys([97, 0xC3, 0xA9, 98]),
-        ['a', 'é', 'b'],
-      );
+      expect(parseKeys([97, 0xC3, 0xA9, 98]), ['a', 'é', 'b']);
     });
 
     test('skips truncated UTF-8 sequence (header claims 3 bytes, has 2)', () {

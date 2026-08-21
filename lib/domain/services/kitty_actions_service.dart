@@ -81,7 +81,6 @@ typedef ActionCallback = void Function(ActionArgs action);
 ///
 /// 通过 OSC 5xx 和 actions 功能实现终端内操作
 class KittyActionsService extends KittyServiceBase {
-
   // 回调
   ActionCallback? onAction;
 

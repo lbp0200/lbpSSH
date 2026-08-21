@@ -160,9 +160,7 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
   }
 
   Future<void> _downloadFile(FileItem item) async {
-    final dir = await FilePicker.getDirectoryPath(
-      dialogTitle: '选择下载目录',
-    );
+    final dir = await FilePicker.getDirectoryPath(dialogTitle: '选择下载目录');
     if (dir == null) return;
     final result = '$dir/${item.name}';
 

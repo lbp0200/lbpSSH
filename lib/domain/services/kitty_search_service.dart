@@ -49,7 +49,6 @@ typedef SearchResultCallback = void Function(SearchResult result);
 ///
 /// 实现终端扩展搜索功能
 class KittySearchService extends KittyServiceBase {
-
   // 回调
   SearchResultCallback? onSearchResult;
 

@@ -112,10 +112,7 @@ class _MockSftpNotifier extends SftpNotifier {
   SftpState build() => SftpState(tabs: [_tab]);
 
   @override
-  Future<SftpTab> openTab(
-    SshConnection connection, {
-    String? password,
-  }) async {
+  Future<SftpTab> openTab(SshConnection connection, {String? password}) async {
     return _tab;
   }
 }
@@ -137,9 +134,9 @@ void main() {
   }) {
     final transferService = _MockTransferService();
     when(() => transferService.currentPath).thenReturn('/home/user');
-    when(() => transferService.listCurrentDirectory()).thenAnswer(
-      (_) async => <FileItem>[],
-    );
+    when(
+      () => transferService.listCurrentDirectory(),
+    ).thenAnswer((_) async => <FileItem>[]);
     final sftpTab = SftpTab(
       id: 'sftp-tab',
       connection: testConnections.first,
@@ -164,9 +161,7 @@ void main() {
         importExportProvider.overrideWith(ImportExportNotifier.new),
         syncProvider.overrideWith(_MockSyncNotifier.new),
       ],
-      child: const MaterialApp(
-        home: MainScreen(),
-      ),
+      child: const MaterialApp(home: MainScreen()),
     );
   }
 
@@ -232,42 +227,38 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given no existing session, When SFTP button is tapped, '
-      'Then creates session and opens SFTP browser',
-      (tester) async {
-        final terminalNotifier = _RecordingTerminalNotifier();
-        await pumpMainScreen(tester, terminalNotifier: terminalNotifier);
+    testWidgets('Given no existing session, When SFTP button is tapped, '
+        'Then creates session and opens SFTP browser', (tester) async {
+      final terminalNotifier = _RecordingTerminalNotifier();
+      await pumpMainScreen(tester, terminalNotifier: terminalNotifier);
 
-        await tester.tap(find.byIcon(Icons.folder_copy_outlined));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.folder_copy_outlined));
+      await tester.pumpAndSettle();
 
-        // 无会话 → createSession 被调用
-        expect(terminalNotifier.createdConnectionIds, ['conn-1']);
-        expect(find.byType(SftpBrowserScreen), findsOneWidget);
-      },
-    );
+      // 无会话 → createSession 被调用
+      expect(terminalNotifier.createdConnectionIds, ['conn-1']);
+      expect(find.byType(SftpBrowserScreen), findsOneWidget);
+    });
 
-    testWidgets(
-      'Given existing session, When SFTP button is tapped, '
-      'Then does not create a new session and opens SFTP browser',
-      (tester) async {
-        final terminalNotifier = _RecordingTerminalNotifier(
-          existingSession: TerminalSession(
-            id: 'conn-1',
-            name: 'Server Alpha',
-            inputService: _StubTerminalInputService(),
-          ),
-        );
-        await pumpMainScreen(tester, terminalNotifier: terminalNotifier);
+    testWidgets('Given existing session, When SFTP button is tapped, '
+        'Then does not create a new session and opens SFTP browser', (
+      tester,
+    ) async {
+      final terminalNotifier = _RecordingTerminalNotifier(
+        existingSession: TerminalSession(
+          id: 'conn-1',
+          name: 'Server Alpha',
+          inputService: _StubTerminalInputService(),
+        ),
+      );
+      await pumpMainScreen(tester, terminalNotifier: terminalNotifier);
 
-        await tester.tap(find.byIcon(Icons.folder_copy_outlined));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.folder_copy_outlined));
+      await tester.pumpAndSettle();
 
-        // 已有会话 → 不重复创建
-        expect(terminalNotifier.createdConnectionIds, isEmpty);
-        expect(find.byType(SftpBrowserScreen), findsOneWidget);
-      },
-    );
+      // 已有会话 → 不重复创建
+      expect(terminalNotifier.createdConnectionIds, isEmpty);
+      expect(find.byType(SftpBrowserScreen), findsOneWidget);
+    });
   });
 }

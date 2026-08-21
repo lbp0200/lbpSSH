@@ -13,7 +13,6 @@ typedef NotificationProgressCallback =
 ///
 /// 通过 SSH 终端发送 OSC 99 控制序列实现桌面通知
 class KittyNotificationService extends KittyServiceBase {
-
   // 回调
   NotificationCallback? onClick;
   NotificationProgressCallback? onProgress;

@@ -53,9 +53,7 @@ void main() {
         terminalConfigProvider.overrideWith(() => mockTerminalNotifier),
         sshConfigProvider.overrideWith(() => mockSshNotifier),
       ],
-      child: const MaterialApp(
-        home: Scaffold(body: TerminalSettingsPage()),
-      ),
+      child: const MaterialApp(home: Scaffold(body: TerminalSettingsPage())),
     );
   }
 
@@ -82,7 +80,11 @@ void main() {
   }
 
   /// 按 label 文本定位并输入内容
-  Future<void> enterField(WidgetTester tester, String label, String value) async {
+  Future<void> enterField(
+    WidgetTester tester,
+    String label,
+    String value,
+  ) async {
     final finder = find.ancestor(
       of: find.text(label),
       matching: find.byType(TextFormField),
@@ -151,10 +153,7 @@ void main() {
         await tester.tap(find.text('放大'));
         await tester.pumpAndSettle();
 
-        expect(
-          tester.widget<Slider>(find.byType(Slider)).value,
-          19.0,
-        );
+        expect(tester.widget<Slider>(find.byType(Slider)).value, 19.0);
         expect(find.text('19px'), findsOneWidget);
       },
     );
@@ -169,10 +168,7 @@ void main() {
         await tester.tap(find.text('缩小'));
         await tester.pumpAndSettle();
 
-        expect(
-          tester.widget<Slider>(find.byType(Slider)).value,
-          17.0,
-        );
+        expect(tester.widget<Slider>(find.byType(Slider)).value, 17.0);
         expect(find.text('17px'), findsOneWidget);
       },
     );
@@ -187,10 +183,7 @@ void main() {
         await tester.tap(find.text('默认 (14px)'));
         await tester.pumpAndSettle();
 
-        expect(
-          tester.widget<Slider>(find.byType(Slider)).value,
-          14.0,
-        );
+        expect(tester.widget<Slider>(find.byType(Slider)).value, 14.0);
       },
     );
 
@@ -202,10 +195,7 @@ void main() {
         await tester.tap(find.text('18px'));
         await tester.pumpAndSettle();
 
-        expect(
-          tester.widget<Slider>(find.byType(Slider)).value,
-          18.0,
-        );
+        expect(tester.widget<Slider>(find.byType(Slider)).value, 18.0);
         expect(find.text('18px'), findsNWidgets(2)); // 显示 + 预设 chip
       },
     );
@@ -245,9 +235,7 @@ void main() {
 
         await enterField(tester, '字母间距', '0.5');
 
-        final line = tester.widget<Text>(
-          find.text(r'user@hostname:~$').first,
-        );
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
         expect(line.style?.letterSpacing, 0.5);
       },
     );
@@ -259,9 +247,7 @@ void main() {
 
         await enterField(tester, '行高', '1.5');
 
-        final line = tester.widget<Text>(
-          find.text(r'user@hostname:~$').first,
-        );
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
         expect(line.style?.height, 1.5);
       },
     );
@@ -290,9 +276,7 @@ void main() {
 
         await enterField(tester, '前景颜色', '#ABCDEF');
 
-        final line = tester.widget<Text>(
-          find.text(r'user@hostname:~$').first,
-        );
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
         expect(line.style?.color, const Color(0xFFABCDEF));
       },
     );
@@ -324,33 +308,27 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('17px'), findsOneWidget);
-        expect(
-          tester.widget<Slider>(find.byType(Slider)).value,
-          17.0,
-        );
+        expect(tester.widget<Slider>(find.byType(Slider)).value, 17.0);
       },
     );
 
-    testWidgets(
-      'Given modified config, When 保存显示设置 tapped, '
-      'Then config saved and snackbar shown',
-      (tester) async {
-        await pumpPage(tester);
+    testWidgets('Given modified config, When 保存显示设置 tapped, '
+        'Then config saved and snackbar shown', (tester) async {
+      await pumpPage(tester);
 
-        await tester.tap(find.text('放大'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('放大'));
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('保存显示设置'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('保存显示设置'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('设置已保存'), findsOneWidget);
-        expect(mockTerminalNotifier.lastSaved?.fontSize, 19.0);
+      expect(find.text('设置已保存'), findsOneWidget);
+      expect(mockTerminalNotifier.lastSaved?.fontSize, 19.0);
 
-        // 等待 SnackBar 自动关闭，避免残留 Timer
-        await tester.pump(const Duration(seconds: 5));
-        await tester.pumpAndSettle();
-      },
-    );
+      // 等待 SnackBar 自动关闭，避免残留 Timer
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
 
     testWidgets(
       'Given save fails, When 保存显示设置 tapped, Then shows failure snackbar',
@@ -367,24 +345,21 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given keepalive changed, When 保存 SSH 设置 tapped, '
-      'Then ssh config saved and snackbar shown',
-      (tester) async {
-        await pumpPage(tester);
+    testWidgets('Given keepalive changed, When 保存 SSH 设置 tapped, '
+        'Then ssh config saved and snackbar shown', (tester) async {
+      await pumpPage(tester);
 
-        await enterField(tester, 'Keepalive 间隔', '60');
+      await enterField(tester, 'Keepalive 间隔', '60');
 
-        await tester.tap(find.text('保存 SSH 设置'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('保存 SSH 设置'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('SSH 设置已保存'), findsOneWidget);
-        expect(mockSshNotifier.lastSaved?.keepaliveInterval, 60000);
+      expect(find.text('SSH 设置已保存'), findsOneWidget);
+      expect(mockSshNotifier.lastSaved?.keepaliveInterval, 60000);
 
-        await tester.pump(const Duration(seconds: 5));
-        await tester.pumpAndSettle();
-      },
-    );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
 
     testWidgets(
       'Given keepalive zero entered, When saved, Then keepalive unchanged',
@@ -431,27 +406,24 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given keepalive changed, When SSH section 重置 tapped, '
-      'Then keepalive reverts to default',
-      (tester) async {
-        await pumpPage(tester);
+    testWidgets('Given keepalive changed, When SSH section 重置 tapped, '
+        'Then keepalive reverts to default', (tester) async {
+      await pumpPage(tester);
 
-        await enterField(tester, 'Keepalive 间隔', '60');
+      await enterField(tester, 'Keepalive 间隔', '60');
 
-        // 第二个"重置"按钮位于 SSH 连接设置区块
-        await tester.tap(find.text('重置').last);
-        await tester.pumpAndSettle();
+      // 第二个"重置"按钮位于 SSH 连接设置区块
+      await tester.tap(find.text('重置').last);
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('保存 SSH 设置'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('保存 SSH 设置'));
+      await tester.pumpAndSettle();
 
-        expect(mockSshNotifier.lastSaved?.keepaliveInterval, 30000);
+      expect(mockSshNotifier.lastSaved?.keepaliveInterval, 30000);
 
-        await tester.pump(const Duration(seconds: 5));
-        await tester.pumpAndSettle();
-      },
-    );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
 
     testWidgets(
       'Given shell dropdown, When bash selected, Then shellPath saved',
@@ -474,22 +446,21 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given custom shell path, When entered, Then shellPath saved',
-      (tester) async {
-        await pumpPage(tester);
+    testWidgets('Given custom shell path, When entered, Then shellPath saved', (
+      tester,
+    ) async {
+      await pumpPage(tester);
 
-        await enterField(tester, '自定义 Shell 路径', '/usr/bin/zsh');
+      await enterField(tester, '自定义 Shell 路径', '/usr/bin/zsh');
 
-        await tester.tap(find.text('保存显示设置'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('保存显示设置'));
+      await tester.pumpAndSettle();
 
-        expect(mockTerminalNotifier.lastSaved?.shellPath, '/usr/bin/zsh');
+      expect(mockTerminalNotifier.lastSaved?.shellPath, '/usr/bin/zsh');
 
-        await tester.pump(const Duration(seconds: 5));
-        await tester.pumpAndSettle();
-      },
-    );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
 
     testWidgets(
       'Given font dropdown, When Fira Code selected, Then preview fontFamily updates',

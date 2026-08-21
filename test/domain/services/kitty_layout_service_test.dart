@@ -416,17 +416,20 @@ void main() {
         ).called(1);
       });
 
-      test('keeps window metadata unchanged when updating active flag', () async {
-        service.handleLayoutResponse('20;windows:9:Node;10:Vim');
+      test(
+        'keeps window metadata unchanged when updating active flag',
+        () async {
+          service.handleLayoutResponse('20;windows:9:Node;10:Vim');
 
-        await service.focusWindow('9');
+          await service.focusWindow('9');
 
-        expect(service.windows[0].id, '9');
-        expect(service.windows[0].title, 'Node');
-        expect(service.windows[0].isActive, isTrue);
-        expect(service.windows[1].title, 'Vim');
-        expect(service.windows[1].isActive, isFalse);
-      });
+          expect(service.windows[0].id, '9');
+          expect(service.windows[0].title, 'Node');
+          expect(service.windows[0].isActive, isTrue);
+          expect(service.windows[1].title, 'Vim');
+          expect(service.windows[1].isActive, isFalse);
+        },
+      );
     });
   });
 }

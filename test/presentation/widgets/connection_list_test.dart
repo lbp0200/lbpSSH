@@ -374,7 +374,10 @@ void main() {
           }
 
           final initialBorder = initialDecoration().border! as Border;
-          expect(initialBorder.top.color, isNot(LinearColors.accentInteractive));
+          expect(
+            initialBorder.top.color,
+            isNot(LinearColors.accentInteractive),
+          );
           expect(initialBorder.top.width, 1);
 
           // Press Tab to move focus
@@ -383,12 +386,8 @@ void main() {
           await tester.pump(const Duration(milliseconds: 300));
 
           // 聚焦后：边框变为焦点色，宽度 2（_isFocused 生效）
-          final focusedBorder =
-              (initialDecoration().border! as Border);
-          expect(
-            focusedBorder.top.color,
-            LinearColors.accentInteractive,
-          );
+          final focusedBorder = (initialDecoration().border! as Border);
+          expect(focusedBorder.top.color, LinearColors.accentInteractive);
           expect(focusedBorder.top.width, 2);
 
           // InkWell 应存在且可聚焦
@@ -672,9 +671,11 @@ void main() {
           await tester.pumpAndSettle();
 
           // 获取 notifier 验证删除调用
-          final notifier = ProviderScope.containerOf(
-            tester.element(find.byType(ConnectionList)),
-          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          final notifier =
+              ProviderScope.containerOf(
+                    tester.element(find.byType(ConnectionList)),
+                  ).read(connectionProvider.notifier)
+                  as _MockConnectionNotifier;
           expect(notifier.deletedIds, ['1']);
           expect(find.text('连接已删除'), findsOneWidget);
         },
@@ -710,9 +711,11 @@ void main() {
           await tester.tap(find.text('取消'));
           await tester.pumpAndSettle();
 
-          final notifier = ProviderScope.containerOf(
-            tester.element(find.byType(ConnectionList)),
-          ).read(connectionProvider.notifier) as _MockConnectionNotifier;
+          final notifier =
+              ProviderScope.containerOf(
+                    tester.element(find.byType(ConnectionList)),
+                  ).read(connectionProvider.notifier)
+                  as _MockConnectionNotifier;
           expect(notifier.deletedIds, isEmpty);
         },
       );
@@ -748,9 +751,7 @@ void main() {
           );
           await gesture.addPointer(location: Offset.zero);
           await tester.pump();
-          await gesture.moveTo(
-            tester.getCenter(find.text('Hover Item')),
-          );
+          await gesture.moveTo(tester.getCenter(find.text('Hover Item')));
           await tester.pump();
 
           // hover 后颜色切换为 fillSurfaceHover

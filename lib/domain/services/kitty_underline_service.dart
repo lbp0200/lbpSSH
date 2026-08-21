@@ -40,7 +40,6 @@ class UnderlineConfig {
 ///
 /// 通过 OSC 4:58 和 OSC 58 控制序列实现下划线样式
 class KittyUnderlineService extends KittyServiceBase {
-
   // 当前下划线配置
   UnderlineConfig _currentConfig = const UnderlineConfig();
 

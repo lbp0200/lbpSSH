@@ -728,7 +728,11 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('SSH Config 主机名未设置'))),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('SSH Config 主机名未设置'),
+          ),
+        ),
       );
     });
 
@@ -748,7 +752,9 @@ void main() {
       await expectLater(
         () => service.connect(conn),
         throwsA(
-          predicate<Exception>((e) => e.toString().contains('未在 ~/.ssh/config 中找到')),
+          predicate<Exception>(
+            (e) => e.toString().contains('未在 ~/.ssh/config 中找到'),
+          ),
         ),
       );
     });
@@ -802,7 +808,9 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机私钥路径未设置'))),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('跳板机私钥路径未设置')),
+        ),
       );
     });
 
@@ -827,7 +835,9 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机私钥读取失败'))),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('跳板机私钥读取失败')),
+        ),
       );
     });
 
@@ -852,7 +862,9 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机私钥路径未设置'))),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('跳板机私钥路径未设置')),
+        ),
       );
     });
 
@@ -877,7 +889,9 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机密钥密码未设置'))),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('跳板机密钥密码未设置')),
+        ),
       );
     });
 
@@ -903,7 +917,9 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机私钥或密码错误'))),
+        throwsA(
+          predicate<Exception>((e) => e.toString().contains('跳板机私钥或密码错误')),
+        ),
       );
     });
 
@@ -927,7 +943,11 @@ void main() {
 
       await expectLater(
         () => service.connect(conn),
-        throwsA(predicate<Exception>((e) => e.toString().contains('跳板机不支持 SSH Config 认证方式'))),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('跳板机不支持 SSH Config 认证方式'),
+          ),
+        ),
       );
     });
   });
@@ -952,10 +972,7 @@ void main() {
         () => service.connect(
           makeConnection(
             password: 'secret',
-            socks5Proxy: Socks5ProxyConfig(
-              host: '127.0.0.1',
-              port: proxyPort,
-            ),
+            socks5Proxy: Socks5ProxyConfig(host: '127.0.0.1', port: proxyPort),
           ),
         ),
         throwsA(isA<Exception>()),
@@ -1201,9 +1218,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
 
@@ -1250,9 +1272,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
 
@@ -1460,9 +1487,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest,
-                identities, keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));
@@ -1473,7 +1505,11 @@ void main() {
       // Act & Assert — 错误向上传播
       await expectLater(
         () => service.executeCommand('ls'),
-        throwsA(predicate<Exception>((e) => e.toString().contains('remote command failed'))),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('remote command failed'),
+          ),
+        ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(outputs.join(), contains('命令执行错误'));
@@ -1495,9 +1531,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest,
-                identities, keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
 
@@ -1515,20 +1556,24 @@ void main() {
       return (service, client, session);
     }
 
-    test('Given jump host with password auth, '
-        'When connect called, '
-        'Then connects through jump host and reaches connected state', () async {
-      // Arrange & Act
-      final (service, client, _) = await connectViaJumpHost(
-        jumpPassword: 'jump-pass',
-      );
+    test(
+      'Given jump host with password auth, '
+      'When connect called, '
+      'Then connects through jump host and reaches connected state',
+      () async {
+        // Arrange & Act
+        final (service, client, _) = await connectViaJumpHost(
+          jumpPassword: 'jump-pass',
+        );
 
-      // Assert — 跳板机路径建立隧道后目标客户端被创建
-      expect(service.state, SshConnectionState.connected);
-      expect(client.shellCalls, 1);
+        // Assert — 跳板机路径建立隧道后目标客户端被创建
+        expect(service.state, SshConnectionState.connected);
+        expect(client.shellCalls, 1);
 
-      service.dispose();
-    }, timeout: const Timeout(Duration(seconds: 10)));
+        service.dispose();
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
 
     test('Given jump host with password auth, '
         'When connect called, '
@@ -1539,9 +1584,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest,
-                identities, keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       final outputs = <String>[];
@@ -1583,9 +1633,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest,
-                identities, keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
 
@@ -1625,9 +1680,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));
@@ -1659,9 +1719,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));
@@ -1695,9 +1760,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));
@@ -1749,9 +1819,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities,
-                keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));

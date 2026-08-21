@@ -296,17 +296,14 @@ void main() {
         },
       );
 
-      test(
-        'Given state, When copyWith keeps tabs, Then result is equal',
-        () {
-          final a = SftpState(tabs: [makeTab('tab1')]);
+      test('Given state, When copyWith keeps tabs, Then result is equal', () {
+        final a = SftpState(tabs: [makeTab('tab1')]);
 
-          final b = a.copyWith();
+        final b = a.copyWith();
 
-          expect(a == b, isTrue);
-          expect(a.hashCode, b.hashCode);
-        },
-      );
+        expect(a == b, isTrue);
+        expect(a.hashCode, b.hashCode);
+      });
     });
   });
 }

@@ -42,10 +42,10 @@ String generateLogLine(int cols, int lineNum) {
   final level = levels[rng.nextInt(levels.length)];
   final levelColor = switch (level) {
     'ERROR' => 31,
-    'WARN'  => 33,
-    'INFO'  => 32,
+    'WARN' => 33,
+    'INFO' => 32,
     'DEBUG' => 36,
-    _       => 37,
+    _ => 37,
   };
   final buf = StringBuffer();
   buf.write('\x1b[90m${DateTime.now().toIso8601String()}\x1b[0m ');
@@ -110,7 +110,7 @@ void main() {
       print(
         '[Plain] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
-        '${throughput.toStringAsFixed(1)} MB/s'
+        '${throughput.toStringAsFixed(1)} MB/s',
       );
       expect(terminal.buffer.lines.length, greaterThan(terminalHeight));
     });
@@ -118,7 +118,9 @@ void main() {
     test('Colored text throughput (彩色ANSI文本)', () {
       final terminal = createTerminal();
       // Warmup
-      terminal.write(largeColoredText.substring(0, warmupLines * terminalWidth));
+      terminal.write(
+        largeColoredText.substring(0, warmupLines * terminalWidth),
+      );
       terminal.notifyListeners();
 
       final sw = Stopwatch()..start();
@@ -132,7 +134,7 @@ void main() {
       print(
         '[Colored] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
-        '${throughput.toStringAsFixed(1)} MB/s'
+        '${throughput.toStringAsFixed(1)} MB/s',
       );
     });
 
@@ -153,20 +155,25 @@ void main() {
       print(
         '[Log] $totalLines lines, $bytes bytes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
-        '${throughput.toStringAsFixed(1)} MB/s'
+        '${throughput.toStringAsFixed(1)} MB/s',
       );
     });
 
     test('Incremental write (增量写入模拟 tail -f)', () {
       final terminal = createTerminal();
       // 先填充终端
-      terminal.write(largePlainText.substring(0, terminalHeight * terminalWidth));
+      terminal.write(
+        largePlainText.substring(0, terminalHeight * terminalWidth),
+      );
       terminal.notifyListeners();
 
       // 模拟逐行追加
       final sw = Stopwatch()..start();
       for (var i = 0; i < 500; i++) {
-        terminal.write(generateLogLine(terminalWidth, i) + generateLogLine(terminalWidth, i + 500));
+        terminal.write(
+          generateLogLine(terminalWidth, i) +
+              generateLogLine(terminalWidth, i + 500),
+        );
       }
       sw.stop();
       terminal.notifyListeners();
@@ -175,7 +182,7 @@ void main() {
       print(
         '[Incremental] 500 small writes: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
-        'avg ${(elapsedMs / 500).toStringAsFixed(3)} ms/write'
+        'avg ${(elapsedMs / 500).toStringAsFixed(3)} ms/write',
       );
     });
   });
@@ -208,7 +215,7 @@ void main() {
       print(
         '[SGR-heavy] 1000 SGR sequences: '
         '${elapsedMs.toStringAsFixed(3)} ms, '
-        '${(bytes / elapsedMs).toStringAsFixed(1)} bytes/ms'
+        '${(bytes / elapsedMs).toStringAsFixed(1)} bytes/ms',
       );
     });
 
@@ -235,7 +242,7 @@ void main() {
       print(
         '[OSC-8] 500 hyperlinks: '
         '${elapsedMs.toStringAsFixed(1)} ms, '
-        '${(bytes / max(elapsedMs, 0.001)).toStringAsFixed(1)} bytes/ms'
+        '${(bytes / max(elapsedMs, 0.001)).toStringAsFixed(1)} bytes/ms',
       );
     });
   });
@@ -264,7 +271,7 @@ void main() {
         final bytes = text.length;
         print(
           '[Plain/$size] $bytes bytes → ${elapsedMs.toStringAsFixed(1)} ms '
-          '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)'
+          '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)',
         );
       });
 
@@ -289,7 +296,7 @@ void main() {
         final bytes = text.length;
         print(
           '[Colored/$size] $bytes bytes → ${elapsedMs.toStringAsFixed(1)} ms '
-          '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)'
+          '(${(bytes / 1024 / max(elapsedMs, 0.001)).toStringAsFixed(1)} MB/s)',
         );
       });
     }
@@ -322,11 +329,11 @@ void main() {
 
       print(
         '[StringBuffer] $chunkCount chunks × ${chunkSize}B: '
-        '${sw1.elapsedMicroseconds} µs'
+        '${sw1.elapsedMicroseconds} µs',
       );
       print(
         '[Direct concat] $chunkCount chunks × ${chunkSize}B: '
-        '${sw2.elapsedMicroseconds} µs'
+        '${sw2.elapsedMicroseconds} µs',
       );
       expect(result1.length, equals(chunkCount * chunkSize));
       expect(s.length, equals(chunkCount * chunkSize));
@@ -359,7 +366,7 @@ void main() {
       print(
         '[Split overhead] 1000 lines × 100 iterations: '
         '${sw.elapsedMicroseconds} µs '
-        '(avg ${(sw.elapsedMicroseconds / 100).toStringAsFixed(1)} µs/iter)'
+        '(avg ${(sw.elapsedMicroseconds / 100).toStringAsFixed(1)} µs/iter)',
       );
     });
   });

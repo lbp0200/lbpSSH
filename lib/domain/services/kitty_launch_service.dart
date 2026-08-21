@@ -36,7 +36,6 @@ class LaunchParams {
 ///
 /// 通过 OSC 6 和 launch 功能实现在终端内启动程序
 class KittyLaunchService extends KittyServiceBase {
-
   KittyLaunchService({super.session});
 
   /// 启动程序

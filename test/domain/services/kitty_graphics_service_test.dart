@@ -99,7 +99,8 @@ void main() {
         final data = Uint8List.fromList([0x41]);
         await service.loadImage(data, placement: ImagePlacement.absolute);
         verify(
-          () => mockSession.writeRaw('\x1b]71;a=i;id=1;p=absolute;d=QQ==\x1b\\'),
+          () =>
+              mockSession.writeRaw('\x1b]71;a=i;id=1;p=absolute;d=QQ==\x1b\\'),
         ).called(1);
       });
 
@@ -170,11 +171,7 @@ void main() {
       });
 
       test('includes x and y coordinates', () async {
-        await service.loadImageFromPath(
-          '/tmp/test.png',
-          x: 10,
-          y: 20,
-        );
+        await service.loadImageFromPath('/tmp/test.png', x: 10, y: 20);
         verify(
           () => mockSession.writeRaw(
             '\x1b]71;a=i;id=1;x=10;y=20;f=L3RtcC90ZXN0LnBuZw==\x1b\\',

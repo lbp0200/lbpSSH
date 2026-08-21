@@ -23,7 +23,6 @@ class SessionState {
 ///
 /// 管理终端会话的状态查询和控制
 class KittySessionService extends KittyServiceBase {
-
   // 回调
   void Function(SessionState)? onStateChange;
   void Function(int exitCode)? onExit;

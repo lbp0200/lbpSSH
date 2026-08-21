@@ -306,59 +306,41 @@ Line 3''';
         },
       );
 
-      test(
-        'Given plaintext field, When decrypting, Then returns as-is',
-        () {
-          const original = 'plaintext value';
+      test('Given plaintext field, When decrypting, Then returns as-is', () {
+        const original = 'plaintext value';
 
-          final result = EncryptionUtil.decryptField(original, key);
+        final result = EncryptionUtil.decryptField(original, key);
 
-          expect(result, original);
-        },
-      );
+        expect(result, original);
+      });
 
-      test(
-        'Given null field, When decrypting, Then returns null',
-        () {
-          final result = EncryptionUtil.decryptField(null, key);
+      test('Given null field, When decrypting, Then returns null', () {
+        final result = EncryptionUtil.decryptField(null, key);
 
-          expect(result, isNull);
-        },
-      );
+        expect(result, isNull);
+      });
 
-      test(
-        'Given empty field, When decrypting, Then returns empty',
-        () {
-          const original = '';
+      test('Given empty field, When decrypting, Then returns empty', () {
+        const original = '';
 
-          final result = EncryptionUtil.decryptField(original, key);
+        final result = EncryptionUtil.decryptField(original, key);
 
-          expect(result, isEmpty);
-        },
-      );
+        expect(result, isEmpty);
+      });
     });
 
     group('isEncrypted', () {
-      test(
-        'Given prefixed string, When checking, Then returns true',
-        () {
-          expect(EncryptionUtil.isEncrypted('\$AES\$V1\$abc123'), isTrue);
-        },
-      );
+      test('Given prefixed string, When checking, Then returns true', () {
+        expect(EncryptionUtil.isEncrypted('\$AES\$V1\$abc123'), isTrue);
+      });
 
-      test(
-        'Given plain string, When checking, Then returns false',
-        () {
-          expect(EncryptionUtil.isEncrypted('plaintext'), isFalse);
-        },
-      );
+      test('Given plain string, When checking, Then returns false', () {
+        expect(EncryptionUtil.isEncrypted('plaintext'), isFalse);
+      });
 
-      test(
-        'Given non-matching prefix, When checking, Then returns false',
-        () {
-          expect(EncryptionUtil.isEncrypted('\$BES\$V1\$abc123'), isFalse);
-        },
-      );
+      test('Given non-matching prefix, When checking, Then returns false', () {
+        expect(EncryptionUtil.isEncrypted('\$BES\$V1\$abc123'), isFalse);
+      });
     });
 
     group('encryption format', () {

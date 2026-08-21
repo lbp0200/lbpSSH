@@ -30,7 +30,6 @@ class VirtualCursor {
 ///
 /// 实现终端多光标编辑功能
 class KittyMultipleCursorsService extends KittyServiceBase {
-
   // 当前光标列表
   final List<VirtualCursor> _cursors = [];
   int _cursorCounter = 0;

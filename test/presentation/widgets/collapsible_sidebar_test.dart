@@ -62,18 +62,12 @@ void main() {
         connectionProvider.overrideWith(
           () => notifier ?? _MockConnectionNotifier(const ConnectionState()),
         ),
-        terminalConfigProvider.overrideWith(
-          _MockTerminalConfigNotifier.new,
-        ),
+        terminalConfigProvider.overrideWith(_MockTerminalConfigNotifier.new),
         sshConfigProvider.overrideWith(_MockSshConfigNotifier.new),
         importExportProvider.overrideWith(ImportExportNotifier.new),
         syncProvider.overrideWith(_MockSyncNotifier.new),
       ],
-      child: const MaterialApp(
-        home: Scaffold(
-          body: CollapsibleSidebar(),
-        ),
-      ),
+      child: const MaterialApp(home: Scaffold(body: CollapsibleSidebar())),
     );
   }
 

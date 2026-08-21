@@ -6,7 +6,6 @@ import 'kitty_service_base.dart';
 ///
 /// 通过 OSC 8 控制序列实现超链接
 class KittyHyperlinkService extends KittyServiceBase {
-
   KittyHyperlinkService({super.session});
 
   /// 打开超链接
@@ -36,7 +35,6 @@ class KittyHyperlinkService extends KittyServiceBase {
 ///
 /// 通过 OSC 22 控制序列实现鼠标指针形状
 class KittyPointerShapeService extends KittyServiceBase {
-
   KittyPointerShapeService({super.session});
 
   /// 设置鼠标指针形状
@@ -81,7 +79,6 @@ class KittyPointerShapeService extends KittyServiceBase {
 ///
 /// 通过 OSC 4 和 OSC 21 控制序列实现颜色栈管理
 class KittyColorStackService extends KittyServiceBase {
-
   KittyColorStackService({super.session});
 
   /// 推送颜色到栈
@@ -144,7 +141,6 @@ class KittyColorStackService extends KittyServiceBase {
 ///
 /// 通过文本大小调整协议实现终端文本大小调整
 class KittyTextSizeService extends KittyServiceBase {
-
   KittyTextSizeService({super.session});
 
   /// 设置文本大小
@@ -182,7 +178,6 @@ class KittyTextSizeService extends KittyServiceBase {
 ///
 /// 实现终端标记功能，用于标记和查找位置
 class KittyMarksService extends KittyServiceBase {
-
   KittyMarksService({super.session});
 
   /// 设置标记
@@ -227,7 +222,6 @@ class KittyMarksService extends KittyServiceBase {
 ///
 /// 通过 OSC 0, 1, 2, 21 控制序列实现窗口标题
 class KittyWindowTitleService extends KittyServiceBase {
-
   KittyWindowTitleService({super.session});
 
   /// 设置窗口标题
@@ -279,7 +273,6 @@ class KittyWindowTitleService extends KittyServiceBase {
 ///
 /// 通过 OSC 10, 110, 111, 112, 130 控制序列实现提示符颜色
 class KittyPromptColorService extends KittyServiceBase {
-
   KittyPromptColorService({super.session});
 
   /// 设置前景色 (OSC 10)

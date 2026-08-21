@@ -13,10 +13,8 @@ class SshLaunchResult {
 }
 
 /// 可注入的进程执行器（测试时可替换以模拟 `Process.run`）
-typedef SshProcessRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef SshProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 
 /// 启动 ssh 连接。
 ///

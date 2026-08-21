@@ -273,31 +273,34 @@ void main() {
       expect(loaded.password, 'main-pw');
     });
 
-    test('saveConnection updates jump host and socks5 without password', () async {
-      final connection = SshConnection(
-        id: 'none-1',
-        name: 'No Secrets',
-        host: '10.0.0.5',
-        username: 'user',
-        authType: AuthType.password,
-        jumpHost: JumpHostConfig(
-          host: 'bastion.example.com',
-          username: 'jump-user',
+    test(
+      'saveConnection updates jump host and socks5 without password',
+      () async {
+        final connection = SshConnection(
+          id: 'none-1',
+          name: 'No Secrets',
+          host: '10.0.0.5',
+          username: 'user',
           authType: AuthType.password,
-        ),
-        socks5Proxy: Socks5ProxyConfig(host: 'proxy.example.com'),
-      );
+          jumpHost: JumpHostConfig(
+            host: 'bastion.example.com',
+            username: 'jump-user',
+            authType: AuthType.password,
+          ),
+          socks5Proxy: Socks5ProxyConfig(host: 'proxy.example.com'),
+        );
 
-      await repo.saveConnection(connection);
+        await repo.saveConnection(connection);
 
-      final newRepo = ConnectionRepository(configFile: configFile);
-      await newRepo.init();
-      addTearDown(() => newRepo.close());
+        final newRepo = ConnectionRepository(configFile: configFile);
+        await newRepo.init();
+        addTearDown(() => newRepo.close());
 
-      final loaded = newRepo.getConnectionById('none-1')!;
-      expect(loaded.jumpHost?.host, 'bastion.example.com');
-      expect(loaded.socks5Proxy?.host, 'proxy.example.com');
-    });
+        final loaded = newRepo.getConnectionById('none-1')!;
+        expect(loaded.jumpHost?.host, 'bastion.example.com');
+        expect(loaded.socks5Proxy?.host, 'proxy.example.com');
+      },
+    );
   });
 
   group('ConnectionRepository without configFile', () {
@@ -310,9 +313,9 @@ void main() {
     tearDown(() async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        null,
-      );
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            null,
+          );
       try {
         if (await supportDir.exists()) {
           await supportDir.delete(recursive: true);
@@ -325,14 +328,14 @@ void main() {
       // mock path_provider: getApplicationSupportDirectory → supportDir
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        (call) async {
-          if (call.method == 'getApplicationSupportDirectory') {
-            return supportDir.path;
-          }
-          return null;
-        },
-      );
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            (call) async {
+              if (call.method == 'getApplicationSupportDirectory') {
+                return supportDir.path;
+              }
+              return null;
+            },
+          );
       final repo = ConnectionRepository();
       await repo.init();
       return repo;
@@ -364,14 +367,14 @@ void main() {
       );
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        (call) async {
-          if (call.method == 'getApplicationSupportDirectory') {
-            return supportDir.path;
-          }
-          return null;
-        },
-      );
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            (call) async {
+              if (call.method == 'getApplicationSupportDirectory') {
+                return supportDir.path;
+              }
+              return null;
+            },
+          );
 
       final repo = ConnectionRepository();
       await repo.init();

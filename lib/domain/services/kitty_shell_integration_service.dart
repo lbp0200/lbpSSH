@@ -14,7 +14,6 @@ enum PromptType {
 ///
 /// 通过 OSC 133 控制序列实现 Shell 集成功能
 class KittyShellIntegrationService extends KittyServiceBase {
-
   // 回调
   void Function(String prompt, PromptType type)? onPrompt;
   void Function(String commandLine)? onCommandLine;

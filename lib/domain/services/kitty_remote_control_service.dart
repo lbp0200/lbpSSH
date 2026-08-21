@@ -39,7 +39,6 @@ class BufferContent {
 ///
 /// 通过 OSC 5xx 控制序列实现远程控制终端
 class KittyRemoteControlService extends KittyServiceBase {
-
   // 回调
   void Function(TerminalInfo)? onTerminalInfo;
   void Function(BufferContent)? onBufferContent;

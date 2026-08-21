@@ -337,84 +337,75 @@ void main() {
       },
     );
 
-    test(
-      'Given jump host config, When copyWith with new values, '
-      'Then updates only specified fields',
-      () {
-        final config = JumpHostConfig(
-          host: 'jump.example.com',
-          port: 2222,
-          username: 'jumpuser',
-          authType: AuthType.password,
-          password: 'secret',
-          privateKeyPath: '/path/to/key',
-        );
+    test('Given jump host config, When copyWith with new values, '
+        'Then updates only specified fields', () {
+      final config = JumpHostConfig(
+        host: 'jump.example.com',
+        port: 2222,
+        username: 'jumpuser',
+        authType: AuthType.password,
+        password: 'secret',
+        privateKeyPath: '/path/to/key',
+      );
 
-        final updated = config.copyWith(
-          host: 'new-jump.example.com',
-          port: 3333,
-          username: 'newuser',
-          authType: AuthType.key,
-          password: 'newsecret',
-          privateKeyPath: '/new/path',
-        );
+      final updated = config.copyWith(
+        host: 'new-jump.example.com',
+        port: 3333,
+        username: 'newuser',
+        authType: AuthType.key,
+        password: 'newsecret',
+        privateKeyPath: '/new/path',
+      );
 
-        expect(updated.host, 'new-jump.example.com');
-        expect(updated.port, 3333);
-        expect(updated.username, 'newuser');
-        expect(updated.authType, AuthType.key);
-        expect(updated.password, 'newsecret');
-        expect(updated.privateKeyPath, '/new/path');
-      },
-    );
+      expect(updated.host, 'new-jump.example.com');
+      expect(updated.port, 3333);
+      expect(updated.username, 'newuser');
+      expect(updated.authType, AuthType.key);
+      expect(updated.password, 'newsecret');
+      expect(updated.privateKeyPath, '/new/path');
+    });
 
-    test(
-      'Given jump host config, When copyWith with no arguments, '
-      'Then preserves all fields',
-      () {
-        final config = JumpHostConfig(
-          host: 'jump.example.com',
-          port: 2222,
-          username: 'jumpuser',
-          authType: AuthType.password,
-          password: 'secret',
-          privateKeyPath: '/path/to/key',
-        );
+    test('Given jump host config, When copyWith with no arguments, '
+        'Then preserves all fields', () {
+      final config = JumpHostConfig(
+        host: 'jump.example.com',
+        port: 2222,
+        username: 'jumpuser',
+        authType: AuthType.password,
+        password: 'secret',
+        privateKeyPath: '/path/to/key',
+      );
 
-        final preserved = config.copyWith();
+      final preserved = config.copyWith();
 
-        expect(preserved.host, 'jump.example.com');
-        expect(preserved.port, 2222);
-        expect(preserved.username, 'jumpuser');
-        expect(preserved.authType, AuthType.password);
-        expect(preserved.password, 'secret');
-        expect(preserved.privateKeyPath, '/path/to/key');
-      },
-    );
+      expect(preserved.host, 'jump.example.com');
+      expect(preserved.port, 2222);
+      expect(preserved.username, 'jumpuser');
+      expect(preserved.authType, AuthType.password);
+      expect(preserved.password, 'secret');
+      expect(preserved.privateKeyPath, '/path/to/key');
+    });
 
-    test(
-      'Given jump host config, When copyWith with partial fields, '
-      'Then keeps unspecified fields',
-      () {
-        final config = JumpHostConfig(
-          host: 'jump.example.com',
-          port: 2222,
-          username: 'jumpuser',
-          authType: AuthType.password,
-          password: 'secret',
-          privateKeyPath: '/path/to/key',
-        );
+    test('Given jump host config, When copyWith with partial fields, '
+        'Then keeps unspecified fields', () {
+      final config = JumpHostConfig(
+        host: 'jump.example.com',
+        port: 2222,
+        username: 'jumpuser',
+        authType: AuthType.password,
+        password: 'secret',
+        privateKeyPath: '/path/to/key',
+      );
 
-        final updated = config.copyWith(host: 'only-host.example.com');
+      final updated = config.copyWith(host: 'only-host.example.com');
 
-        expect(updated.host, 'only-host.example.com');
-        expect(updated.port, 2222);
-        expect(updated.username, 'jumpuser');
-        expect(updated.authType, AuthType.password);
-        expect(updated.password, 'secret');
-        expect(updated.privateKeyPath, '/path/to/key');
-      },
-    );
+      expect(updated.host, 'only-host.example.com');
+      expect(updated.port, 2222);
+      expect(updated.username, 'jumpuser');
+      expect(updated.authType, AuthType.password);
+      expect(updated.password, 'secret');
+      expect(updated.privateKeyPath, '/path/to/key');
+    });
   });
 
   group('SshConnection Creation', () {

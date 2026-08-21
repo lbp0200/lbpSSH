@@ -55,7 +55,6 @@ class LayoutConfig {
 ///
 /// 实现终端窗口布局管理功能
 class KittyLayoutService extends KittyServiceBase {
-
   // 当前布局
   LayoutConfig _currentLayout = const LayoutConfig(type: LayoutType.grid);
 

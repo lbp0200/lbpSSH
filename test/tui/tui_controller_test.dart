@@ -53,8 +53,7 @@ void main() {
   });
 
   group('TuiController list navigation', () {
-    test('Given empty list, When down pressed, Then selection stays at 0',
-        () {
+    test('Given empty list, When down pressed, Then selection stays at 0', () {
       controller.handleKey('down');
       expect(controller.state.sel, 0);
     });
@@ -74,21 +73,23 @@ void main() {
       expect(controller.state.sel, 1);
     });
 
-    test('Given selection at bottom, When k pressed, Then selection moves up',
-        () {
-      controller.state = TuiState(
-        connections: [
-          _conn(id: 'c1'),
-          _conn(id: 'c2', name: 'server-2', host: '10.0.0.2'),
-        ],
-        sel: 1,
-      );
-      controller.handleKey('k');
-      expect(controller.state.sel, 0);
-      controller.handleKey('k');
-      // 已在顶部不再移动
-      expect(controller.state.sel, 0);
-    });
+    test(
+      'Given selection at bottom, When k pressed, Then selection moves up',
+      () {
+        controller.state = TuiState(
+          connections: [
+            _conn(id: 'c1'),
+            _conn(id: 'c2', name: 'server-2', host: '10.0.0.2'),
+          ],
+          sel: 1,
+        );
+        controller.handleKey('k');
+        expect(controller.state.sel, 0);
+        controller.handleKey('k');
+        // 已在顶部不再移动
+        expect(controller.state.sel, 0);
+      },
+    );
 
     test('Given list with connections, When enter pressed, Then sets '
         'sshRequest and stops running', () {
@@ -105,13 +106,15 @@ void main() {
       expect(controller.running, isTrue);
     });
 
-    test('Given list, When a pressed, Then switches to form screen for add',
-        () {
-      controller.state = TuiState(connections: [_conn(id: 'c1')]);
-      controller.handleKey('a');
-      expect(controller.state.screen, 'form');
-      expect(controller.state.editConn, isNull);
-    });
+    test(
+      'Given list, When a pressed, Then switches to form screen for add',
+      () {
+        controller.state = TuiState(connections: [_conn(id: 'c1')]);
+        controller.handleKey('a');
+        expect(controller.state.screen, 'form');
+        expect(controller.state.editConn, isNull);
+      },
+    );
 
     test('Given list with selection, When e pressed, Then switches to form '
         'screen for edit with pre-filled values', () {
@@ -158,23 +161,27 @@ void main() {
       expect(controller.state.sel, 0);
     });
 
-    test('Given search mode, When esc pressed, Then exits search and clears',
-        () {
-      controller.handleKey('/');
-      controller.handleKey('p');
-      controller.handleKey('esc');
-      expect(controller.state.isSearching, isFalse);
-      expect(controller.state.searchQuery, '');
-    });
+    test(
+      'Given search mode, When esc pressed, Then exits search and clears',
+      () {
+        controller.handleKey('/');
+        controller.handleKey('p');
+        controller.handleKey('esc');
+        expect(controller.state.isSearching, isFalse);
+        expect(controller.state.searchQuery, '');
+      },
+    );
 
-    test('Given search mode, When backspace pressed, Then removes last char',
-        () {
-      controller.handleKey('/');
-      controller.handleKey('p');
-      controller.handleKey('r');
-      controller.handleKey('backspace');
-      expect(controller.state.searchQuery, 'p');
-    });
+    test(
+      'Given search mode, When backspace pressed, Then removes last char',
+      () {
+        controller.handleKey('/');
+        controller.handleKey('p');
+        controller.handleKey('r');
+        controller.handleKey('backspace');
+        expect(controller.state.searchQuery, 'p');
+      },
+    );
 
     test('Given search mode, When filtered and enter pressed, Then does not '
         'select connection (enter only handled outside search)', () {
@@ -217,17 +224,19 @@ void main() {
       expect(controller.state.formFieldIndex, 2);
     });
 
-    test('Given form screen, When esc pressed, Then returns to list screen',
-        () {
-      controller.state = TuiState(
-        connections: [_conn(id: 'c1')],
-        screen: 'form',
-        sel: 1,
-      );
-      controller.handleKey('esc');
-      expect(controller.state.screen, 'list');
-      expect(controller.state.sel, 1);
-    });
+    test(
+      'Given form screen, When esc pressed, Then returns to list screen',
+      () {
+        controller.state = TuiState(
+          connections: [_conn(id: 'c1')],
+          screen: 'form',
+          sel: 1,
+        );
+        controller.handleKey('esc');
+        expect(controller.state.screen, 'list');
+        expect(controller.state.sel, 1);
+      },
+    );
 
     test('Given form with typed chars, When enter pressed, Then saves '
         'connection and returns to list', () async {
@@ -266,14 +275,16 @@ void main() {
       expect(repo.getAllConnections(), isEmpty);
     });
 
-    test('Given form field, When backspace pressed, Then removes last char',
-        () {
-      controller.state = TuiState(screen: 'form');
-      controller.handleKey('a');
-      controller.handleKey('b');
-      controller.handleKey('backspace');
-      expect(controller.state.formValue('name'), 'a');
-    });
+    test(
+      'Given form field, When backspace pressed, Then removes last char',
+      () {
+        controller.state = TuiState(screen: 'form');
+        controller.handleKey('a');
+        controller.handleKey('b');
+        controller.handleKey('backspace');
+        expect(controller.state.formValue('name'), 'a');
+      },
+    );
 
     test('Given form on authType field, When space pressed, Then cycles '
         'auth type and resets field index', () {

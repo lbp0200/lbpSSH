@@ -144,31 +144,26 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given settings screen, When nav item hovered and unhovered, '
-      'Then hover state updates without error',
-      (tester) async {
-        await pumpScreen(tester);
+    testWidgets('Given settings screen, When nav item hovered and unhovered, '
+        'Then hover state updates without error', (tester) async {
+      await pumpScreen(tester);
 
-        // 创建鼠标手势以触发 MouseRegion.onEnter/onExit
-        final gesture = await tester.createGesture(
-          kind: PointerDeviceKind.mouse,
-        );
-        addTearDown(gesture.removePointer);
+      // 创建鼠标手势以触发 MouseRegion.onEnter/onExit
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(gesture.removePointer);
 
-        // 触发 MouseRegion.onEnter
-        final navItem = find.text('连接管理');
-        await gesture.moveTo(tester.getCenter(navItem));
-        await tester.pumpAndSettle();
+      // 触发 MouseRegion.onEnter
+      final navItem = find.text('连接管理');
+      await gesture.moveTo(tester.getCenter(navItem));
+      await tester.pumpAndSettle();
 
-        // 触发 MouseRegion.onExit（移动到其他导航项）
-        final otherItem = find.text('终端设置').first;
-        await gesture.moveTo(tester.getCenter(otherItem));
-        await tester.pumpAndSettle();
+      // 触发 MouseRegion.onExit（移动到其他导航项）
+      final otherItem = find.text('终端设置').first;
+      await gesture.moveTo(tester.getCenter(otherItem));
+      await tester.pumpAndSettle();
 
-        // 交互不应产生异常
-        expect(tester.takeException(), isNull);
-      },
-    );
+      // 交互不应产生异常
+      expect(tester.takeException(), isNull);
+    });
   });
 }

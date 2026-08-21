@@ -24,7 +24,9 @@ class _FakeGraphicsManager {
 }
 
 final _overlayStack = find.descendant(
-    of: find.byType(GraphicsOverlayWidget), matching: find.byType(Stack));
+  of: find.byType(GraphicsOverlayWidget),
+  matching: find.byType(Stack),
+);
 
 void main() {
   Future<ui.Image> createTestImage(WidgetTester tester) async {
@@ -72,17 +74,16 @@ void main() {
   }
 
   group('GraphicsOverlayWidget', () {
-    testWidgets(
-      'Given empty placements, When rendered, Then shows nothing',
-      (tester) async {
-        await pumpOverlay(tester, _FakeGraphicsManager());
+    testWidgets('Given empty placements, When rendered, Then shows nothing', (
+      tester,
+    ) async {
+      await pumpOverlay(tester, _FakeGraphicsManager());
 
-        expect(_overlayStack, findsNothing);
-        expect(find.byType(GraphicsOverlayWidget), findsOneWidget);
+      expect(_overlayStack, findsNothing);
+      expect(find.byType(GraphicsOverlayWidget), findsOneWidget);
 
-        await teardownOverlay(tester);
-      },
-    );
+      await teardownOverlay(tester);
+    });
 
     testWidgets(
       'Given placements with null image, When rendered, Then skips image and shows nothing',

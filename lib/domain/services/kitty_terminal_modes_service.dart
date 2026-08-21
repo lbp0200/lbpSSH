@@ -45,7 +45,6 @@ class TerminalModeState {
 ///
 /// 通过 SM (Set Mode) 和 RM (Reset Mode) 控制序列管理终端模式
 class KittyTerminalModesService extends KittyServiceBase {
-
   // 缓存模式状态
   final Map<TerminalMode, bool> _modeState = {};
 

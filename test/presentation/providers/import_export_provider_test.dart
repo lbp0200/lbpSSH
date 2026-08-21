@@ -265,25 +265,22 @@ void main() {
     });
 
     group('ImportExportStatusData', () {
-      test(
-        'Given base data, When copyWith status and lastError, '
-        'Then returns updated data',
-        () {
-          const base = ImportExportStatusData(
-            // status 默认即 idle
-            lastError: 'old',
-          );
+      test('Given base data, When copyWith status and lastError, '
+          'Then returns updated data', () {
+        const base = ImportExportStatusData(
+          // status 默认即 idle
+          lastError: 'old',
+        );
 
-          final updated = base.copyWith(
-            status: ImportExportStatus.error,
-            lastError: 'new error',
-          );
+        final updated = base.copyWith(
+          status: ImportExportStatus.error,
+          lastError: 'new error',
+        );
 
-          expect(updated.status, ImportExportStatus.error);
-          expect(updated.lastError, 'new error');
-          expect(base.lastError, 'old'); // 原对象不变
-        },
-      );
+        expect(updated.status, ImportExportStatus.error);
+        expect(updated.lastError, 'new error');
+        expect(base.lastError, 'old'); // 原对象不变
+      });
 
       test(
         'Given data, When copyWith with nulls, Then keeps existing values',
@@ -300,22 +297,19 @@ void main() {
         },
       );
 
-      test(
-        'Given equal data, When compared, Then operator == is true',
-        () {
-          const a = ImportExportStatusData(
-            status: ImportExportStatus.error,
-            lastError: 'same',
-          );
-          const b = ImportExportStatusData(
-            status: ImportExportStatus.error,
-            lastError: 'same',
-          );
+      test('Given equal data, When compared, Then operator == is true', () {
+        const a = ImportExportStatusData(
+          status: ImportExportStatus.error,
+          lastError: 'same',
+        );
+        const b = ImportExportStatusData(
+          status: ImportExportStatus.error,
+          lastError: 'same',
+        );
 
-          expect(a == b, isTrue);
-          expect(a.hashCode, b.hashCode);
-        },
-      );
+        expect(a == b, isTrue);
+        expect(a.hashCode, b.hashCode);
+      });
 
       test(
         'Given different data, When compared, Then operator == is false',
@@ -358,17 +352,15 @@ void main() {
           await expectLater(
             () => container
                 .read(importExportProvider.notifier)
-                .importAndSaveConnections(
-                  [
-                    SshConnection(
-                      id: 'c3',
-                      name: 'Server 3',
-                      host: '10.0.0.3',
-                      username: 'admin',
-                      authType: AuthType.password,
-                    ),
-                  ],
-                ),
+                .importAndSaveConnections([
+                  SshConnection(
+                    id: 'c3',
+                    name: 'Server 3',
+                    host: '10.0.0.3',
+                    username: 'admin',
+                    authType: AuthType.password,
+                  ),
+                ]),
             throwsException,
           );
 

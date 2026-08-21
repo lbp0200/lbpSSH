@@ -685,7 +685,8 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
                                 entry.hostName,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (entry.actualHost != null || entry.user != null)
+                              if (entry.actualHost != null ||
+                                  entry.user != null)
                                 Text(
                                   '${entry.actualHost ?? entry.hostName}${entry.user != null ? ' (@${entry.user})' : ''}',
                                   style: const TextStyle(

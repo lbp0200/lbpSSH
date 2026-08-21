@@ -96,7 +96,10 @@ void main() {
       });
 
       test('clickToConnect', () {
-        expect(en.clickToConnect, 'Click a connection on the left to open terminal');
+        expect(
+          en.clickToConnect,
+          'Click a connection on the left to open terminal',
+        );
       });
 
       test('disconnected', () {
@@ -134,11 +137,17 @@ void main() {
 
     group('delegate', () {
       test('should support Chinese locale', () {
-        expect(AppLocalizations.delegate.isSupported(const Locale('zh')), isTrue);
+        expect(
+          AppLocalizations.delegate.isSupported(const Locale('zh')),
+          isTrue,
+        );
       });
 
       test('should support English locale', () {
-        expect(AppLocalizations.delegate.isSupported(const Locale('en')), isTrue);
+        expect(
+          AppLocalizations.delegate.isSupported(const Locale('en')),
+          isTrue,
+        );
       });
 
       test('should not support unsupported locale', () {

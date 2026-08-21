@@ -51,7 +51,6 @@ typedef KeyboardEventCallback = void Function(KeyboardEvent event);
 ///
 /// 通过 OSC 1, 2, 200, 201 控制序列实现键盘事件处理
 class KittyKeyboardService extends KittyServiceBase {
-
   // 回调
   KeyboardEventCallback? onKeyPress;
   KeyboardEventCallback? onKeyRelease;

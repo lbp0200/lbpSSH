@@ -599,18 +599,16 @@ void main() {
       await expectLater(
         service.exportToLocalFile(),
         throwsA(
-          predicate<Exception>(
-            (e) => e.toString().contains('没有SSH连接配置可导出'),
-          ),
+          predicate<Exception>((e) => e.toString().contains('没有SSH连接配置可导出')),
         ),
       );
     });
 
     test('Given connections, When saveFile returns a path, '
         'Then returns that File', () async {
-      when(() => mockRepository.getAllConnections()).thenReturn(
-        [makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')],
-      );
+      when(
+        () => mockRepository.getAllConnections(),
+      ).thenReturn([makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')]);
       final fake = _FakeFilePickerPlatform()..saveResult = '/tmp/export.json';
       FilePickerPlatform.instance = fake;
 
@@ -622,9 +620,9 @@ void main() {
 
     test('Given connections, When saveFile returns null, '
         'Then returns null', () async {
-      when(() => mockRepository.getAllConnections()).thenReturn(
-        [makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')],
-      );
+      when(
+        () => mockRepository.getAllConnections(),
+      ).thenReturn([makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')]);
       final fake = _FakeFilePickerPlatform()..saveResult = null;
       FilePickerPlatform.instance = fake;
 
@@ -667,89 +665,91 @@ void main() {
 
     test('Given pickFiles returns null, When importFromLocalFile called, '
         'Then throws no-file-selected exception', () async {
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = null;
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()
+        ..pickResult = null;
 
       await expectLater(
         service.importFromLocalFile(),
-        throwsA(
-          predicate<Exception>((e) => e.toString().contains('未选择文件')),
-        ),
+        throwsA(predicate<Exception>((e) => e.toString().contains('未选择文件'))),
       );
     });
 
-    test('Given picked file does not exist, '
-        'When importFromLocalFile called, Then throws file-not-exist',
-        () async {
-      final fake = _FakeFilePickerPlatform()
-        ..pickResult = FilePickerResult([
-          PlatformFile(
-            name: 'missing.json',
-            size: 0,
-            path: '${tempDir.path}/missing.json',
-          ),
-        ]);
-      FilePickerPlatform.instance = fake;
+    test(
+      'Given picked file does not exist, '
+      'When importFromLocalFile called, Then throws file-not-exist',
+      () async {
+        final fake = _FakeFilePickerPlatform()
+          ..pickResult = FilePickerResult([
+            PlatformFile(
+              name: 'missing.json',
+              size: 0,
+              path: '${tempDir.path}/missing.json',
+            ),
+          ]);
+        FilePickerPlatform.instance = fake;
 
-      await expectLater(
-        service.importFromLocalFile(),
-        throwsA(
-          predicate<Exception>((e) => e.toString().contains('文件不存在')),
-        ),
-      );
-    });
+        await expectLater(
+          service.importFromLocalFile(),
+          throwsA(predicate<Exception>((e) => e.toString().contains('文件不存在'))),
+        );
+      },
+    );
 
     test('Given invalid JSON content, When importFromLocalFile called, '
         'Then throws invalid-json exception', () async {
       final file = File('${tempDir.path}/bad.json');
       await file.writeAsString('{not valid json');
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()
+        ..pickResult = resultFor(file);
 
       await expectLater(
         service.importFromLocalFile(),
-        throwsA(
-          predicate<Exception>((e) => e.toString().contains('无效的JSON')),
-        ),
+        throwsA(predicate<Exception>((e) => e.toString().contains('无效的JSON'))),
       );
     });
 
-    test('Given valid JSON but missing required keys, '
-        'When importFromLocalFile called, Then throws invalid-structure',
-        () async {
-      final file = await writeJson({'foo': 'bar'});
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+    test(
+      'Given valid JSON but missing required keys, '
+      'When importFromLocalFile called, Then throws invalid-structure',
+      () async {
+        final file = await writeJson({'foo': 'bar'});
+        FilePickerPlatform.instance = _FakeFilePickerPlatform()
+          ..pickResult = resultFor(file);
 
-      await expectLater(
-        service.importFromLocalFile(),
-        throwsA(
-          predicate<Exception>(
-            (e) => e.toString().contains('不是有效的SSH连接配置文件'),
+        await expectLater(
+          service.importFromLocalFile(),
+          throwsA(
+            predicate<Exception>(
+              (e) => e.toString().contains('不是有效的SSH连接配置文件'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('Given valid structure but unparseable connections, '
-        'When importFromLocalFile called, Then throws empty-connections',
-        () async {
-      // connections 非空但都无法解析为 SshConnection
-      final file = await writeJson({
-        'version': 1,
-        'exportTime': DateTime.now().toIso8601String(),
-        'connections': <dynamic>[
-          <String, dynamic>{'foo': 'bar'},
-        ],
-      });
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+    test(
+      'Given valid structure but unparseable connections, '
+      'When importFromLocalFile called, Then throws empty-connections',
+      () async {
+        // connections 非空但都无法解析为 SshConnection
+        final file = await writeJson({
+          'version': 1,
+          'exportTime': DateTime.now().toIso8601String(),
+          'connections': <dynamic>[
+            <String, dynamic>{'foo': 'bar'},
+          ],
+        });
+        FilePickerPlatform.instance = _FakeFilePickerPlatform()
+          ..pickResult = resultFor(file);
 
-      await expectLater(
-        service.importFromLocalFile(),
-        throwsA(
-          predicate<Exception>(
-            (e) => e.toString().contains('文件中没有有效的连接配置'),
+        await expectLater(
+          service.importFromLocalFile(),
+          throwsA(
+            predicate<Exception>((e) => e.toString().contains('文件中没有有效的连接配置')),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('Given valid file with connections, When importFromLocalFile called, '
         'Then returns parsed connections', () async {
@@ -759,7 +759,8 @@ void main() {
         'exportTime': DateTime.now().toIso8601String(),
         'connections': [conn.toJson()],
       });
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = resultFor(file);
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()
+        ..pickResult = resultFor(file);
 
       final result = await service.importFromLocalFile();
 

@@ -283,9 +283,7 @@ void main() {
 
       test('handles zero values', () async {
         await service.setUnderlineColor(0.0, 0.0, 0.0);
-        verify(
-          () => mockSession.writeRaw('\x1b[58:2:0:0:0m'),
-        ).called(1);
+        verify(() => mockSession.writeRaw('\x1b[58:2:0:0:0m')).called(1);
       });
 
       test('throws when session is null', () async {

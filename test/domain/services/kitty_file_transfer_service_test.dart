@@ -1092,23 +1092,17 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
 
-      test(
-        'Given session emitting error event, When downloadFile called, '
-        'Then rethrows the error',
-        () async {
-          final downloadFuture = service.downloadFile(
-            '/remote/file.txt',
-            '${tempDir.path}/downloaded.txt',
-          );
+      test('Given session emitting error event, When downloadFile called, '
+          'Then rethrows the error', () async {
+        final downloadFuture = service.downloadFile(
+          '/remote/file.txt',
+          '${tempDir.path}/downloaded.txt',
+        );
 
-          fileTransferController.addError(Exception('transfer failed'));
+        fileTransferController.addError(Exception('transfer failed'));
 
-          await expectLater(
-            downloadFuture,
-            throwsA(isA<Exception>()),
-          );
-        },
-      );
+        await expectLater(downloadFuture, throwsA(isA<Exception>()));
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -1371,69 +1365,63 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
 
-      test(
-        'Given directory containing a file, When sendDirectory called, '
-        'Then writes file metadata and data chunk',
-        () async {
-          // 在临时目录中创建一个文件，触发 sendEntity 的 File 分支
-          await File('${tempDir.path}/note.txt').writeAsString('hello');
+      test('Given directory containing a file, When sendDirectory called, '
+          'Then writes file metadata and data chunk', () async {
+        // 在临时目录中创建一个文件，触发 sendEntity 的 File 分支
+        await File('${tempDir.path}/note.txt').writeAsString('hello');
 
-          final dirName = tempDir.path.split('/').last;
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
-          final progress = _mockProgressCallback();
+        final dirName = tempDir.path.split('/').last;
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
+        final progress = _mockProgressCallback();
 
-          await service.sendDirectory(
-            localPath: tempDir.path,
-            remotePath: '/home/user/$dirName',
-            onProgress: progress,
-          );
+        await service.sendDirectory(
+          localPath: tempDir.path,
+          remotePath: '/home/user/$dirName',
+          onProgress: progress,
+        );
 
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=data'))),
-          ).called(1);
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
-          ).called(1);
-        },
-      );
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=data'))),
+        ).called(1);
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+        ).called(1);
+      });
 
-      test(
-        'Given directory containing a nested file in subdirectory, '
-        'When sendDirectory called, '
-        'Then recurses into subdirectory and sends nested file',
-        () async {
-          // 在子目录中创建文件，触发 sendEntity 的 Directory 分支
-          // 递归循环（listSync 返回非空 children）
-          await File('${tempDir.path}/subdir/inner.txt').writeAsString('nested');
+      test('Given directory containing a nested file in subdirectory, '
+          'When sendDirectory called, '
+          'Then recurses into subdirectory and sends nested file', () async {
+        // 在子目录中创建文件，触发 sendEntity 的 Directory 分支
+        // 递归循环（listSync 返回非空 children）
+        await File('${tempDir.path}/subdir/inner.txt').writeAsString('nested');
 
-          final dirName = tempDir.path.split('/').last;
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
-          final progress = _mockProgressCallback();
+        final dirName = tempDir.path.split('/').last;
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
+        final progress = _mockProgressCallback();
 
-          await service.sendDirectory(
-            localPath: tempDir.path,
-            remotePath: '/home/user/$dirName',
-            onProgress: progress,
-          );
+        await service.sendDirectory(
+          localPath: tempDir.path,
+          remotePath: '/home/user/$dirName',
+          onProgress: progress,
+        );
 
-          // 子目录的目录元数据 + 嵌套文件的数据块
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ft=directory'))),
-          ).called(greaterThanOrEqualTo(2));
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=data'))),
-          ).called(1);
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
-          ).called(1);
-        },
-      );
+        // 子目录的目录元数据 + 嵌套文件的数据块
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ft=directory'))),
+        ).called(greaterThanOrEqualTo(2));
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=data'))),
+        ).called(1);
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+        ).called(1);
+      });
 
       test(
         'Given directory containing a broken symlink, When sendDirectory called, '
@@ -1738,26 +1726,23 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
     // FileMetadata constructor
     // -------------------------------------------------------------------------
     group('FileMetadata', () {
-      test(
-        'Given all fields, When constructing, Then stores values',
-        () {
-          final meta = FileMetadata(
-            name: 'file.txt',
-            fileType: FileType.directory,
-            size: 100,
-            permissions: 0x1A4,
-            mtime: 1700000000000,
-            linkTarget: 'target-path',
-          );
+      test('Given all fields, When constructing, Then stores values', () {
+        final meta = FileMetadata(
+          name: 'file.txt',
+          fileType: FileType.directory,
+          size: 100,
+          permissions: 0x1A4,
+          mtime: 1700000000000,
+          linkTarget: 'target-path',
+        );
 
-          expect(meta.name, 'file.txt');
-          expect(meta.fileType, FileType.directory);
-          expect(meta.size, 100);
-          expect(meta.permissions, 0x1A4);
-          expect(meta.mtime, 1700000000000);
-          expect(meta.linkTarget, 'target-path');
-        },
-      );
+        expect(meta.name, 'file.txt');
+        expect(meta.fileType, FileType.directory);
+        expect(meta.size, 100);
+        expect(meta.permissions, 0x1A4);
+        expect(meta.mtime, 1700000000000);
+        expect(meta.linkTarget, 'target-path');
+      });
 
       test(
         'Given defaults, When constructing, Then uses regular file type',
@@ -1806,106 +1791,90 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         );
       }
 
-      test(
-        'Given SFTP returns entries, When listCurrentDirectory called, '
-        'Then returns FileItems and skips dot entries',
-        () async {
-          when(() => mockSftp.listdir('/home/user')).thenAnswer(
-            (_) async => [
-              makeName('.', mode: 0x41ED),
-              makeName('..', mode: 0x41ED),
-              makeName('docs', mode: 0x41ED, size: 0, modifyTime: 1700000000),
-              makeName('file.txt', size: 2048),
-            ],
-          );
+      test('Given SFTP returns entries, When listCurrentDirectory called, '
+          'Then returns FileItems and skips dot entries', () async {
+        when(() => mockSftp.listdir('/home/user')).thenAnswer(
+          (_) async => [
+            makeName('.', mode: 0x41ED),
+            makeName('..', mode: 0x41ED),
+            makeName('docs', mode: 0x41ED, size: 0, modifyTime: 1700000000),
+            makeName('file.txt', size: 2048),
+          ],
+        );
 
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
 
-          final items = await service.listCurrentDirectory();
+        final items = await service.listCurrentDirectory();
 
-          expect(items.length, 2);
-          expect(items[0].name, 'docs');
-          expect(items[0].isDirectory, isTrue);
-          expect(items[0].size, 0);
-          expect(items[0].path, '/home/user/docs');
-          expect(items[1].name, 'file.txt');
-          expect(items[1].isDirectory, isFalse);
-          expect(items[1].size, 2048);
-        },
-      );
+        expect(items.length, 2);
+        expect(items[0].name, 'docs');
+        expect(items[0].isDirectory, isTrue);
+        expect(items[0].size, 0);
+        expect(items[0].path, '/home/user/docs');
+        expect(items[1].name, 'file.txt');
+        expect(items[1].isDirectory, isFalse);
+        expect(items[1].size, 2048);
+      });
 
-      test(
-        'Given directory at root, When listCurrentDirectory called, '
-        'Then builds child paths from root',
-        () async {
-          when(() => mockSftp.listdir('/')).thenAnswer(
-            (_) async => [makeName('etc', mode: 0x41ED)],
-          );
+      test('Given directory at root, When listCurrentDirectory called, '
+          'Then builds child paths from root', () async {
+        when(
+          () => mockSftp.listdir('/'),
+        ).thenAnswer((_) async => [makeName('etc', mode: 0x41ED)]);
 
-          final service = KittyFileTransferService(
-            session: mockSession,
-            // initialPath 默认即为 '/'
-          );
+        final service = KittyFileTransferService(
+          session: mockSession,
+          // initialPath 默认即为 '/'
+        );
 
-          final items = await service.listCurrentDirectory();
+        final items = await service.listCurrentDirectory();
 
-          expect(items.single.path, '/etc');
-        },
-      );
+        expect(items.single.path, '/etc');
+      });
 
-      test(
-        'Given entries with permissions, When listCurrentDirectory called, '
-        'Then formats permission strings',
-        () async {
-          when(() => mockSftp.listdir('/home/user')).thenAnswer(
-            (_) async => [
-              makeName('dir1', mode: 0x41ED), // drwxr-xr-x
-              makeName('link1', mode: 0xA1FF), // lrwxrwxrwx
-              makeName('f1'), // -rw-r--r--（默认 mode 0x81A4）
-            ],
-          );
+      test('Given entries with permissions, When listCurrentDirectory called, '
+          'Then formats permission strings', () async {
+        when(() => mockSftp.listdir('/home/user')).thenAnswer(
+          (_) async => [
+            makeName('dir1', mode: 0x41ED), // drwxr-xr-x
+            makeName('link1', mode: 0xA1FF), // lrwxrwxrwx
+            makeName('f1'), // -rw-r--r--（默认 mode 0x81A4）
+          ],
+        );
 
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
 
-          final items = await service.listCurrentDirectory();
+        final items = await service.listCurrentDirectory();
 
-          expect(items[0].permissions, 'drwxr-xr-x');
-          expect(items[1].permissions, 'lrwxrwxrwx');
-          expect(items[2].permissions, '-rw-r--r--');
-        },
-      );
+        expect(items[0].permissions, 'drwxr-xr-x');
+        expect(items[1].permissions, 'lrwxrwxrwx');
+        expect(items[2].permissions, '-rw-r--r--');
+      });
 
-      test(
-        'Given entry without mode, When listCurrentDirectory called, '
-        'Then permissions is empty string',
-        () async {
-          when(() => mockSftp.listdir('/home/user')).thenAnswer(
-            (_) async => [
-              SftpName(
-                filename: 'nofile',
-                longname: '',
-                attr: SftpFileAttrs(),
-              ),
-            ],
-          );
+      test('Given entry without mode, When listCurrentDirectory called, '
+          'Then permissions is empty string', () async {
+        when(() => mockSftp.listdir('/home/user')).thenAnswer(
+          (_) async => [
+            SftpName(filename: 'nofile', longname: '', attr: SftpFileAttrs()),
+          ],
+        );
 
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
 
-          final items = await service.listCurrentDirectory();
+        final items = await service.listCurrentDirectory();
 
-          expect(items.single.permissions, '');
-          expect(items.single.modified, isNull);
-        },
-      );
+        expect(items.single.permissions, '');
+        expect(items.single.modified, isNull);
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -1927,8 +1896,9 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
       test(
         'Given SFTP client, When createDirectory called, Then calls mkdir',
         () async {
-          when(() => mockSftp.mkdir('/home/user/newdir'))
-              .thenAnswer((_) async {});
+          when(
+            () => mockSftp.mkdir('/home/user/newdir'),
+          ).thenAnswer((_) async {});
 
           final service = KittyFileTransferService(
             session: mockSession,
@@ -1944,8 +1914,9 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
       test(
         'Given SFTP client, When removeFile called, Then calls remove',
         () async {
-          when(() => mockSftp.remove('/home/user/a.txt'))
-              .thenAnswer((_) async {});
+          when(
+            () => mockSftp.remove('/home/user/a.txt'),
+          ).thenAnswer((_) async {});
 
           final service = KittyFileTransferService(
             session: mockSession,
@@ -1961,8 +1932,9 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
       test(
         'Given SFTP client, When removeDirectory called, Then calls rmdir',
         () async {
-          when(() => mockSftp.rmdir('/home/user/docs'))
-              .thenAnswer((_) async {});
+          when(
+            () => mockSftp.rmdir('/home/user/docs'),
+          ).thenAnswer((_) async {});
 
           final service = KittyFileTransferService(
             session: mockSession,
@@ -1989,18 +1961,15 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         when(() => mockSession.inputService).thenReturn(mockInput);
       });
 
-      test(
-        'Given no session, When checkProtocolSupport called, '
-        'Then returns unsupported with connection message',
-        () async {
-          final service = KittyFileTransferService();
+      test('Given no session, When checkProtocolSupport called, '
+          'Then returns unsupported with connection message', () async {
+        final service = KittyFileTransferService();
 
-          final result = await service.checkProtocolSupport();
+        final result = await service.checkProtocolSupport();
 
-          expect(result.isSupported, isFalse);
-          expect(result.errorMessage, contains('未连接到终端'));
-        },
-      );
+        expect(result.isSupported, isFalse);
+        expect(result.errorMessage, contains('未连接到终端'));
+      });
 
       test(
         'Given output mentions ki version, When checkProtocolSupport called, '
@@ -2035,22 +2004,19 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
 
-      test(
-        'Given command throws, When checkProtocolSupport called, '
-        'Then returns unsupported',
-        () async {
-          when(
-            () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
-          ).thenThrow(Exception('boom'));
+      test('Given command throws, When checkProtocolSupport called, '
+          'Then returns unsupported', () async {
+        when(
+          () => mockInput.executeCommand(any(), silent: any(named: 'silent')),
+        ).thenThrow(Exception('boom'));
 
-          final service = KittyFileTransferService(session: mockSession);
+        final service = KittyFileTransferService(session: mockSession);
 
-          final result = await service.checkProtocolSupport();
+        final result = await service.checkProtocolSupport();
 
-          expect(result.isSupported, isFalse);
-          expect(result.errorMessage, isNotNull);
-        },
-      );
+        expect(result.isSupported, isFalse);
+        expect(result.errorMessage, isNotNull);
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -2092,9 +2058,7 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
               onProgress: _mockProgressCallback(),
             ),
             throwsA(
-              predicate<Exception>(
-                (e) => e.toString().contains('未连接到终端'),
-              ),
+              predicate<Exception>((e) => e.toString().contains('未连接到终端')),
             ),
           );
         },
@@ -2118,44 +2082,29 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
 
-      test(
-        'Given existing file, When sendFile called, '
-        'Then writes send sequences and reports progress',
-        () async {
-          final file = File('${tempDir.path}/payload.bin');
-          await file.writeAsBytes(List<int>.generate(100, (i) => i % 256));
+      test('Given existing file, When sendFile called, '
+          'Then writes send sequences and reports progress', () async {
+        final file = File('${tempDir.path}/payload.bin');
+        await file.writeAsBytes(List<int>.generate(100, (i) => i % 256));
 
-          final progress = <TransferProgress>[];
-          final service = KittyFileTransferService(session: mockSession);
+        final progress = <TransferProgress>[];
+        final service = KittyFileTransferService(session: mockSession);
 
-          await service.sendFile(
-            localPath: file.path,
-            remoteFileName: 'payload.bin',
-            onProgress: progress.add,
-          );
+        await service.sendFile(
+          localPath: file.path,
+          remoteFileName: 'payload.bin',
+          onProgress: progress.add,
+        );
 
-          // 会话开始 + 元数据（文件名在序列中被 base64 编码）+ 数据块 + 结束
-          expect(
-            written.any((s) => s.contains('ac=send')),
-            isTrue,
-          );
-          expect(
-            written.any((s) => s.contains('ac=file')),
-            isTrue,
-          );
-          expect(
-            written.any((s) => s.contains('ac=data')),
-            isTrue,
-          );
-          expect(
-            written.any((s) => s.contains('ac=finish')),
-            isTrue,
-          );
-          expect(progress, isNotEmpty);
-          expect(progress.last.totalBytes, 100);
-          expect(progress.last.transferredBytes, 100);
-        },
-      );
+        // 会话开始 + 元数据（文件名在序列中被 base64 编码）+ 数据块 + 结束
+        expect(written.any((s) => s.contains('ac=send')), isTrue);
+        expect(written.any((s) => s.contains('ac=file')), isTrue);
+        expect(written.any((s) => s.contains('ac=data')), isTrue);
+        expect(written.any((s) => s.contains('ac=finish')), isTrue);
+        expect(progress, isNotEmpty);
+        expect(progress.last.totalBytes, 100);
+        expect(progress.last.transferredBytes, 100);
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -2174,65 +2123,54 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         tempDir.deleteSync(recursive: true);
       });
 
-      test(
-        'Given no session, When downloadFile called, Then throws',
-        () async {
-          final service = KittyFileTransferService();
+      test('Given no session, When downloadFile called, Then throws', () async {
+        final service = KittyFileTransferService();
 
-          await expectLater(
-            service.downloadFile('/remote/a.txt', '${tempDir.path}/a.txt'),
-            throwsA(isA<Exception>()),
-          );
-        },
-      );
+        await expectLater(
+          service.downloadFile('/remote/a.txt', '${tempDir.path}/a.txt'),
+          throwsA(isA<Exception>()),
+        );
+      });
 
-      test(
-        'Given transfer events, When downloadFile called, '
-        'Then writes chunks to local file and completes',
-        () async {
-          final controller = StreamController<FileTransferEvent>.broadcast();
-          when(() => mockSession.fileTransferStream).thenAnswer(
-            (_) => controller.stream,
-          );
-          when(() => mockSession.inputService).thenReturn(
-            MockTerminalInputService(),
-          );
+      test('Given transfer events, When downloadFile called, '
+          'Then writes chunks to local file and completes', () async {
+        final controller = StreamController<FileTransferEvent>.broadcast();
+        when(
+          () => mockSession.fileTransferStream,
+        ).thenAnswer((_) => controller.stream);
+        when(
+          () => mockSession.inputService,
+        ).thenReturn(MockTerminalInputService());
 
-          final localPath = '${tempDir.path}/downloaded.bin';
-          final service = KittyFileTransferService(session: mockSession);
+        final localPath = '${tempDir.path}/downloaded.bin';
+        final service = KittyFileTransferService(session: mockSession);
 
-          final future = service.downloadFile(
-            '/remote/data.bin',
-            localPath,
-          );
+        final future = service.downloadFile('/remote/data.bin', localPath);
 
-          controller.add(
-            FileTransferEvent(
-              type: 'start',
-              fileId: 'f1',
-              fileName: 'data.bin',
-              fileSize: 4,
-            ),
-          );
-          controller.add(
-            FileTransferEvent(
-              type: 'chunk',
-              fileId: 'f1',
-              offset: 0,
-              data: Uint8List.fromList([1, 2, 3, 4]),
-            ),
-          );
-          controller.add(
-            FileTransferEvent(type: 'end', fileId: 'f1'),
-          );
+        controller.add(
+          FileTransferEvent(
+            type: 'start',
+            fileId: 'f1',
+            fileName: 'data.bin',
+            fileSize: 4,
+          ),
+        );
+        controller.add(
+          FileTransferEvent(
+            type: 'chunk',
+            fileId: 'f1',
+            offset: 0,
+            data: Uint8List.fromList([1, 2, 3, 4]),
+          ),
+        );
+        controller.add(FileTransferEvent(type: 'end', fileId: 'f1'));
 
-          await future;
-          await controller.close();
+        await future;
+        await controller.close();
 
-          final bytes = await File(localPath).readAsBytes();
-          expect(bytes, [1, 2, 3, 4]);
-        },
-      );
+        final bytes = await File(localPath).readAsBytes();
+        expect(bytes, [1, 2, 3, 4]);
+      });
     });
   });
 }

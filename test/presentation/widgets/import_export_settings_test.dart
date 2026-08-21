@@ -16,7 +16,9 @@ class _MockImportExportNotifier extends ImportExportNotifier {
   Object? exportError;
   List<SshConnection> importResult = [];
   Object? importError;
-  final List<({List<SshConnection> connections, bool overwrite, bool addPrefix})>
+  final List<
+    ({List<SshConnection> connections, bool overwrite, bool addPrefix})
+  >
   importAndSaveCalls = [];
   int resetCalls = 0;
 
@@ -133,15 +135,15 @@ void main() {
       testWidgets(
         'Given no jump hosts, When rendered, Then hides jump host row',
         (tester) async {
-          final notifier = _MockImportExportNotifier(
-            const ImportExportStatusData(),
-          )..stats = {
-            'totalConnections': 1,
-            'passwordAuth': 1,
-            'keyAuth': 0,
-            'jumpHostConnections': 0,
-            'lastUpdated': null,
-          };
+          final notifier =
+              _MockImportExportNotifier(const ImportExportStatusData())
+                ..stats = {
+                  'totalConnections': 1,
+                  'passwordAuth': 1,
+                  'keyAuth': 0,
+                  'jumpHostConnections': 0,
+                  'lastUpdated': null,
+                };
           await pumpScreen(tester, notifier: notifier);
 
           expect(find.text('跳板机连接'), findsNothing);
@@ -324,31 +326,31 @@ void main() {
         'Given preview with multiple connections of different auth types, '
         'When preview shown, Then renders auth icons and separators',
         (tester) async {
-          final notifier = _MockImportExportNotifier(
-            const ImportExportStatusData(),
-          )..importResult = [
-            SshConnection(
-              id: 'c1',
-              name: 'Key Server',
-              host: '10.0.0.1',
-              username: 'ops',
-              authType: AuthType.key,
-            ),
-            SshConnection(
-              id: 'c2',
-              name: 'KeyPass Server',
-              host: '10.0.0.2',
-              username: 'ops',
-              authType: AuthType.keyWithPassword,
-            ),
-            SshConnection(
-              id: 'c3',
-              name: 'SshConfig Server',
-              host: '10.0.0.3',
-              username: 'ops',
-              authType: AuthType.sshConfig,
-            ),
-          ];
+          final notifier =
+              _MockImportExportNotifier(const ImportExportStatusData())
+                ..importResult = [
+                  SshConnection(
+                    id: 'c1',
+                    name: 'Key Server',
+                    host: '10.0.0.1',
+                    username: 'ops',
+                    authType: AuthType.key,
+                  ),
+                  SshConnection(
+                    id: 'c2',
+                    name: 'KeyPass Server',
+                    host: '10.0.0.2',
+                    username: 'ops',
+                    authType: AuthType.keyWithPassword,
+                  ),
+                  SshConnection(
+                    id: 'c3',
+                    name: 'SshConfig Server',
+                    host: '10.0.0.3',
+                    username: 'ops',
+                    authType: AuthType.sshConfig,
+                  ),
+                ];
           await pumpScreen(tester, notifier: notifier);
 
           await tester.tap(find.widgetWithText(ElevatedButton, '导入配置'));

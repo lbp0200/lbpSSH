@@ -42,7 +42,6 @@ class ColorProfile {
 ///
 /// 实现终端广色域颜色支持
 class KittyWideGamutService extends KittyServiceBase {
-
   // 当前颜色配置
   ColorProfile _currentProfile = const ColorProfile(space: ColorSpace.sRGB);
 

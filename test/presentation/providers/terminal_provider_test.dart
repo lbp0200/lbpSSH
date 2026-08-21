@@ -273,9 +273,7 @@ void main() {
             name: 'S1',
             inputService: _MockInputService(),
           );
-          const state = TerminalState(
-            activeSessionId: 's1',
-          );
+          const state = TerminalState(activeSessionId: 's1');
 
           // 直接构造带 sessions 的实例
           final withSession = TerminalState(
@@ -374,58 +372,50 @@ void main() {
         },
       );
 
-      test(
-        'Given different sessions, When compared, Then not equal',
-        () {
-          // Arrange (Given)
-          const a = TerminalState();
-          const b = TerminalState(activeSessionId: 's1');
+      test('Given different sessions, When compared, Then not equal', () {
+        // Arrange (Given)
+        const a = TerminalState();
+        const b = TerminalState(activeSessionId: 's1');
 
-          // Act (When) & Assert (Then)
-          expect(a == b, isFalse);
-        },
-      );
+        // Act (When) & Assert (Then)
+        expect(a == b, isFalse);
+      });
     });
 
     group('closeSession with remaining sessions', () {
-      test(
-        'Given closing the active session with remaining sessions, '
-        'Then activates the first remaining session',
-        () {
-          // Arrange (Given)
-          final session1 = MockTerminalSession();
-          final session2 = MockTerminalSession();
-          when(() => session1.id).thenReturn('s1');
-          when(() => session2.id).thenReturn('s2');
-          when(() => mockTerminalService.getSession('s1')).thenReturn(session1);
-          when(
-            () => mockTerminalService.getAllSessions(),
-          ).thenReturn([session1, session2]);
+      test('Given closing the active session with remaining sessions, '
+          'Then activates the first remaining session', () {
+        // Arrange (Given)
+        final session1 = MockTerminalSession();
+        final session2 = MockTerminalSession();
+        when(() => session1.id).thenReturn('s1');
+        when(() => session2.id).thenReturn('s2');
+        when(() => mockTerminalService.getSession('s1')).thenReturn(session1);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([session1, session2]);
 
-          container = ProviderContainer(
-            overrides: [
-              terminalServiceProvider.overrideWithValue(mockTerminalService),
-              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
-            ],
-          );
-          container.read(terminalProvider.notifier).switchToSession('s1');
-          expect(container.read(terminalProvider).activeSessionId, 's1');
+        container = ProviderContainer(
+          overrides: [
+            terminalServiceProvider.overrideWithValue(mockTerminalService),
+            appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+          ],
+        );
+        container.read(terminalProvider.notifier).switchToSession('s1');
+        expect(container.read(terminalProvider).activeSessionId, 's1');
 
-          // 关闭后只剩 session2
-          when(
-            () => mockTerminalService.getAllSessions(),
-          ).thenReturn([session2]);
+        // 关闭后只剩 session2
+        when(() => mockTerminalService.getAllSessions()).thenReturn([session2]);
 
-          // Act (When)
-          container.read(terminalProvider.notifier).closeSession('s1');
+        // Act (When)
+        container.read(terminalProvider.notifier).closeSession('s1');
 
-          // Assert (Then)
-          verify(() => mockTerminalService.closeSession('s1')).called(1);
-          final state = container.read(terminalProvider);
-          expect(state.sessions, [session2]);
-          expect(state.activeSessionId, 's2');
-        },
-      );
+        // Assert (Then)
+        verify(() => mockTerminalService.closeSession('s1')).called(1);
+        final state = container.read(terminalProvider);
+        expect(state.sessions, [session2]);
+        expect(state.activeSessionId, 's2');
+      });
 
       test(
         'Given closing a non-active session, Then keeps activeSessionId unchanged',
@@ -481,95 +471,90 @@ void main() {
     });
 
     group('reconnectSession', () {
-      test(
-        'Given no matching session in state, When reconnectSession called, '
-        'Then returns without changing state',
-        () async {
-          // Arrange (Given)
-          final oldSession = MockTerminalSession();
-          when(() => oldSession.id).thenReturn('s1');
-          when(
-            () => mockTerminalService.getSession('s1'),
-          ).thenReturn(oldSession);
-          when(() => mockTerminalService.getAllSessions()).thenReturn([]);
+      test('Given no matching session in state, When reconnectSession called, '
+          'Then returns without changing state', () async {
+        // Arrange (Given)
+        final oldSession = MockTerminalSession();
+        when(() => oldSession.id).thenReturn('s1');
+        when(() => mockTerminalService.getSession('s1')).thenReturn(oldSession);
+        when(() => mockTerminalService.getAllSessions()).thenReturn([]);
 
-          // Act (When)
-          await container
-              .read(terminalProvider.notifier)
-              .reconnectSession('s1');
+        // Act (When)
+        await container.read(terminalProvider.notifier).reconnectSession('s1');
 
-          // Assert (Then) — state.sessions 为空，提前返回，不创建新服务
-          verify(() => mockTerminalService.getSession('s1')).called(1);
-          final state = container.read(terminalProvider);
-          expect(state.sessions, isEmpty);
-          expect(state.activeSessionId, isNull);
-        },
-      );
+        // Assert (Then) — state.sessions 为空，提前返回，不创建新服务
+        verify(() => mockTerminalService.getSession('s1')).called(1);
+        final state = container.read(terminalProvider);
+        expect(state.sessions, isEmpty);
+        expect(state.activeSessionId, isNull);
+      });
 
-      test(
-        'Given existing session with valid serverInfo, '
-        'When reconnectSession called, '
-        'Then reconnects via ssh service and updates state',
-        () async {
-          // Arrange — mock SSH 服务（connect 成功）
-          final mockSshService = MockSshService();
-          when(() => mockSshService.connect(any())).thenAnswer((_) async {});
-          when(
-            () => mockSshService.executeCommand(any(), silent: any(named: 'silent')),
-          ).thenAnswer((_) async => '/home/user');
-          when(() => mockSshService.dispose()).thenReturn(null);
+      test('Given existing session with valid serverInfo, '
+          'When reconnectSession called, '
+          'Then reconnects via ssh service and updates state', () async {
+        // Arrange — mock SSH 服务（connect 成功）
+        final mockSshService = MockSshService();
+        when(() => mockSshService.connect(any())).thenAnswer((_) async {});
+        when(
+          () => mockSshService.executeCommand(
+            any(),
+            silent: any(named: 'silent'),
+          ),
+        ).thenAnswer((_) async => '/home/user');
+        when(() => mockSshService.dispose()).thenReturn(null);
 
-          final mockSession = MockTerminalSession();
-          when(() => mockSession.id).thenReturn('ssh-session');
-          when(() => mockSession.name).thenReturn('MyServer');
-          when(() => mockSession.serverInfo).thenReturn('root@127.0.0.1');
-          when(() => mockSession.setWorkingDirectory(any())).thenReturn(null);
-          when(
-            () => mockTerminalService.createSession(
-              id: any(named: 'id'),
-              name: any(named: 'name'),
-              inputService: any(named: 'inputService'),
-              terminalConfig: any(named: 'terminalConfig'),
-              serverInfo: any(named: 'serverInfo'),
-            ),
-          ).thenReturn(mockSession);
-          when(() => mockTerminalService.getAllSessions())
-              .thenReturn([mockSession]);
-          when(() => mockTerminalService.getSession(any()))
-              .thenReturn(mockSession);
+        final mockSession = MockTerminalSession();
+        when(() => mockSession.id).thenReturn('ssh-session');
+        when(() => mockSession.name).thenReturn('MyServer');
+        when(() => mockSession.serverInfo).thenReturn('root@127.0.0.1');
+        when(() => mockSession.setWorkingDirectory(any())).thenReturn(null);
+        when(
+          () => mockTerminalService.createSession(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            inputService: any(named: 'inputService'),
+            terminalConfig: any(named: 'terminalConfig'),
+            serverInfo: any(named: 'serverInfo'),
+          ),
+        ).thenReturn(mockSession);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([mockSession]);
+        when(
+          () => mockTerminalService.getSession(any()),
+        ).thenReturn(mockSession);
 
-          container = ProviderContainer(
-            overrides: [
-              terminalServiceProvider.overrideWithValue(mockTerminalService),
-              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
-              sshServiceFactoryProvider.overrideWithValue(() => mockSshService),
-            ],
-          );
+        container = ProviderContainer(
+          overrides: [
+            terminalServiceProvider.overrideWithValue(mockTerminalService),
+            appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+            sshServiceFactoryProvider.overrideWithValue(() => mockSshService),
+          ],
+        );
 
-          // 先建立一个 SSH 会话，让 state.sessions 非空
-          final conn = SshConnection(
-            id: 'conn1',
-            name: 'MyServer',
-            host: '127.0.0.1',
-            username: 'root',
-            authType: AuthType.password,
-            password: 'secret',
-          );
-          await container.read(terminalProvider.notifier).createSession(conn);
+        // 先建立一个 SSH 会话，让 state.sessions 非空
+        final conn = SshConnection(
+          id: 'conn1',
+          name: 'MyServer',
+          host: '127.0.0.1',
+          username: 'root',
+          authType: AuthType.password,
+          password: 'secret',
+        );
+        await container.read(terminalProvider.notifier).createSession(conn);
 
-          // Act — 重连已存在的会话（id 匹配 mockSession.id）
-          await container
-              .read(terminalProvider.notifier)
-              .reconnectSession('ssh-session');
+        // Act — 重连已存在的会话（id 匹配 mockSession.id）
+        await container
+            .read(terminalProvider.notifier)
+            .reconnectSession('ssh-session');
 
-          // Assert — 通过 serverInfo 解析 host/username 发起连接，state 更新
-          // createSession + reconnectSession 各连接一次
-          verify(() => mockSshService.connect(any())).called(2);
-          final state = container.read(terminalProvider);
-          expect(state.sessions, [mockSession]);
-          expect(state.activeSessionId, 'ssh-session');
-        },
-      );
+        // Assert — 通过 serverInfo 解析 host/username 发起连接，state 更新
+        // createSession + reconnectSession 各连接一次
+        verify(() => mockSshService.connect(any())).called(2);
+        final state = container.read(terminalProvider);
+        expect(state.sessions, [mockSession]);
+        expect(state.activeSessionId, 'ssh-session');
+      });
     });
 
     group('createLocalTerminal / initialize', () {
@@ -592,33 +577,27 @@ void main() {
         ).thenReturn(null);
       }
 
-      test(
-        'Given LocalTerminalService start fails, '
-        'When initialize called, Then does not throw',
-        () async {
-          stubCreateSession();
+      test('Given LocalTerminalService start fails, '
+          'When initialize called, Then does not throw', () async {
+        stubCreateSession();
 
-          // Act (When) — start() 抛错被 initialize() 静默吞掉
-          await expectLater(
-            container.read(terminalProvider.notifier).initialize(),
-            completes,
-          );
-        },
-      );
+        // Act (When) — start() 抛错被 initialize() 静默吞掉
+        await expectLater(
+          container.read(terminalProvider.notifier).initialize(),
+          completes,
+        );
+      });
 
-      test(
-        'Given LocalTerminalService start fails, '
-        'When createLocalTerminal called, Then rethrows',
-        () async {
-          stubCreateSession();
+      test('Given LocalTerminalService start fails, '
+          'When createLocalTerminal called, Then rethrows', () async {
+        stubCreateSession();
 
-          // Act (When) & Assert (Then) — 错误向上传播
-          await expectLater(
-            container.read(terminalProvider.notifier).createLocalTerminal(),
-            throwsA(anything),
-          );
-        },
-      );
+        // Act (When) & Assert (Then) — 错误向上传播
+        await expectLater(
+          container.read(terminalProvider.notifier).createLocalTerminal(),
+          throwsA(anything),
+        );
+      });
 
       test(
         'Given failed createLocalTerminal, '
@@ -637,38 +616,35 @@ void main() {
     });
 
     group('createLocalTerminal with custom shellPath', () {
-      test(
-        'Given terminal config with non-empty shellPath, '
-        'When createLocalTerminal called, '
-        'Then applies shell path before start fails',
-        () async {
-          // Arrange (Given)
-          when(
-            () => mockAppConfigService.terminal,
-          ).thenReturn(TerminalConfig(shellPath: '/bin/zsh'));
+      test('Given terminal config with non-empty shellPath, '
+          'When createLocalTerminal called, '
+          'Then applies shell path before start fails', () async {
+        // Arrange (Given)
+        when(
+          () => mockAppConfigService.terminal,
+        ).thenReturn(TerminalConfig(shellPath: '/bin/zsh'));
 
-          final mockSession = MockTerminalSession();
-          when(
-            () => mockTerminalService.createSession(
-              id: any(named: 'id'),
-              name: any(named: 'name'),
-              inputService: any(named: 'inputService'),
-              terminalConfig: any(named: 'terminalConfig'),
-              isLocal: any(named: 'isLocal'),
-            ),
-          ).thenReturn(mockSession);
-          when(
-            () => mockSession.setWorkingDirectoryAndUpdateName(any()),
-          ).thenReturn(null);
+        final mockSession = MockTerminalSession();
+        when(
+          () => mockTerminalService.createSession(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            inputService: any(named: 'inputService'),
+            terminalConfig: any(named: 'terminalConfig'),
+            isLocal: any(named: 'isLocal'),
+          ),
+        ).thenReturn(mockSession);
+        when(
+          () => mockSession.setWorkingDirectoryAndUpdateName(any()),
+        ).thenReturn(null);
 
-          // Act (When) — shellPath 非空会执行 setShellPath(第84行)，
-          // 随后 start() 抛错（PTY 原生库未打包）向上传播
-          await expectLater(
-            container.read(terminalProvider.notifier).createLocalTerminal(),
-            throwsA(anything),
-          );
-        },
-      );
+        // Act (When) — shellPath 非空会执行 setShellPath(第84行)，
+        // 随后 start() 抛错（PTY 原生库未打包）向上传播
+        await expectLater(
+          container.read(terminalProvider.notifier).createLocalTerminal(),
+          throwsA(anything),
+        );
+      });
     });
 
     group('createLocalTerminal success path', () {
@@ -700,162 +676,153 @@ void main() {
             isLocal: any(named: 'isLocal'),
           ),
         ).thenReturn(mockSession);
-        when(() => mockSession.setWorkingDirectoryAndUpdateName(any()))
-            .thenReturn(null);
-        when(() => mockTerminalService.getAllSessions())
-            .thenReturn([mockSession]);
+        when(
+          () => mockSession.setWorkingDirectoryAndUpdateName(any()),
+        ).thenReturn(null);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([mockSession]);
 
         container = ProviderContainer(
           overrides: [
             terminalServiceProvider.overrideWithValue(mockTerminalService),
             appConfigServiceProvider.overrideWithValue(mockAppConfigService),
-            localTerminalServiceFactoryProvider
-                .overrideWithValue(() => stubLocal),
+            localTerminalServiceFactoryProvider.overrideWithValue(
+              () => stubLocal,
+            ),
           ],
         );
         return mockSession;
       }
 
-      testWidgets(
-        'Given local service starts successfully, '
-        'When createLocalTerminal called, '
-        'Then state has active session and service is registered',
-        (tester) async {
-          // Arrange
-          final mockSession = stubSuccessSetup();
+      testWidgets('Given local service starts successfully, '
+          'When createLocalTerminal called, '
+          'Then state has active session and service is registered', (
+        tester,
+      ) async {
+        // Arrange
+        final mockSession = stubSuccessSetup();
 
-          // Act
-          final session = await container
-              .read(terminalProvider.notifier)
-              .createLocalTerminal();
+        // Act
+        final session = await container
+            .read(terminalProvider.notifier)
+            .createLocalTerminal();
 
-          // Assert — sessionId 由 UUID 生成，activeSessionId 非空即可
-          expect(session, same(mockSession));
-          expect(stubLocal.startCalled, isTrue);
-          final state = container.read(terminalProvider);
-          expect(state.activeSessionId, isNotNull);
-          expect(state.sessions, [mockSession]);
-        },
-      );
+        // Assert — sessionId 由 UUID 生成，activeSessionId 非空即可
+        expect(session, same(mockSession));
+        expect(stubLocal.startCalled, isTrue);
+        final state = container.read(terminalProvider);
+        expect(state.activeSessionId, isNotNull);
+        expect(state.sessions, [mockSession]);
+      });
 
-      testWidgets(
-        'Given session with positive view size, '
-        'When post-frame callback runs, '
-        'Then local service receives resize with view dimensions',
-        (tester) async {
-          // Arrange — viewWidth/viewHeight 使用默认值 120/40
-          stubSuccessSetup();
+      testWidgets('Given session with positive view size, '
+          'When post-frame callback runs, '
+          'Then local service receives resize with view dimensions', (
+        tester,
+      ) async {
+        // Arrange — viewWidth/viewHeight 使用默认值 120/40
+        stubSuccessSetup();
 
-          // Act — post-frame 回调需显式调度帧才触发（纯逻辑测试无 widget 渲染）
-          await container.read(terminalProvider.notifier).createLocalTerminal();
-          tester.binding.scheduleFrame();
-          await tester.pump();
+        // Act — post-frame 回调需显式调度帧才触发（纯逻辑测试无 widget 渲染）
+        await container.read(terminalProvider.notifier).createLocalTerminal();
+        tester.binding.scheduleFrame();
+        await tester.pump();
 
-          // Assert
-          expect(stubLocal.resizeCalls, [(40, 120)]);
-        },
-      );
+        // Assert
+        expect(stubLocal.resizeCalls, [(40, 120)]);
+      });
 
-      testWidgets(
-        'Given session with zero view size, '
-        'When post-frame callback runs, '
-        'Then resize is skipped',
-        (tester) async {
-          // Arrange
-          stubSuccessSetup(viewWidth: 0, viewHeight: 0);
+      testWidgets('Given session with zero view size, '
+          'When post-frame callback runs, '
+          'Then resize is skipped', (tester) async {
+        // Arrange
+        stubSuccessSetup(viewWidth: 0, viewHeight: 0);
 
-          // Act — 显式调度帧以触发 post-frame 回调
-          await container.read(terminalProvider.notifier).createLocalTerminal();
-          tester.binding.scheduleFrame();
-          await tester.pump();
+        // Act — 显式调度帧以触发 post-frame 回调
+        await container.read(terminalProvider.notifier).createLocalTerminal();
+        tester.binding.scheduleFrame();
+        await tester.pump();
 
-          // Assert
-          expect(stubLocal.resizeCalls, isEmpty);
-        },
-      );
+        // Assert
+        expect(stubLocal.resizeCalls, isEmpty);
+      });
 
-      testWidgets(
-        'Given onDirectoryChange callback fires, '
-        'Then session name is updated and state refreshes',
-        (tester) async {
-          // Arrange
-          final mockSession = stubSuccessSetup();
-          await container.read(terminalProvider.notifier).createLocalTerminal();
+      testWidgets('Given onDirectoryChange callback fires, '
+          'Then session name is updated and state refreshes', (tester) async {
+        // Arrange
+        final mockSession = stubSuccessSetup();
+        await container.read(terminalProvider.notifier).createLocalTerminal();
 
-          // Act — 触发目录变化回调
-          stubLocal.onDirectoryChange?.call('/new/dir');
+        // Act — 触发目录变化回调
+        stubLocal.onDirectoryChange?.call('/new/dir');
 
-          // Assert
-          verify(() => mockSession.setWorkingDirectoryAndUpdateName('/new/dir'))
-              .called(1);
-          expect(container.read(terminalProvider).sessions, [mockSession]);
-        },
-      );
+        // Assert
+        verify(
+          () => mockSession.setWorkingDirectoryAndUpdateName('/new/dir'),
+        ).called(1);
+        expect(container.read(terminalProvider).sessions, [mockSession]);
+      });
 
-      testWidgets(
-        'Given onActualDirectoryChange callback fires, '
-        'Then session name is updated and state refreshes',
-        (tester) async {
-          // Arrange
-          final mockSession = stubSuccessSetup();
-          await container.read(terminalProvider.notifier).createLocalTerminal();
+      testWidgets('Given onActualDirectoryChange callback fires, '
+          'Then session name is updated and state refreshes', (tester) async {
+        // Arrange
+        final mockSession = stubSuccessSetup();
+        await container.read(terminalProvider.notifier).createLocalTerminal();
 
-          // Act — 触发实际目录变化回调
-          stubLocal.onActualDirectoryChange?.call('/actual/dir');
+        // Act — 触发实际目录变化回调
+        stubLocal.onActualDirectoryChange?.call('/actual/dir');
 
-          // Assert
-          verify(() =>
-                  mockSession.setWorkingDirectoryAndUpdateName('/actual/dir'))
-              .called(1);
-          expect(container.read(terminalProvider).sessions, [mockSession]);
-        },
-      );
+        // Assert
+        verify(
+          () => mockSession.setWorkingDirectoryAndUpdateName('/actual/dir'),
+        ).called(1);
+        expect(container.read(terminalProvider).sessions, [mockSession]);
+      });
     });
 
     group('createSession (SSH) failure path', () {
-      test(
-        'Given unreachable server, When createSession called, '
-        'Then closes session and rethrows',
-        () async {
-          // Arrange (Given)
-          final mockSession = MockTerminalSession();
-          when(() => mockSession.id).thenReturn('ssh-session');
-          when(
-            () => mockTerminalService.createSession(
-              id: any(named: 'id'),
-              name: any(named: 'name'),
-              inputService: any(named: 'inputService'),
-              terminalConfig: any(named: 'terminalConfig'),
-              serverInfo: any(named: 'serverInfo'),
-            ),
-          ).thenReturn(mockSession);
-          when(
-            () => mockTerminalService.getAllSessions(),
-          ).thenReturn([mockSession]);
-          when(() => mockTerminalService.closeSession(any())).thenReturn(null);
-          when(() => mockTerminalService.getSession(any()))
-              .thenReturn(mockSession);
+      test('Given unreachable server, When createSession called, '
+          'Then closes session and rethrows', () async {
+        // Arrange (Given)
+        final mockSession = MockTerminalSession();
+        when(() => mockSession.id).thenReturn('ssh-session');
+        when(
+          () => mockTerminalService.createSession(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            inputService: any(named: 'inputService'),
+            terminalConfig: any(named: 'terminalConfig'),
+            serverInfo: any(named: 'serverInfo'),
+          ),
+        ).thenReturn(mockSession);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([mockSession]);
+        when(() => mockTerminalService.closeSession(any())).thenReturn(null);
+        when(
+          () => mockTerminalService.getSession(any()),
+        ).thenReturn(mockSession);
 
-          final port = await _closedLocalPort();
-          final conn = SshConnection(
-            id: 'conn1',
-            name: 'MyServer',
-            host: '127.0.0.1',
-            port: port,
-            username: 'root',
-            authType: AuthType.password,
-            password: 'secret',
-            connectTimeout: 1000,
-          );
+        final port = await _closedLocalPort();
+        final conn = SshConnection(
+          id: 'conn1',
+          name: 'MyServer',
+          host: '127.0.0.1',
+          port: port,
+          username: 'root',
+          authType: AuthType.password,
+          password: 'secret',
+          connectTimeout: 1000,
+        );
 
-          // Act (When) & Assert (Then) — connect 失败 → closeSession + rethrow
-          await expectLater(
-            container.read(terminalProvider.notifier).createSession(conn),
-            throwsA(isA<Exception>()),
-          );
-          verify(() => mockTerminalService.closeSession(any())).called(1);
-        },
-      );
+        // Act (When) & Assert (Then) — connect 失败 → closeSession + rethrow
+        await expectLater(
+          container.read(terminalProvider.notifier).createSession(conn),
+          throwsA(isA<Exception>()),
+        );
+        verify(() => mockTerminalService.closeSession(any())).called(1);
+      });
     });
 
     group('createSession (SSH) success path', () {
@@ -865,8 +832,12 @@ void main() {
       MockTerminalSession stubSuccessSetup({String pwd = '/home/user'}) {
         mockSshService = MockSshService();
         when(() => mockSshService.connect(any())).thenAnswer((_) async {});
-        when(() => mockSshService.executeCommand(any(), silent: any(named: 'silent')))
-            .thenAnswer((_) async => pwd);
+        when(
+          () => mockSshService.executeCommand(
+            any(),
+            silent: any(named: 'silent'),
+          ),
+        ).thenAnswer((_) async => pwd);
 
         final mockSession = MockTerminalSession();
         when(() => mockSession.id).thenReturn('ssh-session');
@@ -880,10 +851,12 @@ void main() {
             serverInfo: any(named: 'serverInfo'),
           ),
         ).thenReturn(mockSession);
-        when(() => mockTerminalService.getAllSessions())
-            .thenReturn([mockSession]);
-        when(() => mockTerminalService.getSession(any()))
-            .thenReturn(mockSession);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([mockSession]);
+        when(
+          () => mockTerminalService.getSession(any()),
+        ).thenReturn(mockSession);
 
         container = ProviderContainer(
           overrides: [
@@ -895,71 +868,69 @@ void main() {
         return mockSession;
       }
 
-      test(
-        'Given SSH connect succeeds, '
-        'When createSession called, '
-        'Then sets working directory from pwd and updates state',
-        () async {
-          // Arrange — pwd 使用默认值 '/home/user'
-          stubSuccessSetup();
+      test('Given SSH connect succeeds, '
+          'When createSession called, '
+          'Then sets working directory from pwd and updates state', () async {
+        // Arrange — pwd 使用默认值 '/home/user'
+        stubSuccessSetup();
 
-          final conn = SshConnection(
-            id: 'conn1',
-            name: 'MyServer',
-            host: '127.0.0.1',
-            username: 'root',
-            authType: AuthType.password,
-            password: 'secret',
-          );
+        final conn = SshConnection(
+          id: 'conn1',
+          name: 'MyServer',
+          host: '127.0.0.1',
+          username: 'root',
+          authType: AuthType.password,
+          password: 'secret',
+        );
 
-          // Act
-          final session = await container
-              .read(terminalProvider.notifier)
-              .createSession(conn);
+        // Act
+        final session = await container
+            .read(terminalProvider.notifier)
+            .createSession(conn);
 
-          // Assert — pwd 结果写入会话工作目录
-          verify(() => mockSshService.connect(conn)).called(1);
-          verify(
-            () => mockSshService.executeCommand('pwd', silent: true),
-          ).called(1);
-          verify(() => session.setWorkingDirectory('/home/user')).called(1);
+        // Assert — pwd 结果写入会话工作目录
+        verify(() => mockSshService.connect(conn)).called(1);
+        verify(
+          () => mockSshService.executeCommand('pwd', silent: true),
+        ).called(1);
+        verify(() => session.setWorkingDirectory('/home/user')).called(1);
 
-          final state = container.read(terminalProvider);
-          expect(state.sessions, [session]);
-          expect(state.activeSessionId, isNotNull);
-        },
-      );
+        final state = container.read(terminalProvider);
+        expect(state.sessions, [session]);
+        expect(state.activeSessionId, isNotNull);
+      });
 
-      test(
-        'Given SSH connect succeeds but pwd fails, '
-        'When createSession called, '
-        'Then keeps default directory and still updates state',
-        () async {
-          // Arrange — pwd 抛错
-          stubSuccessSetup();
-          when(() => mockSshService.executeCommand(any(), silent: any(named: 'silent')))
-              .thenThrow(Exception('pwd failed'));
+      test('Given SSH connect succeeds but pwd fails, '
+          'When createSession called, '
+          'Then keeps default directory and still updates state', () async {
+        // Arrange — pwd 抛错
+        stubSuccessSetup();
+        when(
+          () => mockSshService.executeCommand(
+            any(),
+            silent: any(named: 'silent'),
+          ),
+        ).thenThrow(Exception('pwd failed'));
 
-          final conn = SshConnection(
-            id: 'conn1',
-            name: 'MyServer',
-            host: '127.0.0.1',
-            username: 'root',
-            authType: AuthType.password,
-            password: 'secret',
-          );
+        final conn = SshConnection(
+          id: 'conn1',
+          name: 'MyServer',
+          host: '127.0.0.1',
+          username: 'root',
+          authType: AuthType.password,
+          password: 'secret',
+        );
 
-          // Act
-          final session = await container
-              .read(terminalProvider.notifier)
-              .createSession(conn);
+        // Act
+        final session = await container
+            .read(terminalProvider.notifier)
+            .createSession(conn);
 
-          // Assert — pwd 失败时静默使用默认目录，会话仍建立
-          verifyNever(() => session.setWorkingDirectory(any()));
-          final state = container.read(terminalProvider);
-          expect(state.sessions, [session]);
-        },
-      );
+        // Assert — pwd 失败时静默使用默认目录，会话仍建立
+        verifyNever(() => session.setWorkingDirectory(any()));
+        final state = container.read(terminalProvider);
+        expect(state.sessions, [session]);
+      });
     });
   });
 }

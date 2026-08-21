@@ -55,17 +55,19 @@ void main() {
       expect(result.errorMessage, isNull);
     });
 
-    test('Given runner throws, Then returns failed with SSH failed message',
-        () async {
-      final result = await launchSsh(
-        _conn(),
-        run: (executable, arguments) async => throw Exception('boom'),
-      );
+    test(
+      'Given runner throws, Then returns failed with SSH failed message',
+      () async {
+        final result = await launchSsh(
+          _conn(),
+          run: (executable, arguments) async => throw Exception('boom'),
+        );
 
-      expect(result.succeeded, isFalse);
-      expect(result.errorMessage, contains('SSH failed'));
-      expect(result.errorMessage, contains('boom'));
-    });
+        expect(result.succeeded, isFalse);
+        expect(result.errorMessage, contains('SSH failed'));
+        expect(result.errorMessage, contains('boom'));
+      },
+    );
 
     test('Given connection, Then passes ssh args without shell', () async {
       List<String>? capturedArgs;

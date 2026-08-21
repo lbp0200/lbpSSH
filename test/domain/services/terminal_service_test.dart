@@ -448,16 +448,13 @@ void main() {
       },
     );
 
-    test(
-      'Given session, When setName called, Then updates name getter',
-      () {
-        final session = createSession();
+    test('Given session, When setName called, Then updates name getter', () {
+      final session = createSession();
 
-        session.setName('Renamed');
+      session.setName('Renamed');
 
-        expect(session.name, 'Renamed');
-      },
-    );
+      expect(session.name, 'Renamed');
+    });
 
     test(
       'Given session with empty working directory, When updateLocalTerminalName called, Then name becomes local /',
@@ -494,18 +491,15 @@ void main() {
       },
     );
 
-    test(
-      'Given session, When setOsType called, Then updates osType',
-      () {
-        final session = createSession();
+    test('Given session, When setOsType called, Then updates osType', () {
+      final session = createSession();
 
-        expect(session.osType, 'Linux');
+      expect(session.osType, 'Linux');
 
-        session.setOsType('Darwin');
+      session.setOsType('Darwin');
 
-        expect(session.osType, 'Darwin');
-      },
-    );
+      expect(session.osType, 'Darwin');
+    });
 
     test(
       'Given session, When executeCommand called, Then writes command to terminal and invokes inputService',
@@ -581,12 +575,7 @@ void main() {
       'Given ac=send, When OSC 5113 fired, Then emits start event with parsed fields',
       () async {
         // n 是 base64 编码的文件名
-        fireOsc5113([
-          'ac=send',
-          'fid=file-1',
-          'n=ZmlsZS50eHQ=',
-          'size=1024',
-        ]);
+        fireOsc5113(['ac=send', 'fid=file-1', 'n=ZmlsZS50eHQ=', 'size=1024']);
         await Future<void>.delayed(Duration.zero);
 
         expect(events, hasLength(1));
@@ -601,12 +590,7 @@ void main() {
       'Given ac=data, When OSC 5113 fired, Then emits chunk event with decoded bytes',
       () async {
         // d 是 base64 编码的数据
-        fireOsc5113([
-          'ac=data',
-          'fid=file-1',
-          'offset=0',
-          'd=SGVsbG8=',
-        ]);
+        fireOsc5113(['ac=data', 'fid=file-1', 'offset=0', 'd=SGVsbG8=']);
         await Future<void>.delayed(Duration.zero);
 
         expect(events, hasLength(1));
@@ -652,41 +636,38 @@ void main() {
   });
 
   group('TerminalSession Clipboard (OSC 52)', () {
-    test(
-      'Given clipboard has text, When onClipboardRead fired, '
-      'Then terminal writes OSC 52 response with base64 content',
-      () async {
-        final session = TerminalSession(
-          id: 'clip-test',
-          name: 'Clip',
-          inputService: MockTerminalInputService(),
-        );
+    test('Given clipboard has text, When onClipboardRead fired, '
+        'Then terminal writes OSC 52 response with base64 content', () async {
+      final session = TerminalSession(
+        id: 'clip-test',
+        name: 'Clip',
+        inputService: MockTerminalInputService(),
+      );
 
-        // 捕获写回的内容：kterm 解析 OSC 52 响应后会触发 onClipboardWrite
-        String? writtenData;
-        session.terminal.onClipboardWrite = (data, target) {
-          writtenData = data;
-        };
+      // 捕获写回的内容：kterm 解析 OSC 52 响应后会触发 onClipboardWrite
+      String? writtenData;
+      session.terminal.onClipboardWrite = (data, target) {
+        writtenData = data;
+      };
 
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.getData') {
+              return <String, dynamic>{'text': 'hello-clip'};
+            }
+            return null;
+          });
+      addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.getData') {
-            return <String, dynamic>{'text': 'hello-clip'};
-          }
-          return null;
-        });
-        addTearDown(() {
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-              .setMockMethodCallHandler(SystemChannels.platform, null);
-        });
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
 
-        // 字段类型为 void Function(String)，内部为 async 回调，调用后等待完成
-        session.terminal.onClipboardRead?.call('c');
-        await Future<void>.delayed(Duration.zero);
+      // 字段类型为 void Function(String)，内部为 async 回调，调用后等待完成
+      session.terminal.onClipboardRead?.call('c');
+      await Future<void>.delayed(Duration.zero);
 
-        expect(writtenData, 'hello-clip');
-      },
-    );
+      expect(writtenData, 'hello-clip');
+    });
 
     test(
       'Given onClipboardWrite fired, Then Clipboard.setData called with decoded text',
@@ -700,11 +681,11 @@ void main() {
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData') {
-            clipboardText = (call.arguments as Map)['text'] as String?;
-          }
-          return null;
-        });
+              if (call.method == 'Clipboard.setData') {
+                clipboardText = (call.arguments as Map)['text'] as String?;
+              }
+              return null;
+            });
         addTearDown(() {
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .setMockMethodCallHandler(SystemChannels.platform, null);
@@ -762,23 +743,20 @@ void main() {
       },
     );
 
-    test(
-      'Given state stream emits false, When initialize called, '
-      'Then connectionState becomes disconnected',
-      () async {
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: inputService,
-        );
-        session.initialize();
+    test('Given state stream emits false, When initialize called, '
+        'Then connectionState becomes disconnected', () async {
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: inputService,
+      );
+      session.initialize();
 
-        inputService.stateController.add(false);
-        await Future<void>.delayed(Duration.zero);
+      inputService.stateController.add(false);
+      await Future<void>.delayed(Duration.zero);
 
-        expect(session.connectionState, SshConnectionState.disconnected);
-      },
-    );
+      expect(session.connectionState, SshConnectionState.disconnected);
+    });
 
     test(
       'Given terminal output, When onOutput fired, Then sends input to service',
@@ -810,25 +788,19 @@ void main() {
       },
     );
 
-    test(
-      'Given input service throws on send, When onOutput fired, '
-      'Then writes error to terminal without rethrowing',
-      () async {
-        final throwingService = _ThrowingSendInputService();
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: throwingService,
-        );
-        session.initialize();
+    test('Given input service throws on send, When onOutput fired, '
+        'Then writes error to terminal without rethrowing', () async {
+      final throwingService = _ThrowingSendInputService();
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: throwingService,
+      );
+      session.initialize();
 
-        expect(
-          () => session.terminal.onOutput?.call('bad'),
-          returnsNormally,
-        );
-        expect(session.terminal.buffer.toString(), contains('输入发送失败'));
-      },
-    );
+      expect(() => session.terminal.onOutput?.call('bad'), returnsNormally);
+      expect(session.terminal.buffer.toString(), contains('输入发送失败'));
+    });
 
     test(
       'Given resize fired, When debounce delay elapses, Then resizes input service',
@@ -849,75 +821,63 @@ void main() {
       },
     );
 
-    test(
-      'Given session initialized, When graphicsManager accessed, '
-      'Then returns the terminal graphics manager',
-      () {
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: inputService,
-        );
-        session.initialize();
+    test('Given session initialized, When graphicsManager accessed, '
+        'Then returns the terminal graphics manager', () {
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: inputService,
+      );
+      session.initialize();
 
-        expect(session.graphicsManager, same(session.terminal.graphicsManager));
-      },
-    );
+      expect(session.graphicsManager, same(session.terminal.graphicsManager));
+    });
 
-    test(
-      'Given output stream emits error, When initialize called, '
-      'Then does not throw',
-      () async {
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: inputService,
-        );
-        session.initialize();
+    test('Given output stream emits error, When initialize called, '
+        'Then does not throw', () async {
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: inputService,
+      );
+      session.initialize();
 
-        inputService.outputController.addError(Exception('out boom'));
-        await Future<void>.delayed(Duration.zero);
-        // onError 分支静默处理，不抛出
-      },
-    );
+      inputService.outputController.addError(Exception('out boom'));
+      await Future<void>.delayed(Duration.zero);
+      // onError 分支静默处理，不抛出
+    });
 
-    test(
-      'Given state stream emits error, When initialize called, '
-      'Then does not throw',
-      () async {
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: inputService,
-        );
-        session.initialize();
+    test('Given state stream emits error, When initialize called, '
+        'Then does not throw', () async {
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: inputService,
+      );
+      session.initialize();
 
-        inputService.stateController.addError(Exception('state boom'));
-        await Future<void>.delayed(Duration.zero);
-        // onError 分支静默处理，不抛出
-      },
-    );
+      inputService.stateController.addError(Exception('state boom'));
+      await Future<void>.delayed(Duration.zero);
+      // onError 分支静默处理，不抛出
+    });
 
-    testWidgets(
-      'Given resize fired with frame, When post-frame callback runs, '
-      'Then resizes input service',
-      (tester) async {
-        // 先挂载一帧，确保 addPostFrameCallback 在后续 pump 中执行
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
-        final session = TerminalSession(
-          id: 'init-test',
-          name: 'Init',
-          inputService: inputService,
-        );
-        session.initialize();
+    testWidgets('Given resize fired with frame, When post-frame callback runs, '
+        'Then resizes input service', (tester) async {
+      // 先挂载一帧，确保 addPostFrameCallback 在后续 pump 中执行
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      final session = TerminalSession(
+        id: 'init-test',
+        name: 'Init',
+        inputService: inputService,
+      );
+      session.initialize();
 
-        session.terminal.onResize?.call(100, 30, 800, 600);
-        // 推进一帧触发 addPostFrameCallback → 立即 resize（并取消防抖定时器）
-        await tester.pump();
-        expect(inputService.resizeCount, 1);
-        expect(inputService.lastResize, (30, 100));
-      },
-    );
+      session.terminal.onResize?.call(100, 30, 800, 600);
+      // 推进一帧触发 addPostFrameCallback → 立即 resize（并取消防抖定时器）
+      await tester.pump();
+      expect(inputService.resizeCount, 1);
+      expect(inputService.lastResize, (30, 100));
+    });
   });
 }
 
