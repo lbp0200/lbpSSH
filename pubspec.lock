@@ -496,10 +496,10 @@ packages:
     dependency: "direct main"
     description:
       name: kterm
-      sha256: e8b1c1a19dfeb27a6fca136f38b84949f530b12929e1ceee9d7f5c6156d497ab
+      sha256: "125f600efc5d55ce51abc56a87b119f7e15936b13693b87d05efc4aaa62f75d8"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.5.5"
+    version: "1.5.6"
   leak_tracker:
     dependency: transitive
     description:
