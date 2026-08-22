@@ -1,3 +1,7 @@
+- release: bump version to 1.9.6 (156d228)
+- docs: update CHANGELOG (d66188d)
+- chore(deps): upgrade kterm to ^1.5.6 (f2ed172)
+- docs: update CHANGELOG (eb501eb)
 - fix(tui): restore original delay behavior and use package imports (3831d6c)
 - docs: update CHANGELOG (3d6b67a)
 - chore(deps): upgrade kterm to ^1.5.6 (1b84138)
