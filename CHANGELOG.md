@@ -1,5 +1,7 @@
 - fix(tui): restore original delay behavior and use package imports (3831d6c)
 - docs: update CHANGELOG (3d6b67a)
+- chore(deps): upgrade kterm to ^1.5.6 (1b84138)
+- release: bump version to 1.9.6 (7ae700d)
 - fix: revert pubspec.lock kterm source from local path to hosted pub (8dd4a08)
 - style: apply dart format to entire codebase (555e961)
 - refactor(tui): extract ssh launcher for testability and add coverage (dca7643)
