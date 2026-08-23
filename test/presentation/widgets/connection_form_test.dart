@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_platform_interface/file_picker_platform_interface.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,29 +31,54 @@ void restoreFilePermissions(File file) {
   }
 }
 
+/// Simple test implementation of PlatformFile
+base class _TestPlatformFile extends PlatformFile {
+  final String path;
+  final String name;
+
+  _TestPlatformFile(this.path) : name = path.split('/').last;
+
+  @override
+  Uri get uri => Uri.file(path);
+
+  @override
+  XFile get xFile => XFile(path);
+
+  @override
+  Future<int> length() async => 0;
+
+  @override
+  Future<Uint8List> readAsBytes() async => Uint8List(0);
+
+  @override
+  Stream<Uint8List> readAsByteStream() => Stream.empty();
+}
+
+/// Helper to create PlatformFile from a File for testing
+PlatformFile _createPlatformFile(File file) {
+  return _TestPlatformFile(file.path);
+}
+
 /// Fake FilePickerPlatform：可配置 pickFiles 返回值
 class _FakeFilePickerPlatform extends FilePickerPlatform {
-  FilePickerResult? pickResult;
+  List<PlatformFile>? pickResult;
   Object? pickError;
 
   @override
-  Future<FilePickerResult?> pickFiles({
+  Future<List<PlatformFile>> pickFiles({
     String? dialogTitle,
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,
-    void Function(FilePickerStatus)? onFileLoading,
+    Function(FilePickerStatus)? onFileLoading,
     int compressionQuality = 0,
-    bool allowMultiple = false,
-    bool withData = false,
-    bool withReadStream = false,
-    bool lockParentWindow = false,
-    bool readSequential = false,
-    bool cancelUploadOnWindowBlur = true,
-    AndroidSAFOptions? androidSafOptions,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
   }) async {
     if (pickError != null) throw pickError!;
-    return pickResult;
+    return pickResult ?? [];
   }
 }
 
@@ -598,9 +626,7 @@ void main() {
           '-----END OPENSSH PRIVATE KEY-----',
         );
         FilePickerPlatform.instance = _FakeFilePickerPlatform()
-          ..pickResult = FilePickerResult([
-            PlatformFile(name: 'id_ed25519', path: keyFile.path, size: 0),
-          ]);
+          ..pickResult = [_createPlatformFile(keyFile)];
 
         await pumpForm(tester);
         await switchAuthType(tester, '密钥认证');
@@ -621,9 +647,7 @@ void main() {
             '-----END RSA PRIVATE KEY-----',
           );
           FilePickerPlatform.instance = _FakeFilePickerPlatform()
-            ..pickResult = FilePickerResult([
-              PlatformFile(name: 'id_rsa', path: keyFile.path, size: 0),
-            ]);
+            ..pickResult = [_createPlatformFile(keyFile)];
 
           await pumpForm(tester);
           await switchAuthType(tester, '密钥认证');
@@ -637,7 +661,8 @@ void main() {
 
       testWidgets('Given key auth, When FilePicker is cancelled, '
           'Then no key is loaded and no snackbar is shown', (tester) async {
-        FilePickerPlatform.instance = _FakeFilePickerPlatform();
+        FilePickerPlatform.instance = _FakeFilePickerPlatform()
+          ..pickResult = [];
 
         await pumpForm(tester);
         await switchAuthType(tester, '密钥认证');
@@ -654,13 +679,7 @@ void main() {
         'Then shows file-not-exist message',
         (tester) async {
           FilePickerPlatform.instance = _FakeFilePickerPlatform()
-            ..pickResult = FilePickerResult([
-              PlatformFile(
-                name: 'key.pem',
-                path: '/non/existent/key.pem',
-                size: 0,
-              ),
-            ]);
+            ..pickResult = [_TestPlatformFile('/non/existent/key.pem')];
 
           await pumpForm(tester);
           await switchAuthType(tester, '密钥认证');
@@ -678,9 +697,7 @@ void main() {
         (tester) async {
           final keyFile = createTempKeyFile('not a valid key');
           FilePickerPlatform.instance = _FakeFilePickerPlatform()
-            ..pickResult = FilePickerResult([
-              PlatformFile(name: 'bad_key', path: keyFile.path, size: 0),
-            ]);
+            ..pickResult = [_createPlatformFile(keyFile)];
 
           await pumpForm(tester);
           await switchAuthType(tester, '密钥认证');
@@ -706,9 +723,7 @@ void main() {
           } catch (_) {}
         });
         FilePickerPlatform.instance = _FakeFilePickerPlatform()
-          ..pickResult = FilePickerResult([
-            PlatformFile(name: 'key_noperm', path: file.path, size: 0),
-          ]);
+          ..pickResult = [_createPlatformFile(file)];
 
         await pumpForm(tester);
         await switchAuthType(tester, '密钥认证');

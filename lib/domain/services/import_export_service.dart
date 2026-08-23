@@ -58,7 +58,7 @@ class ImportExportService {
         return null;
       }
 
-      return File(outputFile);
+      return File(outputFile.path);
     } catch (e) {
       rethrow;
     }
@@ -68,17 +68,18 @@ class ImportExportService {
   Future<List<SshConnection>> importFromLocalFile() async {
     try {
       // 选择要导入的文件
-      FilePickerResult? result = await FilePicker.pickFiles(
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
         dialogTitle: '选择SSH连接配置文件',
+        allowMultiple: false,
       );
 
-      if (result == null || result.files.single.path == null) {
+      if (files.isEmpty || files.single.path == null) {
         throw Exception('未选择文件');
       }
 
-      final filePath = result.files.single.path!;
+      final filePath = files.single.path!;
       final file = File(filePath);
 
       if (!await file.exists()) {

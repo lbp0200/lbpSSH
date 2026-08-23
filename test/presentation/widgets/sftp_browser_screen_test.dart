@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_platform_interface/file_picker_platform_interface.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,36 +17,63 @@ import 'package:lbp_ssh/presentation/screens/sftp_browser_screen.dart';
 
 class _MockTransferService extends Mock implements KittyFileTransferService {}
 
+/// Simple test implementation of PlatformFile
+base class _TestPlatformFile extends PlatformFile {
+  final String path;
+  final String name;
+
+  _TestPlatformFile(this.path) : name = path.split('/').last;
+
+  @override
+  Uri get uri => Uri.file(path);
+
+  @override
+  XFile get xFile => XFile(path);
+
+  @override
+  Future<int> length() async => 0;
+
+  @override
+  Future<Uint8List> readAsBytes() async => Uint8List(0);
+
+  @override
+  Stream<Uint8List> readAsByteStream() => Stream.empty();
+}
+
+/// Helper to create PlatformFile from a path for testing
+PlatformFile _createPlatformFile(String path) {
+  return _TestPlatformFile(path);
+}
+
 /// Fake FilePickerPlatform：可配置 pickFiles/getDirectoryPath 返回值
 class _FakeFilePickerPlatform extends FilePickerPlatform {
-  FilePickerResult? pickResult;
+  List<PlatformFile>? pickResult;
   String? directoryPath;
 
   @override
-  Future<FilePickerResult?> pickFiles({
+  Future<List<PlatformFile>> pickFiles({
     String? dialogTitle,
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,
-    void Function(FilePickerStatus)? onFileLoading,
+    Function(FilePickerStatus)? onFileLoading,
     int compressionQuality = 0,
-    bool allowMultiple = false,
-    bool withData = false,
-    bool withReadStream = false,
-    bool lockParentWindow = false,
-    bool readSequential = false,
-    bool cancelUploadOnWindowBlur = true,
-    AndroidSAFOptions? androidSafOptions,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
   }) async {
-    return pickResult;
+    return pickResult ?? [];
   }
 
   @override
   Future<String?> getDirectoryPath({
     String? dialogTitle,
-    bool lockParentWindow = false,
     String? initialDirectory,
-    AndroidSAFOptions? androidSafOptions,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
   }) async {
     return directoryPath;
   }
@@ -681,9 +711,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         final fake = _FakeFilePickerPlatform()
-          ..pickResult = FilePickerResult([
-            PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
-          ]);
+          ..pickResult = [_createPlatformFile('/tmp/up.txt')];
         final original = FilePickerPlatform.instance;
         FilePickerPlatform.instance = fake;
         addTearDown(() => FilePickerPlatform.instance = original);
@@ -730,9 +758,7 @@ void main() {
       ).thenAnswer((_) => uploadCompleter.future);
 
       final fake = _FakeFilePickerPlatform()
-        ..pickResult = FilePickerResult([
-          PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
-        ]);
+        ..pickResult = [_createPlatformFile('/tmp/up.txt')];
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);
@@ -934,10 +960,8 @@ void main() {
         ),
       ).thenThrow(Exception('disk full'));
 
-      final fake = _FakeFilePickerPlatform()
-        ..pickResult = FilePickerResult([
-          PlatformFile(name: 'fail.txt', size: 10, path: '/tmp/fail.txt'),
-        ]);
+final fake = _FakeFilePickerPlatform()
+          ..pickResult = [_createPlatformFile('/tmp/up.txt')];
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);
@@ -1024,9 +1048,7 @@ void main() {
       });
 
       final fake = _FakeFilePickerPlatform()
-        ..pickResult = FilePickerResult([
-          PlatformFile(name: 'up.txt', size: 100, path: '/tmp/up.txt'),
-        ]);
+        ..pickResult = [_createPlatformFile('/tmp/up.txt')];
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);

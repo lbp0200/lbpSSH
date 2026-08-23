@@ -132,14 +132,14 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
   // 选择私钥文件
   Future<void> _pickPrivateKeyFile() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles();
+      final pickedFile = await FilePicker.pickFile();
 
-      if (result != null && result.files.single.path != null) {
-        final filePath = result.files.single.path!;
+      if (pickedFile != null && pickedFile.path != null) {
+        final filePath = pickedFile.path!;
 
         // 检查文件是否存在且可读
-        final file = File(filePath);
-        if (!await file.exists()) {
+        final keyFile = File(filePath);
+        if (!await keyFile.exists()) {
           if (!mounted) return;
           ScaffoldMessenger.of(
             context,
@@ -150,7 +150,7 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
         // 读取文件内容
         String fileContent;
         try {
-          fileContent = await file.readAsString();
+fileContent = await keyFile.readAsString();
         } catch (e, stackTrace) {
           if (!mounted) return;
           showErrorDialog(

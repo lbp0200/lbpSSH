@@ -109,12 +109,11 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
   }
 
   Future<void> _uploadFile() async {
-    final result = await FilePicker.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      final file = result.files.single;
+    final file = await FilePicker.pickFile();
+    if (file != null && file.path != null) {
       final String localPath = file.path!;
       final fileName = file.name;
-      final fileSize = file.size;
+      final fileSize = await file.length();
 
       // 创建进度流
       final progressController = StreamController<TransferProgress>();
