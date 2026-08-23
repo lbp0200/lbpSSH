@@ -19,7 +19,9 @@ class _MockTransferService extends Mock implements KittyFileTransferService {}
 
 /// Simple test implementation of PlatformFile
 base class _TestPlatformFile extends PlatformFile {
+  @override
   final String path;
+  @override
   final String name;
 
   _TestPlatformFile(this.path) : name = path.split('/').last;
@@ -48,7 +50,24 @@ PlatformFile _createPlatformFile(String path) {
 /// Fake FilePickerPlatform：可配置 pickFiles/getDirectoryPath 返回值
 class _FakeFilePickerPlatform extends FilePickerPlatform {
   List<PlatformFile>? pickResult;
+  PlatformFile? pickFileResult;
   String? directoryPath;
+
+  @override
+  Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    void Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async {
+    return pickFileResult;
+  }
 
   @override
   Future<List<PlatformFile>> pickFiles({
@@ -56,7 +75,7 @@ class _FakeFilePickerPlatform extends FilePickerPlatform {
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,
-    Function(FilePickerStatus)? onFileLoading,
+    void Function(FilePickerStatus)? onFileLoading,
     int compressionQuality = 0,
     AndroidOptions androidOptions = const AndroidOptions(),
     WindowsOptions windowsOptions = const WindowsOptions(),
@@ -710,8 +729,8 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        final fake = _FakeFilePickerPlatform()
-          ..pickResult = [_createPlatformFile('/tmp/up.txt')];
+final fake = _FakeFilePickerPlatform()
+          ..pickFileResult = _createPlatformFile('/tmp/up.txt');
         final original = FilePickerPlatform.instance;
         FilePickerPlatform.instance = fake;
         addTearDown(() => FilePickerPlatform.instance = original);

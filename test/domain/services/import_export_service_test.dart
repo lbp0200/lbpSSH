@@ -16,7 +16,24 @@ class MockConnectionRepository extends Mock implements ConnectionRepository {}
 /// Fake FilePickerPlatform：可配置 pickFiles/saveFile 返回值
 class _FakeFilePickerPlatform extends FilePickerPlatform {
   List<PlatformFile>? pickResult;
+  PlatformFile? pickFileResult;
   Uri? saveResult;
+
+  @override
+  Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    void Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async {
+    return pickFileResult;
+  }
 
   @override
   Future<List<PlatformFile>> pickFiles({
@@ -24,7 +41,7 @@ class _FakeFilePickerPlatform extends FilePickerPlatform {
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,
-    Function(FilePickerStatus)? onFileLoading,
+    void Function(FilePickerStatus)? onFileLoading,
     int compressionQuality = 0,
     AndroidOptions androidOptions = const AndroidOptions(),
     WindowsOptions windowsOptions = const WindowsOptions(),
@@ -41,7 +58,7 @@ class _FakeFilePickerPlatform extends FilePickerPlatform {
     required String mimeType,
     String? dialogTitle,
     String? initialDirectory,
-    Function(FilePickerStatus)? onFileSaving,
+    void Function(FilePickerStatus)? onFileSaving,
     WindowsOptions windowsOptions = const WindowsOptions(),
     LinuxOptions linuxOptions = const LinuxOptions(),
     WebOptions webOptions = const WebOptions(),
@@ -58,7 +75,9 @@ class FakeSshConnection extends Fake implements SshConnection {}
 
 /// Simple test implementation of PlatformFile
 base class _TestPlatformFile extends PlatformFile {
+  @override
   final String path;
+  @override
   final String name;
 
   _TestPlatformFile(this.path) : name = path.split('/').last;
@@ -705,7 +724,7 @@ void main() {
       'When importFromLocalFile called, Then throws file-not-exist',
       () async {
         final fake = _FakeFilePickerPlatform()
-          ..pickResult = [_createPlatformFile(File('${tempDir.path}/missing.json'))];
+          ..pickFileResult = _createPlatformFile(File('${tempDir.path}/missing.json'));
         FilePickerPlatform.instance = fake;
 
         await expectLater(
@@ -720,7 +739,7 @@ void main() {
       final file = File('${tempDir.path}/bad.json');
       await file.writeAsString('{not valid json');
       FilePickerPlatform.instance = _FakeFilePickerPlatform()
-        ..pickResult = resultFor(file);
+        ..pickFileResult = _createPlatformFile(file);
 
       await expectLater(
         service.importFromLocalFile(),
@@ -734,7 +753,7 @@ void main() {
       () async {
         final file = await writeJson({'foo': 'bar'});
         FilePickerPlatform.instance = _FakeFilePickerPlatform()
-          ..pickResult = resultFor(file);
+          ..pickFileResult = _createPlatformFile(file);
 
         await expectLater(
           service.importFromLocalFile(),
@@ -760,7 +779,7 @@ void main() {
           ],
         });
         FilePickerPlatform.instance = _FakeFilePickerPlatform()
-          ..pickResult = resultFor(file);
+          ..pickFileResult = _createPlatformFile(file);
 
         await expectLater(
           service.importFromLocalFile(),
@@ -780,7 +799,7 @@ void main() {
         'connections': [conn.toJson()],
       });
       FilePickerPlatform.instance = _FakeFilePickerPlatform()
-        ..pickResult = resultFor(file);
+        ..pickFileResult = _createPlatformFile(file);
 
       final result = await service.importFromLocalFile();
 
