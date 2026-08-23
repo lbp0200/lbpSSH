@@ -1,3 +1,7 @@
+- docs: update CHANGELOG (fc07e34)
+- chore(deps): upgrade sentry to ^9.27.0 (6bf4f98)
+- chore(homebrew): sync local cask reference to v1.9.6 (a5a71c1)
+- docs: update CHANGELOG (557d9bf)
 - release: bump version to 1.9.6 (156d228)
 - docs: update CHANGELOG (d66188d)
 - chore(deps): upgrade kterm to ^1.5.6 (f2ed172)
