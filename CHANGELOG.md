@@ -2,6 +2,8 @@
 - docs: update CHANGELOG (d66188d)
 - chore(deps): upgrade kterm to ^1.5.6 (f2ed172)
 - docs: update CHANGELOG (eb501eb)
+- chore(deps): upgrade sentry to ^9.27.0 (1c03635)
+- chore(homebrew): sync local cask reference to v1.9.6
 - fix(tui): restore original delay behavior and use package imports (3831d6c)
 - docs: update CHANGELOG (3d6b67a)
 - chore(deps): upgrade kterm to ^1.5.6 (1b84138)
