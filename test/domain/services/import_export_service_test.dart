@@ -95,7 +95,7 @@ base class _TestPlatformFile extends PlatformFile {
   Future<Uint8List> readAsBytes() async => Uint8List(0);
 
   @override
-  Stream<Uint8List> readAsByteStream() => Stream.empty();
+  Stream<Uint8List> readAsByteStream() => const Stream.empty();
 }
 
 /// Helper to create PlatformFile from a File for testing
