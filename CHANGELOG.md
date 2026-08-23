@@ -1,3 +1,5 @@
+- fix: fix SFTP upload progress test (3768c28)
+- docs: update CHANGELOG (c56913c)
 - fix: complete file_picker 12 migration test fixes (798e3ac)
 - docs: update CHANGELOG (fbb20fc)
 - feat: migrate to file_picker 12.0.0 and desktop_drop 0.8.0 (19f27df)
