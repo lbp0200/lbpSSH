@@ -1,3 +1,5 @@
+- chore(deps): upgrade transitive dependencies (0b5e10d)
+- docs: update CHANGELOG (4faa53e)
 - docs: update CHANGELOG (fc07e34)
 - chore(deps): upgrade sentry to ^9.27.0 (6bf4f98)
 - chore(homebrew): sync local cask reference to v1.9.6 (a5a71c1)
