@@ -777,7 +777,7 @@ final fake = _FakeFilePickerPlatform()
       ).thenAnswer((_) => uploadCompleter.future);
 
       final fake = _FakeFilePickerPlatform()
-        ..pickResult = [_createPlatformFile('/tmp/up.txt')];
+        ..pickFileResult = _createPlatformFile('/tmp/up.txt');
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);
@@ -980,7 +980,7 @@ final fake = _FakeFilePickerPlatform()
       ).thenThrow(Exception('disk full'));
 
 final fake = _FakeFilePickerPlatform()
-          ..pickResult = [_createPlatformFile('/tmp/up.txt')];
+        ..pickFileResult = _createPlatformFile('/tmp/up.txt');
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);
@@ -1064,10 +1064,12 @@ final fake = _FakeFilePickerPlatform()
             bytesPerSecond: 0,
           ),
         );
+        // Return completed future to signal upload completion
+        return;
       });
 
       final fake = _FakeFilePickerPlatform()
-        ..pickResult = [_createPlatformFile('/tmp/up.txt')];
+        ..pickFileResult = _createPlatformFile('/tmp/up.txt');
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;
       addTearDown(() => FilePickerPlatform.instance = original);
@@ -1083,6 +1085,10 @@ final fake = _FakeFilePickerPlatform()
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('上传'));
+      await tester.pumpAndSettle();
+
+      // 等待上传完成和成功消息显示 (SnackBar 需要额外 pump)
+      await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
       // 进度流被消费后对话框展示进度，上传完成后显示成功
