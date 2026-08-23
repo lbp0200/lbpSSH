@@ -704,10 +704,6 @@ void main() {
       return file;
     }
 
-    List<PlatformFile> resultFor(File file) {
-      return [_createPlatformFile(file)];
-    }
-
     test('Given pickFiles returns null, When importFromLocalFile called, '
         'Then throws no-file-selected exception', () async {
       FilePickerPlatform.instance = _FakeFilePickerPlatform()
