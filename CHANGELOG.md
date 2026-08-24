@@ -1,3 +1,5 @@
+- fix(ssh): make state/output streams synchronous to fix disconnect tests (e005924)
+- docs: update CHANGELOG (3d0332f)
 - chore: production readiness — add LICENSE, bump kterm to 1.5.7, fix integration test lints (73123ec)
 - docs: update CHANGELOG (3a2be54)
 - chore(deps): bump dartssh2 to 3.3.1 (e1b2a64)
