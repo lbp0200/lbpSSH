@@ -58,7 +58,7 @@ Future<void> _runComparison() async {
 
   // Test 2: shell with PTY - fresh connection
   print('--- Test 2: shell() with PTY (xterm 80x24) ---');
-  client.close();
+  await client.close();
   await socket.close();
 
   final socket2 = await SSHSocket.connect(
@@ -89,7 +89,7 @@ Future<void> _runComparison() async {
   print(fullOut2);
   print('');
 
-  client2.close();
+  await client2.close();
   await socket2.close();
 
   // Assertions

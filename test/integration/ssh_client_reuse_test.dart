@@ -62,7 +62,7 @@ Future<void> _runTest() async {
   print('First 300: ${fullOut2.substring(0, min(300, fullOut2.length))}');
   print('');
 
-  client.close();
+  await client.close();
   await socket.close();
 
   // Verify: First channel gets MOTD, second doesn't

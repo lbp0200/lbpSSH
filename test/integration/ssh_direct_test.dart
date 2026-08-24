@@ -124,7 +124,7 @@ Future<void> _runTest() async {
     );
 
     session.close();
-    client.close();
+    await client.close();
     await socket.close();
   } catch (e, st) {
     stderr.writeln('✗ Error: $e');

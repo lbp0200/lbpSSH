@@ -41,7 +41,7 @@ Future<void> _testShellOnly() async {
   session.stdout.cast<List<int>>().transform(utf8.decoder).listen(out.write);
   await Future<void>.delayed(const Duration(seconds: 5));
   session.close();
-  client.close();
+  await client.close();
   await socket.close();
 
   final full = out.toString();
@@ -80,7 +80,7 @@ Future<void> _testWithPreExec() async {
   session.stdout.cast<List<int>>().transform(utf8.decoder).listen(out.write);
   await Future<void>.delayed(const Duration(seconds: 5));
   session.close();
-  client.close();
+  await client.close();
   await socket.close();
 
   final full = out.toString();
