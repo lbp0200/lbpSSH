@@ -1,3 +1,5 @@
+- chore(pubspec): clean template boilerplate (7380556)
+- docs: update CHANGELOG (4660ce1)
 - fix(ssh): make state/output streams synchronous to fix disconnect tests (e005924)
 - docs: update CHANGELOG (3d0332f)
 - chore: production readiness — add LICENSE, bump kterm to 1.5.7, fix integration test lints (73123ec)
