@@ -12,4 +12,14 @@ class AppConstants {
 
   // 文件路径
   static const String configDirName = 'lbpSSH';
+
+  // 应用标识（与 pubspec.yaml 保持一致，避免 ImportExportService 硬编码脱节）
+  static const String appName = 'lbpSSH';
+  static const String appVersion = '1.9.6';
+
+  // 导入前缀
+  static const String importPrefix = '导入_';
+
+  // 导出文件名日期格式
+  static const String exportFilePrefix = 'ssh_connections_export_';
 }

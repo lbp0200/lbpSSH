@@ -70,6 +70,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               }
               // 然后打开 SFTP 页面
               if (context.mounted) {
+                // ignore: unawaited_futures
                 Navigator.push<Object?>(
                   context,
                   MaterialPageRoute<Object?>(

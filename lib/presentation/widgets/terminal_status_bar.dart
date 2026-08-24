@@ -108,7 +108,7 @@ class _TerminalStatusBarState extends State<TerminalStatusBar> {
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: LinearSpacing.spacing4 + 2),
+          const SizedBox(width: LinearSpacing.spacing6),
           Text(
             statusText,
             style: const TextStyle(

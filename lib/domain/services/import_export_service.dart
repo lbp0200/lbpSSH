@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
+import '../../core/constants/app_constants.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/repositories/connection_repository.dart';
 
@@ -30,8 +32,8 @@ class ImportExportService {
 
       // 准备导出数据
       final exportData = {
-        'appName': 'lbpSSH',
-        'appVersion': '1.0.0',
+        'appName': AppConstants.appName,
+        'appVersion': AppConstants.appVersion,
         'exportTime': DateTime.now().toIso8601String(),
         'version': 1,
         'totalConnections': connections.length,
@@ -45,10 +47,10 @@ class ImportExportService {
       final bytes = utf8.encode(jsonContent);
 
       // 选择保存位置并写入文件
+      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final outputFile = await FilePicker.saveFile(
         dialogTitle: '保存SSH连接配置',
-        fileName:
-            'ssh_connections_export_${DateTime.now().toString().substring(0, 10)}.json',
+        fileName: '${AppConstants.exportFilePrefix}$dateStr.json',
         type: FileType.custom,
         allowedExtensions: ['json'],
         bytes: Uint8List.fromList(bytes),
@@ -176,14 +178,15 @@ class ImportExportService {
 
       if (existingConnections.containsKey(imported.id)) {
         if (overwrite) {
-          // 覆盖现有连接
+          // 覆盖现有连接：直接使用导入的数据替换（保持相同 id）
           mergedConnections.removeWhere((conn) => conn.id == imported.id);
-          // 生成新的ID避免冲突
+        } else if (addPrefix) {
+          // 不覆盖但添加前缀，避免与现有连接冲突
           finalId =
               '${imported.id}_imported_${DateTime.now().millisecondsSinceEpoch}';
-          finalName = addPrefix ? '导入_${imported.name}' : imported.name;
+          finalName = '${AppConstants.importPrefix}${imported.name}';
         } else {
-          // 跳过重复的连接
+          // 不覆盖、不加前缀：跳过重复的连接
           continue;
         }
       }

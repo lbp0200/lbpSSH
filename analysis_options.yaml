@@ -38,6 +38,15 @@ linter:
     prefer_const_declarations: true
     avoid_redundant_argument_values: true
     avoid_print: false
+    # 资源与异步安全（直接对应 P0#4 / P0#8 的 Timer/Socket/StreamController 泄漏）
+    cancel_subscriptions: true
+    close_sinks: true
+    unawaited_futures: true
+    # Widget 与 API 健壮性
+    use_key_in_widget_constructors: true
+    avoid_empty_else: true
+    avoid_types_as_parameter_names: true
+    no_leading_underscores_for_local_identifiers: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

@@ -99,10 +99,13 @@ class StubSSHSession extends FakeSSHSession {
     _stdin = _RecordingStdin(_stdinData);
   }
 
+  // ignore: close_sinks
   late final StreamController<Uint8List> _stdoutCtrl;
+  // ignore: close_sinks
   late final StreamController<Uint8List> _stderrCtrl;
   late final Completer<void> _doneCompleter;
   final List<Uint8List> _stdinData = [];
+  // ignore: close_sinks
   late final StreamSink<Uint8List> _stdin;
   final List<(int, int)> resizeCalls = [];
 
@@ -1083,11 +1086,16 @@ void main() {
   // osType
   // -------------------------------------------------------------------------
   group('osType', () {
-    test('Then returns Linux', () {
+    test('Then returns platform-specific OS type', () {
       final mockConfig = createMockAppConfigService();
       final service = SshService(appConfigService: mockConfig);
 
-      expect(service.osType, 'Linux');
+      final expected = Platform.isMacOS
+          ? 'Darwin'
+          : Platform.isWindows
+          ? 'Windows'
+          : 'Linux';
+      expect(service.osType, expected);
     });
   });
 
@@ -1697,6 +1705,7 @@ void main() {
       final future = service.executeCommand('ls');
       await Future<void>.delayed(const Duration(milliseconds: 10));
       execSession.stdoutCtrl.add(utf8.encode('file1.txt\n'));
+      // ignore: unawaited_futures
       execSession.stdoutCtrl.close();
       final result = await future;
 
@@ -1739,6 +1748,7 @@ void main() {
       // 先让 executeCommand 订阅 stdout（广播流不重放已发送数据）
       await Future<void>.delayed(const Duration(milliseconds: 10));
       execSession.stdoutCtrl.add(utf8.encode('secret-data\n'));
+      // ignore: unawaited_futures
       execSession.stdoutCtrl.close();
       await future;
 

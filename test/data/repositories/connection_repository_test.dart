@@ -273,6 +273,59 @@ void main() {
       expect(loaded.password, 'main-pw');
     });
 
+    test('saved connection with all sensitive fields (top-level + nested) '
+        'never stores plaintext at rest and round-trips', () async {
+      final connection = SshConnection(
+        id: 'all-1',
+        name: 'All Secrets',
+        host: '10.0.0.6',
+        username: 'user',
+        authType: AuthType.keyWithPassword,
+        password: 'main-pw',
+        privateKeyContent: 'SECRET-KEY-CONTENT',
+        keyPassphrase: 'SECRET-PASSPHRASE',
+        jumpHost: JumpHostConfig(
+          host: 'bastion.example.com',
+          username: 'jump-user',
+          authType: AuthType.password,
+          password: 'jump-pw',
+        ),
+        socks5Proxy: Socks5ProxyConfig(
+          host: 'proxy.example.com',
+          username: 'proxy-user',
+          password: 'proxy-pw',
+        ),
+      );
+
+      await repo.saveConnection(connection);
+
+      final raw = await configFile.readAsString();
+      for (final secret in const [
+        'main-pw',
+        'SECRET-KEY-CONTENT',
+        'SECRET-PASSPHRASE',
+        'jump-pw',
+        'proxy-pw',
+      ]) {
+        expect(
+          raw.contains(secret),
+          isFalse,
+          reason: 'plaintext "$secret" must not be stored on disk',
+        );
+      }
+
+      final newRepo = ConnectionRepository(configFile: configFile);
+      await newRepo.init();
+      addTearDown(() => newRepo.close());
+
+      final loaded = newRepo.getConnectionById('all-1')!;
+      expect(loaded.password, 'main-pw');
+      expect(loaded.privateKeyContent, 'SECRET-KEY-CONTENT');
+      expect(loaded.keyPassphrase, 'SECRET-PASSPHRASE');
+      expect(loaded.jumpHost?.password, 'jump-pw');
+      expect(loaded.socks5Proxy?.password, 'proxy-pw');
+    });
+
     test(
       'saveConnection updates jump host and socks5 without password',
       () async {

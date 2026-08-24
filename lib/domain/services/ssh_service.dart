@@ -71,6 +71,7 @@ Future<SSHSocket> connectViaSocks5Proxy(
 
   // 使用 socks5_proxy 包连接到目标
   // InternetAddressType.unix 会让代理进行远程 DNS 解析
+  // ignore: close_sinks - socksSocket.socket 所有权转移给 _Socks5ProxySocket，由调用方 close
   final socksSocket = await SocksTCPClient.connect(
     [proxy],
     InternetAddress(targetHost, type: InternetAddressType.unix),
@@ -172,10 +173,12 @@ class SshService implements TerminalInputService {
   bool _hasShownLastLogin = false;
 
   /// OS 类型: 'Linux', 'Darwin' (macOS), 'Windows' 等
-  final String _osType = 'Linux';
-
-  /// 获取 OS 类型
-  String get osType => _osType;
+  String get osType {
+    if (Platform.isMacOS) return 'Darwin';
+    if (Platform.isWindows) return 'Windows';
+    if (Platform.isLinux) return 'Linux';
+    return 'Linux';
+  }
 
   /// 最近一次设置的PTY宽度
   int _ptyWidth = 80;
@@ -344,6 +347,10 @@ class SshService implements TerminalInputService {
           final targetPort = configEntry.port ?? connection.port;
 
           // 重新创建 socket（如果使用了不同的 host/port）
+          // 避免首个 socket 泄漏
+          try {
+            await socket.close();
+          } catch (_) {}
           if (connection.socks5Proxy != null) {
             final proxy = connection.socks5Proxy!;
             socket = await connectViaSocks5Proxy(
@@ -448,7 +455,7 @@ class SshService implements TerminalInputService {
       }
       _session = session;
       _sessionDoneCompleter = Completer<void>();
-      _session!.done.then((_) => _onSessionDone());
+      unawaited(_session!.done.then((_) => _onSessionDone()));
 
       // 使用 UTF-8 解码器正确处理多字节字符（如中文）
       _session!.stdout
@@ -694,16 +701,16 @@ class SshService implements TerminalInputService {
     // 2. 在跳板机上创建到目标服务器的端口转发
     _outputController.add('建立跳板机隧道...\r\n');
 
-    // 使用本地端口转发（L端口转发）将本地端口转发到目标服务器
-    const localPort = 2222; // 使用一个临时本地端口
+    // 使用随机可用本地端口，避免多连接并发时 2222 冲突
+    final localPort = await _findAvailablePort();
 
     // 先在跳板机上建立隧道
     final tunnelCmd =
         'ssh -L $localPort:${connection.host}:${connection.port} localhost';
     await jumpClient.execute(tunnelCmd);
 
-    // 等待一下让隧道建立
-    await Future<void>.delayed(const Duration(seconds: 2));
+    // 轮询探测隧道是否就绪，替代固定 2s 等待
+    await _waitForTunnelReady(localPort);
 
     _outputController.add('跳板机隧道建立成功 (本地端口: $localPort)\r\n');
 
@@ -748,6 +755,37 @@ class SshService implements TerminalInputService {
 
     // 保存跳板机相关资源以便关闭连接时清理
     _jumpClient = jumpClient;
+  }
+
+  /// 查找可用本地端口（绑定 0 让系统分配）
+  Future<int> _findAvailablePort() async {
+    ServerSocket? server;
+    try {
+      server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      return server.port;
+    } finally {
+      await server?.close();
+    }
+  }
+
+  /// 轮询探测跳板机隧道是否就绪
+  Future<void> _waitForTunnelReady(int port) async {
+    const maxAttempts = 10; // 最多 2s，与旧固定等待对齐但可提前返回
+    const interval = Duration(milliseconds: 200);
+    for (var i = 0; i < maxAttempts; i++) {
+      try {
+        final socket = await Socket.connect(
+          InternetAddress.loopbackIPv4,
+          port,
+          timeout: const Duration(milliseconds: 200),
+        );
+        await socket.close();
+        return;
+      } catch (_) {
+        await Future<void>.delayed(interval);
+      }
+    }
+    // 超时仍未就绪则继续，后续 _connectSocket 会抛错
   }
 
   /// 清理资源

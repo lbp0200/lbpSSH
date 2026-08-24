@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/services/kitty_file_transfer_service.dart';
+import '../../utils/file_size_utils.dart';
 
 /// 传输进度对话框
 class TransferProgressDialog extends StatefulWidget {
@@ -40,14 +41,7 @@ class _TransferProgressDialogState extends State<TransferProgressDialog> {
     });
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
+  String _formatSize(int bytes) => formatFileSize(bytes);
 
   @override
   Widget build(BuildContext context) {

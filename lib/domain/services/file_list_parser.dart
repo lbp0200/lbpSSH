@@ -10,6 +10,7 @@ class FileListParser {
     String output,
     String currentPath, {
     String osType = 'linux',
+    DateTime Function()? clock,
   }) {
     final lines = output.split('\n');
     final items = <FileItem>[];
@@ -18,7 +19,7 @@ class FileListParser {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
-      final item = _parseLine(trimmed, currentPath);
+      final item = _parseLine(trimmed, currentPath, clock: clock);
       if (item != null) {
         items.add(item);
       }
@@ -27,7 +28,11 @@ class FileListParser {
     return items;
   }
 
-  static FileItem? _parseLine(String line, String currentPath) {
+  static FileItem? _parseLine(
+    String line,
+    String currentPath, {
+    DateTime Function()? clock,
+  }) {
     // 跳过 total 行
     if (line.startsWith('total ')) return null;
 
@@ -86,7 +91,7 @@ class FileListParser {
             parts[7].contains(':')) {
           final timeParts = parts[7].split(':');
           if (timeParts.length == 2) {
-            final now = DateTime.now();
+            final now = (clock ?? DateTime.now)();
             modified = DateTime(
               now.year,
               month,

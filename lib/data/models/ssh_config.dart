@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'ssh_config.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class SshConfig {
   /// Keepalive 间隔时间（毫秒），默认 30000（30秒）
   final int keepaliveInterval;

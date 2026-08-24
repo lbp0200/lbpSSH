@@ -729,7 +729,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-final fake = _FakeFilePickerPlatform()
+        final fake = _FakeFilePickerPlatform()
           ..pickFileResult = _createPlatformFile('/tmp/up.txt');
         final original = FilePickerPlatform.instance;
         FilePickerPlatform.instance = fake;
@@ -979,7 +979,7 @@ final fake = _FakeFilePickerPlatform()
         ),
       ).thenThrow(Exception('disk full'));
 
-final fake = _FakeFilePickerPlatform()
+      final fake = _FakeFilePickerPlatform()
         ..pickFileResult = _createPlatformFile('/tmp/up.txt');
       final original = FilePickerPlatform.instance;
       FilePickerPlatform.instance = fake;

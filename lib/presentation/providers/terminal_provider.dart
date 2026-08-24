@@ -56,6 +56,7 @@ List<TerminalSession> _snapshotSessions(TerminalService service) {
 class TerminalNotifier extends Notifier<TerminalState> {
   final _uuid = const Uuid();
   final Map<String, TerminalInputService> _services = {};
+  final Map<String, SshConnection> _connectionCache = {};
 
   @override
   TerminalState build() {
@@ -148,6 +149,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
 
     final sshService = _sshServiceFactory();
     _services[sessionId] = sshService;
+    _connectionCache[sessionId] = connection;
 
     final name =
         '${connection.name} (${connection.username}@${connection.host})';
@@ -203,6 +205,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
     _terminalService.closeSession(sessionId);
     _services[sessionId]?.dispose();
     _services.remove(sessionId);
+    _connectionCache.remove(sessionId);
 
     String? nextActive;
     if (state.activeSessionId == sessionId) {
@@ -243,7 +246,25 @@ class TerminalNotifier extends Notifier<TerminalState> {
 
     if (existingSession == null) return;
 
-    // 从 serverInfo 解析连接信息: "username@host"
+    // 优先使用缓存的真实连接（包含端口、私钥、跳板机等完整信息）
+    final cached = _connectionCache[sessionId];
+    if (cached != null) {
+      final sshService = _sshServiceFactory();
+      _services[sessionId] = sshService;
+      try {
+        await sshService.connect(cached);
+      } catch (e) {
+        _services.remove(sessionId);
+        throw Exception('重连失败: $e');
+      }
+      state = TerminalState(
+        sessions: _snapshotSessions(_terminalService),
+        activeSessionId: sessionId,
+      );
+      return;
+    }
+
+    // 兼容旧路径：仅当无缓存时回退到 serverInfo 解析（测试或历史会话）
     final serverInfo = existingSession.serverInfo ?? '';
     final parts = serverInfo.split('@');
     if (parts.length < 2) return;
@@ -280,6 +301,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
     for (final service in _services.values) {
       service.dispose();
     }
+    _connectionCache.clear();
   }
 }
 

@@ -476,6 +476,7 @@ void main() {
         Object? args,
       ) async {
         const codec = StandardMethodCodec();
+        // ignore: unawaited_futures
         tester.binding.defaultBinaryMessenger.handlePlatformMessage(
           'desktop_drop',
           codec.encodeMethodCall(MethodCall(method, args)),

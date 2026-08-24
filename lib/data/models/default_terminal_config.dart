@@ -23,7 +23,7 @@ enum TerminalType {
   custom,
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class DefaultTerminalConfig {
   final TerminalType execWindows;
   final String? execWindowsCustom;

@@ -715,6 +715,7 @@ void main() {
           name: 'Init',
           inputService: inputService,
         );
+        // ignore: unawaited_futures
         session.initialize();
 
         inputService.outputController.add('hello output');
@@ -733,6 +734,7 @@ void main() {
           name: 'Init',
           inputService: inputService,
         );
+        // ignore: unawaited_futures
         session.initialize();
 
         inputService.stateController.add(true);
@@ -750,6 +752,7 @@ void main() {
         name: 'Init',
         inputService: inputService,
       );
+      // ignore: unawaited_futures
       session.initialize();
 
       inputService.stateController.add(false);
@@ -766,6 +769,7 @@ void main() {
           name: 'Init',
           inputService: inputService,
         );
+        // ignore: unawaited_futures
         session.initialize();
 
         session.terminal.onOutput?.call('ls -la');
@@ -781,6 +785,7 @@ void main() {
           name: 'Init',
           inputService: inputService,
         );
+        // ignore: unawaited_futures
         session.initialize();
 
         session.terminal.onOutput?.call('');
@@ -796,6 +801,7 @@ void main() {
         name: 'Init',
         inputService: throwingService,
       );
+      // ignore: unawaited_futures
       session.initialize();
 
       expect(() => session.terminal.onOutput?.call('bad'), returnsNormally);
@@ -810,6 +816,7 @@ void main() {
           name: 'Init',
           inputService: inputService,
         );
+        // ignore: unawaited_futures
         session.initialize();
 
         session.terminal.onResize?.call(100, 30, 800, 600);
@@ -840,6 +847,7 @@ void main() {
         name: 'Init',
         inputService: inputService,
       );
+      // ignore: unawaited_futures
       session.initialize();
 
       inputService.outputController.addError(Exception('out boom'));
@@ -854,6 +862,7 @@ void main() {
         name: 'Init',
         inputService: inputService,
       );
+      // ignore: unawaited_futures
       session.initialize();
 
       inputService.stateController.addError(Exception('state boom'));
@@ -870,6 +879,7 @@ void main() {
         name: 'Init',
         inputService: inputService,
       );
+      // ignore: unawaited_futures
       session.initialize();
 
       session.terminal.onResize?.call(100, 30, 800, 600);

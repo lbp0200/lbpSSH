@@ -241,7 +241,7 @@ void main() {
 
     test(
       'Given imported connection with existing ID, When overwrite=false, addPrefix=true, '
-      'Then skips the duplicate (addPrefix only applies when overwrite=true)',
+      'Then keeps original and adds imported with prefixed name',
       () async {
         final existing = [makeConnection(name: 'Original')];
         final imported = [makeConnection(name: 'Imported')];
@@ -249,10 +249,13 @@ void main() {
 
         final result = await service.mergeImportedConnections(imported);
 
-        // With overwrite=false, duplicates are skipped regardless of addPrefix
-        expect(result.length, equals(1));
-        expect(result.first.id, equals('conn-1'));
-        expect(result.first.name, equals('Original'));
+        // overwrite=false, addPrefix=true (defaults): 保留原连接，导入连接追加前缀后新增
+        expect(result.length, equals(2));
+        expect(
+          result.any((c) => c.id == 'conn-1' && c.name == 'Original'),
+          isTrue,
+        );
+        expect(result.any((c) => c.name == '导入_Imported'), isTrue);
       },
     );
 
@@ -275,26 +278,23 @@ void main() {
       },
     );
 
-    test(
-      'Given imported connection with existing ID, When overwrite=true, '
-      'Then removes old and adds imported with new ID and prefixed name',
-      () async {
-        final existing = [makeConnection(name: 'Original')];
-        final imported = [makeConnection(name: 'Imported')];
-        when(() => mockRepository.getAllConnections()).thenReturn(existing);
+    test('Given imported connection with existing ID, When overwrite=true, '
+        'Then replaces the existing connection keeping the same id', () async {
+      final existing = [makeConnection(name: 'Original')];
+      final imported = [makeConnection(name: 'Imported')];
+      when(() => mockRepository.getAllConnections()).thenReturn(existing);
 
-        final result = await service.mergeImportedConnections(
-          imported,
-          overwrite: true,
-        );
+      final result = await service.mergeImportedConnections(
+        imported,
+        overwrite: true,
+      );
 
-        // Should have imported with new ID and prefixed name (addPrefix defaults to true)
-        expect(result.length, equals(1));
-        final merged = result.firstWhere((c) => c.name == '导入_Imported');
-        expect(merged.id, isNot(equals('conn-1')));
-        expect(merged.id.contains('conn-1'), isTrue);
-      },
-    );
+      // 覆盖：用导入的连接替换现有连接，保持相同 id，使用导入的名称
+      expect(result.length, equals(1));
+      final merged = result.first;
+      expect(merged.id, equals('conn-1'));
+      expect(merged.name, equals('Imported'));
+    });
 
     test('Given multiple imports with some conflicts, some new, '
         'Then handles each correctly', () async {
@@ -311,31 +311,35 @@ void main() {
 
       final result = await service.mergeImportedConnections(imported);
 
-      // With overwrite=false, conflict-1 is skipped
-      // Result: existing-1, conflict-1 (original), new-1, new-2
-      expect(result.length, equals(4));
+      // overwrite=false, addPrefix=true (defaults):
+      // 原 conflict-1 保留；冲突的导入连接追加前缀后新增；new-1/new-2 直接新增
+      // Result: existing-1, conflict-1(original), new-1, 导入_Conflict Import, new-2
+      expect(result.length, equals(5));
       expect(result.any((c) => c.id == 'existing-1'), isTrue);
       expect(result.any((c) => c.name == 'Existing 1'), isTrue);
       expect(result.any((c) => c.name == 'Conflict'), isTrue);
       expect(result.any((c) => c.id == 'new-1'), isTrue);
       expect(result.any((c) => c.id == 'new-2'), isTrue);
+      expect(result.any((c) => c.name == '导入_Conflict Import'), isTrue);
     });
 
     test(
       'Given conflict with addPrefix=true and overwrite=true, '
-      'When merge called, Then conflicting connection gets 导入_ prefix',
+      'When merge called, Then existing connection is replaced (no prefix)',
       () async {
         final existing = [makeConnection(name: 'Original')];
         final imported = [makeConnection(name: 'My Server')];
         when(() => mockRepository.getAllConnections()).thenReturn(existing);
 
-        // addPrefix only affects names when there is a conflict and overwrite=true
+        // overwrite=true 直接替换现有连接，保留导入的名称，不再追加前缀
         final result = await service.mergeImportedConnections(
           imported,
           overwrite: true,
         );
 
-        expect(result.any((c) => c.name == '导入_My Server'), isTrue);
+        expect(result.length, equals(1));
+        expect(result.first.id, equals('conn-1'));
+        expect(result.first.name, equals('My Server'));
       },
     );
 
@@ -656,7 +660,8 @@ void main() {
       when(
         () => mockRepository.getAllConnections(),
       ).thenReturn([makeConnection(id: 'c1', name: 'Conn 1', password: 'pw')]);
-      final fake = _FakeFilePickerPlatform()..saveResult = Uri.file('/tmp/export.json');
+      final fake = _FakeFilePickerPlatform()
+        ..saveResult = Uri.file('/tmp/export.json');
       FilePickerPlatform.instance = fake;
 
       final file = await service.exportToLocalFile();
@@ -706,8 +711,7 @@ void main() {
 
     test('Given pickFiles returns null, When importFromLocalFile called, '
         'Then throws no-file-selected exception', () async {
-      FilePickerPlatform.instance = _FakeFilePickerPlatform()
-        ..pickResult = [];
+      FilePickerPlatform.instance = _FakeFilePickerPlatform()..pickResult = [];
 
       await expectLater(
         service.importFromLocalFile(),
@@ -720,7 +724,9 @@ void main() {
       'When importFromLocalFile called, Then throws file-not-exist',
       () async {
         final fake = _FakeFilePickerPlatform()
-          ..pickFileResult = _createPlatformFile(File('${tempDir.path}/missing.json'));
+          ..pickFileResult = _createPlatformFile(
+            File('${tempDir.path}/missing.json'),
+          );
         FilePickerPlatform.instance = fake;
 
         await expectLater(

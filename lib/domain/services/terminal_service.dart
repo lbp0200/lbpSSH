@@ -37,6 +37,8 @@ class TerminalSession {
   final TerminalController controller;
   StreamSubscription<String>? _outputSubscription;
   StreamSubscription<bool>? _stateSubscription;
+  Timer? _resizeDebounceTimer;
+  bool _isDisposed = false;
 
   // 通知流控制器
   final _notificationController =
@@ -296,14 +298,13 @@ class TerminalSession {
     int currentCols = 80;
     int currentRows = 24;
 
-    // 防抖定时器，避免频繁 resize 导致远程 shell 状态混乱
-    Timer? resizeDebounceTimer;
-
     terminal.onResize = (width, height, pixelWidth, pixelHeight) {
+      if (_isDisposed) return;
       currentCols = width;
       currentRows = height;
-      resizeDebounceTimer?.cancel();
-      resizeDebounceTimer = Timer(const Duration(milliseconds: 200), () {
+      _resizeDebounceTimer?.cancel();
+      _resizeDebounceTimer = Timer(const Duration(milliseconds: 200), () {
+        if (_isDisposed) return;
         // 对所有终端输入服务（包括 SSH 和本地）调整尺寸
         inputService.resize(currentRows, currentCols);
       });
@@ -311,7 +312,8 @@ class TerminalSession {
 
     // 首次布局后确保同步终端尺寸
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      resizeDebounceTimer?.cancel();
+      if (_isDisposed) return;
+      _resizeDebounceTimer?.cancel();
       // 使用保存的尺寸变量，确保一致性
       if (currentRows > 0 && currentCols > 0) {
         inputService.resize(currentRows, currentCols);
@@ -331,10 +333,13 @@ class TerminalSession {
 
   /// 清理资源
   void dispose() {
+    _isDisposed = true;
+    _resizeDebounceTimer?.cancel();
+    _resizeDebounceTimer = null;
     _outputSubscription?.cancel();
     _stateSubscription?.cancel();
-    _notificationController.close();
-    _fileTransferController.close();
+    if (!_notificationController.isClosed) _notificationController.close();
+    if (!_fileTransferController.isClosed) _fileTransferController.close();
     inputService.dispose();
     controller.dispose();
   }
@@ -362,7 +367,7 @@ class TerminalService {
       serverInfo: serverInfo,
     );
     _sessions[id] = session;
-    session.initialize();
+    unawaited(session.initialize());
     return session;
   }
 

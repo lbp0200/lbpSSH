@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'terminal_config.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class TerminalConfig {
   final String fontFamily;
   final double fontSize;

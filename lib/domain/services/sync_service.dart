@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/repositories/connection_repository.dart';
+import '../../utils/sentry_service.dart';
 
 // =============================================================================
 // SyncConfig
@@ -80,7 +83,9 @@ class SyncService {
           jsonDecode(configJson) as Map<String, dynamic>,
         );
       }
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('[SyncService] _loadConfig failed: $e');
+      unawaited(SentryService().captureException(e, stackTrace: stackTrace));
       _config = null;
     }
   }
@@ -134,7 +139,9 @@ class SyncService {
 
       _lastSyncTime = DateTime.now();
       _status = SyncStatusEnum.success;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[SyncService] uploadConfig failed: $e');
+      unawaited(SentryService().captureException(e, stackTrace: stackTrace));
       _status = SyncStatusEnum.error;
       rethrow;
     }
@@ -177,7 +184,10 @@ class SyncService {
 
       _lastSyncTime = DateTime.now();
       _status = SyncStatusEnum.success;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // 401/429/超时等网络错误同样上报，便于在 Sentry 中按 DioException 细分
+      debugPrint('[SyncService] downloadConfig failed: $e');
+      unawaited(SentryService().captureException(e, stackTrace: stackTrace));
       _status = SyncStatusEnum.error;
       rethrow;
     }

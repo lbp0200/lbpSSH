@@ -804,7 +804,7 @@ class KittyFileTransferService extends KittyServiceBase {
             ),
           );
 
-          final children = d.listSync();
+          final children = await d.list().toList();
           for (final child in children) {
             final childName = p.basename(child.path);
             final childRemotePath = '$remoteEntityPath/$childName';
@@ -838,7 +838,7 @@ class KittyFileTransferService extends KittyServiceBase {
     );
 
     // 发送所有内容
-    final children = dir.listSync();
+    final children = await dir.list().toList();
     for (final child in children) {
       final childName = p.basename(child.path);
       final childRemotePath = '$remotePath/$childName';

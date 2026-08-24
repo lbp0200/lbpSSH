@@ -18,6 +18,7 @@ void main() {
         });
 
         // Create a stream that won't emit anything (no progress updates)
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 
@@ -55,6 +56,7 @@ void main() {
         });
 
         // Create a stream controller to simulate progress updates
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 
@@ -103,6 +105,7 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 
@@ -149,6 +152,7 @@ void main() {
       });
 
       bool cancelCalled = false;
+      // ignore: close_sinks
       final progressController = StreamController<TransferProgress>.broadcast();
 
       await tester.pumpWidget(
@@ -184,6 +188,7 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 
@@ -216,6 +221,7 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 
@@ -248,6 +254,7 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
+        // ignore: close_sinks
         final progressController =
             StreamController<TransferProgress>.broadcast();
 

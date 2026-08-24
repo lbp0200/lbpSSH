@@ -11,7 +11,19 @@ class EncryptionUtil {
   /// AES加密前缀，用于标识加密字段
   static const encryptedPrefix = r'$AES$V1$';
 
+  /// 将主密码派生为 32 字节 AES 密钥
+  ///
+  /// 旧实现为零填充/截断，熵损失严重且易受字典攻击。
+  /// 现改用 SHA-256 哈希派生，保留完整密码熵且固定 32 字节。
+  /// 解密时为兼容旧数据会回退到 legacy 零填充方式。
   static Uint8List deriveKey(String masterPassword) {
+    final digest = SHA256Digest();
+    final pwdBytes = Uint8List.fromList(utf8.encode(masterPassword));
+    return digest.process(pwdBytes);
+  }
+
+  /// 旧版零填充派生（仅用于解密回退，兼容历史数据）
+  static Uint8List _deriveKeyLegacy(String masterPassword) {
     final keyBytes = utf8.encode(masterPassword);
     if (keyBytes.length < _keyLength) {
       final padded = Uint8List(_keyLength);
@@ -30,8 +42,14 @@ class EncryptionUtil {
   }
 
   static String decrypt(String encryptedText, String masterPassword) {
-    final key = deriveKey(masterPassword);
-    return decryptWithKey(encryptedText, key);
+    try {
+      final key = deriveKey(masterPassword);
+      return decryptWithKey(encryptedText, key);
+    } catch (_) {
+      // 兼容旧版零填充加密的数据
+      final legacyKey = _deriveKeyLegacy(masterPassword);
+      return decryptWithKey(encryptedText, legacyKey);
+    }
   }
 
   static String encryptWithKey(String plainText, Uint8List key) {

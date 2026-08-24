@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/ssh_connection.dart';
 import '../../core/constants/app_constants.dart';
 import '../../utils/encryption.dart';
+import '../../utils/sentry_service.dart';
 
 /// 连接配置仓库
 class ConnectionRepository {
@@ -14,12 +16,12 @@ class ConnectionRepository {
   Map<String, SshConnection> _connectionsCache = {};
   Uint8List? _encryptionKey;
 
-  /// 敏感字段列表（序列化时需要加密/解密）
-  static const _sensitiveFields = [
+  /// 敏感字段名（序列化时需要加密/解密），递归应用于任意嵌套层级
+  static const _sensitiveFieldNames = {
     'password',
     'privateKeyContent',
     'keyPassphrase',
-  ];
+  };
 
   /// Creates a repository with a custom config file path.
   /// Primarily intended for testing.
@@ -60,58 +62,55 @@ class ConnectionRepository {
     }
   }
 
-  /// 加密敏感字段
+  /// 加密敏感字段（递归处理任意嵌套层级）
   void _encryptFields(Map<String, dynamic> map) {
-    for (final field in _sensitiveFields) {
-      final value = map[field];
-      if (value is String && value.isNotEmpty) {
-        map[field] = EncryptionUtil.encryptField(value, _encryptionKey!);
-      }
-    }
+    _transformSensitiveFields(
+      map,
+      (value) => EncryptionUtil.encryptField(value, _encryptionKey!),
+    );
+  }
 
-    // 嵌套跳板机
-    final jumpHost = map['jumpHost'];
-    if (jumpHost is Map<String, dynamic>) {
-      final pw = jumpHost['password'];
-      if (pw is String && pw.isNotEmpty) {
-        jumpHost['password'] = EncryptionUtil.encryptField(pw, _encryptionKey!);
-      }
-    }
+  /// 解密敏感字段（递归处理任意嵌套层级）
+  void _decryptFields(Map<String, dynamic> map) {
+    _transformSensitiveFields(
+      map,
+      (value) => EncryptionUtil.decryptField(value, _encryptionKey!),
+    );
+  }
 
-    // 嵌套 SOCKS5 代理
-    final socks5 = map['socks5Proxy'];
-    if (socks5 is Map<String, dynamic>) {
-      final pw = socks5['password'];
-      if (pw is String && pw.isNotEmpty) {
-        socks5['password'] = EncryptionUtil.encryptField(pw, _encryptionKey!);
+  /// 递归遍历 [map]，对命中的敏感字段执行 [transform]
+  /// 支持任意嵌套的 `Map` 与 `List` 结构，防止未来新增集合类型字段时敏感信息明文落盘
+  void _transformSensitiveFields(
+    Map<String, dynamic> map,
+    String? Function(String) transform,
+  ) {
+    for (final key in map.keys.toList()) {
+      final value = map[key];
+      if (value is Map) {
+        _transformSensitiveFields(value.cast<String, dynamic>(), transform);
+      } else if (value is List) {
+        _transformSensitiveList(value, transform);
+      }
+      if (_sensitiveFieldNames.contains(key) &&
+          value is String &&
+          value.isNotEmpty) {
+        final transformed = transform(value);
+        if (transformed != null) {
+          map[key] = transformed;
+        }
       }
     }
   }
 
-  /// 解密敏感字段
-  void _decryptFields(Map<String, dynamic> map) {
-    for (final field in _sensitiveFields) {
-      final value = map[field];
-      if (value is String && value.isNotEmpty) {
-        map[field] = EncryptionUtil.decryptField(value, _encryptionKey!);
-      }
-    }
-
-    // 嵌套跳板机
-    final jumpHost = map['jumpHost'];
-    if (jumpHost is Map<String, dynamic>) {
-      final pw = jumpHost['password'];
-      if (pw is String && pw.isNotEmpty) {
-        jumpHost['password'] = EncryptionUtil.decryptField(pw, _encryptionKey!);
-      }
-    }
-
-    // 嵌套 SOCKS5 代理
-    final socks5 = map['socks5Proxy'];
-    if (socks5 is Map<String, dynamic>) {
-      final pw = socks5['password'];
-      if (pw is String && pw.isNotEmpty) {
-        socks5['password'] = EncryptionUtil.decryptField(pw, _encryptionKey!);
+  void _transformSensitiveList(
+    List<dynamic> list,
+    String? Function(String) transform,
+  ) {
+    for (final element in list) {
+      if (element is Map) {
+        _transformSensitiveFields(element.cast<String, dynamic>(), transform);
+      } else if (element is List) {
+        _transformSensitiveList(element, transform);
       }
     }
   }
@@ -127,7 +126,21 @@ class ConnectionRepository {
             json as Map<String, dynamic>,
           ),
       };
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // 上报异常，避免静默丢数据；备份损坏文件以便排查
+      debugPrint('[ConnectionRepository] _loadCache failed: $e');
+      unawaited(SentryService().captureException(e, stackTrace: stackTrace));
+      try {
+        final backupPath =
+            '${_configFile!.path}.corrupted.${DateTime.now().millisecondsSinceEpoch}.bak';
+        final content = await _configFile!.readAsString();
+        await File(backupPath).writeAsString(content);
+        debugPrint(
+          '[ConnectionRepository] corrupted config backed up to $backupPath',
+        );
+      } catch (_) {
+        // 备份失败不影响主流程
+      }
       _connectionsCache = {};
       await _configFile!.writeAsString('[]');
     }
@@ -145,16 +158,6 @@ class ConnectionRepository {
         .map((conn) => conn.toJson())
         .toList();
     for (final map in jsonList) {
-      // 嵌套配置需先序列化为 map，否则下方加密分支的
-      // `is Map<String, dynamic>` 判断不命中，密码会明文落盘
-      final jumpHost = map['jumpHost'];
-      if (jumpHost is JumpHostConfig) {
-        map['jumpHost'] = jumpHost.toJson();
-      }
-      final socks5 = map['socks5Proxy'];
-      if (socks5 is Socks5ProxyConfig) {
-        map['socks5Proxy'] = socks5.toJson();
-      }
       _encryptFields(map);
     }
     await _configFile!.writeAsString(jsonEncode(jsonList));

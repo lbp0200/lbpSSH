@@ -124,6 +124,7 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
+        // ignore: unawaited_futures
         showErrorDialog(
           context,
           title: '连接测试失败',
@@ -391,6 +392,7 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
+        // ignore: unawaited_futures
         showErrorDialog(
           context,
           title: '上传失败',
@@ -421,6 +423,7 @@ class _SyncSettingsScreenState extends ConsumerState<SyncSettingsScreen> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
+        // ignore: unawaited_futures
         showErrorDialog(
           context,
           title: '下载失败',

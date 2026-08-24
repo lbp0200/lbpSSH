@@ -206,7 +206,7 @@ class LocalTerminalService implements TerminalInputService {
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen(
             (data) {
-              if (!_isShuttingDown) {
+              if (!_isShuttingDown && !_outputController.isClosed) {
                 // 直接输出，不做缓冲处理
                 _outputController.add(data);
                 // 背压控制：告知 PTY 应用已处理完本帧数据，可以发送下一帧
@@ -214,15 +214,17 @@ class LocalTerminalService implements TerminalInputService {
               }
             },
             onError: (Object error) {
-              if (!_isShuttingDown) {
+              if (!_isShuttingDown && !_outputController.isClosed) {
                 _outputController.add('\r\n[输出流错误: $error]\r\n');
               }
             },
             onDone: () {
               if (!_isShuttingDown) {
                 _pty = null;
-                _stateController.add(false);
-                _outputController.add('\r\n[进程已正常退出]\r\n');
+                if (!_stateController.isClosed) _stateController.add(false);
+                if (!_outputController.isClosed) {
+                  _outputController.add('\r\n[进程已正常退出]\r\n');
+                }
               }
             },
           );
@@ -230,11 +232,13 @@ class LocalTerminalService implements TerminalInputService {
       // 监听进程退出
       unawaited(_watchExitCode());
 
-      _stateController.add(true);
+      if (!_stateController.isClosed) _stateController.add(true);
       // 不输出启动信息，保持简洁
     } catch (e) {
-      _stateController.add(false);
-      _outputController.add('启动本地终端失败: $e\r\n');
+      if (!_stateController.isClosed) _stateController.add(false);
+      if (!_outputController.isClosed) {
+        _outputController.add('启动本地终端失败: $e\r\n');
+      }
       rethrow;
     }
   }
@@ -244,14 +248,18 @@ class LocalTerminalService implements TerminalInputService {
       final code = await _pty!.exitCode;
       if (!_isShuttingDown) {
         _pty = null;
-        _stateController.add(false);
-        _outputController.add('\r\n[进程已退出，退出码: $code]\r\n');
+        if (!_stateController.isClosed) _stateController.add(false);
+        if (!_outputController.isClosed) {
+          _outputController.add('\r\n[进程已退出，退出码: $code]\r\n');
+        }
       }
     } catch (error) {
       if (!_isShuttingDown) {
         _pty = null;
-        _stateController.add(false);
-        _outputController.add('\r\n[进程异常退出: $error]\r\n');
+        if (!_stateController.isClosed) _stateController.add(false);
+        if (!_outputController.isClosed) {
+          _outputController.add('\r\n[进程异常退出: $error]\r\n');
+        }
       }
     }
   }
@@ -276,7 +284,9 @@ class LocalTerminalService implements TerminalInputService {
         final bytes = const Utf8Encoder().convert(input);
         _pty!.write(bytes);
       } catch (e) {
-        _outputController.add('\r\n[发送输入失败: $e]\r\n');
+        if (!_outputController.isClosed) {
+          _outputController.add('\r\n[发送输入失败: $e]\r\n');
+        }
       }
     }
   }
@@ -434,17 +444,27 @@ class LocalTerminalService implements TerminalInputService {
         // 停止进程时出错，忽略
       } finally {
         _pty = null;
-        _stateController.add(false);
-        _outputController.add('\r\n[本地终端已停止]\r\n');
+        if (!_stateController.isClosed) _stateController.add(false);
+        if (!_outputController.isClosed) {
+          _outputController.add('\r\n[本地终端已停止]\r\n');
+        }
       }
+    } else {
+      if (!_stateController.isClosed) _stateController.add(false);
     }
   }
 
   /// 清理资源
   @override
   void dispose() {
-    stop();
-    _outputController.close();
-    _stateController.close();
+    _isShuttingDown = true;
+    // 避免 stop() 内的 add 在 close() 之后触发 Bad state
+    unawaited(() async {
+      try {
+        await stop();
+      } catch (_) {}
+      if (!_outputController.isClosed) await _outputController.close();
+      if (!_stateController.isClosed) await _stateController.close();
+    }());
   }
 }

@@ -385,6 +385,7 @@ class _ImportExportSettingsScreenState
       final file = await notifier.exportToLocalFile();
       if (file != null && mounted) {
         final summary = notifier.generateExportSummary();
+        // ignore: unawaited_futures
         showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(

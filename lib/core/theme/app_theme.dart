@@ -25,6 +25,7 @@ class LinearColors {
   static const Color fillSurfaceHover = Color(
     0x46ffffff,
   ); // rgba(255,255,255,0.25) - hover
+  static const Color fillMuted = Color(0x1AFFFFFF); // 10% 白 - 输入框填充
 
   // Borders (semi-transparent)
   static const Color borderSubtle = Color(0x0Dffffff); // rgba(255,255,255,0.05)
@@ -42,6 +43,7 @@ class LinearColors {
 class LinearSpacing {
   static const double spacing1 = 1.0;
   static const double spacing4 = 4.0;
+  static const double spacing6 = 6.0;
   static const double spacing7 = 7.0;
   static const double spacing8 = 8.0;
   static const double spacing11 = 11.0;
@@ -212,7 +214,7 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       isDense: false,
-      fillColor: const Color(0x1AFFFFFF),
+      fillColor: LinearColors.fillMuted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(LinearRadius.standard),
         borderSide: const BorderSide(color: LinearColors.borderStandard),

@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 part 'ssh_connection.g.dart';
 
 /// SSH 连接配置模型
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class SshConnection {
   /// 连接唯一标识
   final String id;
@@ -154,7 +154,7 @@ enum AuthType {
 }
 
 /// 跳板机配置
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class JumpHostConfig {
   /// 跳板机主机
   final String host;
@@ -209,7 +209,7 @@ class JumpHostConfig {
 }
 
 /// SOCKS5 代理配置
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class Socks5ProxyConfig {
   /// 代理主机地址
   final String host;

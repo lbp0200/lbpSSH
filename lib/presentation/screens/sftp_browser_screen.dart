@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../utils/file_size_utils.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../data/models/file_item.dart';
 import '../../domain/services/kitty_file_transfer_service.dart';
@@ -121,6 +122,7 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
       if (!mounted) return;
 
       // 显示进度对话框
+      // ignore: unawaited_futures
       showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -169,6 +171,7 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
     if (!mounted) return;
 
     // 显示进度对话框
+    // ignore: unawaited_futures
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -429,12 +432,5 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
     }
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
+  String _formatSize(int bytes) => formatFileSize(bytes);
 }

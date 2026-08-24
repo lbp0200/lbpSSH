@@ -150,9 +150,10 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
         // 读取文件内容
         String fileContent;
         try {
-fileContent = await keyFile.readAsString();
+          fileContent = await keyFile.readAsString();
         } catch (e, stackTrace) {
           if (!mounted) return;
+          // ignore: unawaited_futures
           showErrorDialog(
             context,
             title: '读取文件失败',
@@ -189,6 +190,7 @@ fileContent = await keyFile.readAsString();
       }
     } catch (e, stackTrace) {
       if (!mounted) return;
+      // ignore: unawaited_futures
       showErrorDialog(
         context,
         title: '选择文件失败',
@@ -366,6 +368,7 @@ fileContent = await keyFile.readAsString();
       );
     } catch (e, stackTrace) {
       if (!mounted) return;
+      // ignore: unawaited_futures
       showErrorDialog(context, title: '保存失败', error: e, stackTrace: stackTrace);
     }
   }

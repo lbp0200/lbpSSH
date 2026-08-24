@@ -302,7 +302,10 @@ class _TerminalViewWithSelectionState
       children: [
         RepaintBoundary(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+              horizontal: LinearSpacing.spacing8,
+              vertical: LinearSpacing.spacing4,
+            ),
             child: TerminalView(
               widget.terminal,
               key: ValueKey(
@@ -401,6 +404,7 @@ class TerminalTabsView extends ConsumerWidget {
                         .createLocalTerminal();
                   } catch (e, stackTrace) {
                     if (context.mounted) {
+                      // ignore: unawaited_futures
                       showErrorDialog(
                         context,
                         title: '创建终端失败',
@@ -518,6 +522,7 @@ class TerminalTabsView extends ConsumerWidget {
                           .createLocalTerminal();
                     } catch (e, stackTrace) {
                       if (context.mounted) {
+                        // ignore: unawaited_futures
                         showErrorDialog(
                           context,
                           title: '创建终端失败',
@@ -544,6 +549,7 @@ class TerminalTabsView extends ConsumerWidget {
                       await terminalNotifier.createSession(connection);
                     } catch (e) {
                       if (context.mounted) {
+                        // ignore: unawaited_futures
                         showDialog<void>(
                           context: context,
                           builder: (context) => ErrorDetailDialog(
