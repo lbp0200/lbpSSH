@@ -1,3 +1,5 @@
+- chore: production readiness — add LICENSE, bump kterm to 1.5.7, fix integration test lints (73123ec)
+- docs: update CHANGELOG (3a2be54)
 - chore(deps): bump dartssh2 to 3.3.1 (e1b2a64)
 - docs: update CHANGELOG (42972f1)
 - chore: autonomous hardening batch (35 files) (b18834b)
