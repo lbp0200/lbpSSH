@@ -585,12 +585,12 @@ class SshService implements TerminalInputService {
       _session = null;
 
       // 清理目标连接
-      _client?.close();
+      await _client?.close();
       _client = null;
 
       // 清理跳板机资源
       if (_jumpClient != null) {
-        _jumpClient?.close();
+        await _jumpClient?.close();
         _jumpClient = null;
       }
 
