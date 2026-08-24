@@ -1,3 +1,5 @@
+- chore(deps): bump dartssh2 to 3.3.1 (e1b2a64)
+- docs: update CHANGELOG (42972f1)
 - chore: autonomous hardening batch (35 files) (b18834b)
 - docs: update CHANGELOG (9386e22)
 - chore: apply dart fix (const Stream.empty) (1624e4b)
