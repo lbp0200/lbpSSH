@@ -155,8 +155,10 @@ class SshService implements TerminalInputService {
   }
 
   SSHClient? _client;
-  final _stateController = StreamController<SshConnectionState>.broadcast();
-  final _outputController = StreamController<String>.broadcast();
+  final _stateController = StreamController<SshConnectionState>.broadcast(
+    sync: true,
+  );
+  final _outputController = StreamController<String>.broadcast(sync: true);
   SSHSession? _session;
   Completer<void>? _sessionDoneCompleter;
 
