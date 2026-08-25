@@ -27,8 +27,8 @@ void main() {
       expect(AppConstants.appName, 'lbpSSH');
     });
 
-    test('appVersion matches pubspec 1.9.6', () {
-      expect(AppConstants.appVersion, '1.9.6');
+    test('appVersion matches pubspec 1.9.7', () {
+      expect(AppConstants.appVersion, '1.9.7');
     });
 
     test('importPrefix is 导入_', () {
