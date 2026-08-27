@@ -826,5 +826,3 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
     );
   }
 }
-
-/// 连接管理页面
