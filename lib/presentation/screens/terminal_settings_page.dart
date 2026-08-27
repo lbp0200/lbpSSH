@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_config.dart';
 import '../../data/models/terminal_config.dart';
 import '../providers/app_config_provider.dart';
+import '../widgets/terminal_preview.dart';
 
 class TerminalSettingsPage extends ConsumerStatefulWidget {
   const TerminalSettingsPage({super.key});
@@ -294,7 +295,10 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
             ),
             const SizedBox(height: LinearSpacing.spacing24),
             // 实时预览区域
-            _buildTerminalPreview(),
+            TerminalPreview(
+              config: _config,
+              onFontSizeChanged: _onFontSizeChanged,
+            ),
             const SizedBox(height: LinearSpacing.spacing24),
             Text(
               '颜色设置',
@@ -653,135 +657,6 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
       900: FontWeight.w900,
     };
     return mapping[weight] ?? FontWeight.w400;
-  }
-
-  Color _parseColor(String colorHex) {
-    try {
-      return Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-    } catch (e) {
-      return Colors.white;
-    }
-  }
-
-  Widget _buildTerminalPreview() {
-    final bgColor = _parseColor(_config.backgroundColor);
-    final fgColor = _parseColor(_config.foregroundColor);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '终端预览',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: LinearColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Text(
-              '提示：使用下方按钮或滑块调整字体大小',
-              style: TextStyle(fontSize: 11, color: LinearColors.textTertiary),
-            ),
-          ],
-        ),
-        const SizedBox(height: LinearSpacing.spacing12),
-        Container(
-          height: 200,
-          padding: EdgeInsets.all(_config.padding.toDouble()),
-          decoration: BoxDecoration(
-            color: bgColor,
-            border: Border.all(color: LinearColors.borderStandard),
-            borderRadius: BorderRadius.circular(LinearRadius.card),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 模拟终端内容
-                _buildPreviewLine('user@hostname:~\$', fgColor),
-                _buildPreviewLine('user@hostname:~\$ ls -la', fgColor),
-                _buildPreviewLine('total 24', fgColor.withValues(alpha: 0.7)),
-                _buildPreviewLine(
-                  'drwxr-xr-x  5 user  group  160 Jan 15 10:30 .',
-                  fgColor.withValues(alpha: 0.7),
-                ),
-                _buildPreviewLine(
-                  'drwxr-xr-x  3 root  root   100 Jan 15 10:30 ..',
-                  fgColor.withValues(alpha: 0.7),
-                ),
-                _buildPreviewLine(
-                  '-rw-r--r--  1 user  group  220 Jan 15 10:30 .bashrc',
-                  fgColor.withValues(alpha: 0.7),
-                ),
-                _buildPreviewLine(
-                  '-rw-r--r--  1 user  group  655 Jan 15 10:30 config.json',
-                  fgColor.withValues(alpha: 0.7),
-                ),
-                _buildPreviewLine(
-                  'user@hostname:~\$ _',
-                  fgColor,
-                  showCursor: true,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: LinearSpacing.spacing8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FilledButton.tonalIcon(
-              onPressed: () => _onFontSizeChanged(_config.fontSize - 2),
-              icon: const Icon(Icons.text_decrease, size: 18),
-              label: const Text('缩小'),
-            ),
-            const SizedBox(width: LinearSpacing.spacing16),
-            FilledButton.tonal(
-              onPressed: () => _onFontSizeChanged(14),
-              child: const Text('默认 (14px)'),
-            ),
-            const SizedBox(width: LinearSpacing.spacing16),
-            FilledButton.tonalIcon(
-              onPressed: () => _onFontSizeChanged(_config.fontSize + 2),
-              icon: const Icon(Icons.text_increase, size: 18),
-              label: const Text('放大'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPreviewLine(
-    String text,
-    Color color, {
-    bool showCursor = false,
-  }) {
-    return Row(
-      children: [
-        Text(
-          text,
-          style: TextStyle(
-            fontFamily: _config.fontFamily.isNotEmpty
-                ? _config.fontFamily
-                : null,
-            fontSize: _config.fontSize,
-            height: _config.lineHeight,
-            color: color,
-            letterSpacing: _config.letterSpacing,
-          ),
-        ),
-        if (showCursor)
-          Container(
-            width: _config.fontSize * 0.6,
-            height: _config.fontSize,
-            color: _parseColor(_config.cursorColor),
-            margin: const EdgeInsets.only(left: 2),
-          ),
-      ],
-    );
   }
 
   Widget _buildFontFamilySelector() {
