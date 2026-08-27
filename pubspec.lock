@@ -189,10 +189,10 @@ packages:
     dependency: "direct main"
     description:
       name: cross_file
-      sha256: "92c9c43c383bfa1c32079d3bc492d55d6d4318044b7b47edaff8971cbb555c51"
+      sha256: f141ea4f277af142a0356955707f6556f37b03947d39d55585981a06ca437bd6
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.3.5+4"
+    version: "0.3.5+5"
   crypto:
     dependency: transitive
     description:
@@ -229,10 +229,10 @@ packages:
     dependency: "direct main"
     description:
       name: desktop_drop
-      sha256: "8b07a8b4db47e0768c2a3a9433eb29160478be5f80905643fc0f79a4ae188e1e"
+      sha256: c65d1f959ccf4bb6803f984303d03e1e0dd4c0f73a3a2eca2d1b46d48ea16999
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.8.0"
+    version: "0.8.2"
   dio:
     dependency: "direct main"
     description:
@@ -856,10 +856,10 @@ packages:
     dependency: "direct main"
     description:
       name: sentry
-      sha256: c2ecd8abe82e63cdcb6947f71320612ced56e10ba94db7529d85cc02be47cb3b
+      sha256: "5641a2acec1647f6482e472679374ac02070464e8c1d0df946361393ea7681a2"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "9.27.0"
+    version: "9.28.0"
   shared_preferences:
     dependency: "direct main"
     description:
