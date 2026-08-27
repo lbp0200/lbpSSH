@@ -9,6 +9,7 @@ import '../../domain/services/ssh_config_service.dart';
 import '../providers/connection_provider.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/linear_styled_text_field.dart';
+import '../widgets/manual_path_dialog.dart';
 
 /// 连接配置表单界面
 class ConnectionFormScreen extends ConsumerStatefulWidget {
@@ -550,7 +551,7 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
                             // 提示用户手动输入路径
                             final path = await showDialog<String>(
                               context: context,
-                              builder: (context) => _ManualPathDialog(
+                              builder: (context) => ManualPathDialog(
                                 initialPath: _keyPathController.text,
                               ),
                             );
@@ -936,71 +937,6 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// 手动输入路径对话框
-class _ManualPathDialog extends StatefulWidget {
-  final String initialPath;
-
-  const _ManualPathDialog({this.initialPath = ''});
-
-  @override
-  State<_ManualPathDialog> createState() => _ManualPathDialogState();
-}
-
-class _ManualPathDialogState extends State<_ManualPathDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialPath);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('输入私钥文件路径'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          LinearStyledTextField(
-            controller: _controller,
-            labelText: '文件路径',
-            hintText: '例如: /Users/lbp/.ssh/id_rsa',
-            prefixIcon: const Icon(Icons.edit),
-            autofocus: true,
-          ),
-          const SizedBox(height: LinearSpacing.spacing12),
-          const Text(
-            '提示：由于 macOS 沙箱限制，无法直接选择 ~/.ssh 目录中的文件，请手动输入完整路径。',
-            style: TextStyle(fontSize: 12, color: LinearColors.textTertiary),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final path = _controller.text.trim();
-            if (path.isNotEmpty) {
-              Navigator.of(context).pop(path);
-            }
-          },
-          child: const Text('确定'),
-        ),
-      ],
     );
   }
 }
