@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/ssh_connection.dart';
 import '../../domain/services/ssh_config_service.dart';
 import '../providers/connection_provider.dart';
+import '../../utils/private_key_validator.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/linear_styled_text_field.dart';
 import '../widgets/manual_path_dialog.dart';
@@ -165,7 +166,7 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
         }
 
         // 验证私钥格式
-        if (!_isValidPrivateKey(fileContent)) {
+        if (!isValidPrivateKey(fileContent)) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -223,7 +224,7 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
       return;
     }
 
-    if (!_isValidPrivateKey(fileContent)) {
+    if (!isValidPrivateKey(fileContent)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -245,49 +246,6 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('私钥文件已加载: ${filePath.split('/').last}')),
     );
-  }
-
-  // 验证私钥格式
-  bool _isValidPrivateKey(String content) {
-    final trimmed = content.trim();
-
-    // 支持多种私钥格式
-    // 1. PEM格式 (-----BEGIN/END PRIVATE KEY-----)
-    if (trimmed.startsWith('-----BEGIN') &&
-        trimmed.contains('PRIVATE KEY-----') &&
-        trimmed.endsWith('-----END PRIVATE KEY-----')) {
-      return true;
-    }
-
-    // 2. OpenSSH格式 (-----BEGIN/END OPENSSH PRIVATE KEY-----)
-    if (trimmed.startsWith('-----BEGIN') &&
-        trimmed.contains('OPENSSH PRIVATE KEY-----') &&
-        trimmed.endsWith('-----END OPENSSH PRIVATE KEY-----')) {
-      return true;
-    }
-
-    // 3. RSA格式 (-----BEGIN/END RSA PRIVATE KEY-----)
-    if (trimmed.startsWith('-----BEGIN') &&
-        trimmed.contains('RSA PRIVATE KEY-----') &&
-        trimmed.endsWith('-----END RSA PRIVATE KEY-----')) {
-      return true;
-    }
-
-    // 4. DSA格式 (-----BEGIN/END DSA PRIVATE KEY-----)
-    if (trimmed.startsWith('-----BEGIN') &&
-        trimmed.contains('DSA PRIVATE KEY-----') &&
-        trimmed.endsWith('-----END DSA PRIVATE KEY-----')) {
-      return true;
-    }
-
-    // 5. EC格式 (-----BEGIN/END EC PRIVATE KEY-----)
-    if (trimmed.startsWith('-----BEGIN') &&
-        trimmed.contains('EC PRIVATE KEY-----') &&
-        trimmed.endsWith('-----END EC PRIVATE KEY-----')) {
-      return true;
-    }
-
-    return false;
   }
 
   Future<void> _saveConnection() async {
