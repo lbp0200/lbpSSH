@@ -6,10 +6,12 @@ import 'package:dartssh2/dartssh2.dart';
 
 import '../../data/models/ssh_connection.dart';
 import 'app_config_service.dart';
+import 'jump_host_tunnel.dart';
 import 'socks5_proxy_socket.dart';
 import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
 
+export 'jump_host_tunnel.dart';
 export 'socks5_proxy_socket.dart';
 
 /// SSH 连接状态
@@ -687,36 +689,9 @@ class SshService implements TerminalInputService {
     _jumpClient = jumpClient;
   }
 
-  /// 查找可用本地端口（绑定 0 让系统分配）
-  Future<int> _findAvailablePort() async {
-    ServerSocket? server;
-    try {
-      server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-      return server.port;
-    } finally {
-      await server?.close();
-    }
-  }
+  Future<int> _findAvailablePort() => findAvailablePort();
 
-  /// 轮询探测跳板机隧道是否就绪
-  Future<void> _waitForTunnelReady(int port) async {
-    const maxAttempts = 10; // 最多 2s，与旧固定等待对齐但可提前返回
-    const interval = Duration(milliseconds: 200);
-    for (var i = 0; i < maxAttempts; i++) {
-      try {
-        final socket = await Socket.connect(
-          InternetAddress.loopbackIPv4,
-          port,
-          timeout: const Duration(milliseconds: 200),
-        );
-        await socket.close();
-        return;
-      } catch (_) {
-        await Future<void>.delayed(interval);
-      }
-    }
-    // 超时仍未就绪则继续，后续 _connectSocket 会抛错
-  }
+  Future<void> _waitForTunnelReady(int port) => waitForTunnelReady(port);
 
   /// 清理资源
   @override
