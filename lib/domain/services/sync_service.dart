@@ -66,11 +66,21 @@ class SyncService {
   SyncConfig? _config;
   SyncStatusEnum _status = SyncStatusEnum.idle;
   DateTime? _lastSyncTime;
+  Future<void>? _initFuture;
 
   SyncService(this._repository, {Dio? dio, SharedPreferences? prefs})
     : _dio = dio ?? Dio(),
       _prefs = prefs {
-    _loadConfig();
+    _initFuture = _loadConfig();
+  }
+
+  /// 等待配置加载完成，测试与 Provider 可显式等待以消除竞态
+  Future<void> ensureInitialized() => _initFuture ??= _loadConfig();
+
+  /// 强制重新从存储加载配置
+  Future<void> reloadConfig() {
+    _initFuture = _loadConfig();
+    return _initFuture!;
   }
 
   /// 加载同步配置
@@ -84,6 +94,12 @@ class SyncService {
         );
       }
     } catch (e, stackTrace) {
+      // 测试环境下 ProviderContainer 直接构造 SyncService 时
+      // SharedPreferences 需要 WidgetsBinding，直接忽略避免刷屏噪音
+      if (e.toString().contains('Binding has not yet been initialized')) {
+        _config = null;
+        return;
+      }
       debugPrint('[SyncService] _loadConfig failed: $e');
       unawaited(SentryService().captureException(e, stackTrace: stackTrace));
       _config = null;
