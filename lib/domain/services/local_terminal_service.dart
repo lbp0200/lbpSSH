@@ -165,6 +165,9 @@ class LocalTerminalService implements TerminalInputService {
       return;
     }
 
+    // 新会话开始：复位上一会话的退出去重标记，使本次会话能正常输出其自身退出状态行。
+    _processExited = false;
+
     try {
       // 根据配置选择 shell
       String shell;

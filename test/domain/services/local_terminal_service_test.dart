@@ -696,6 +696,73 @@ void main() {
         },
       );
 
+      test(
+        'Given service restarted after a natural exit, When the second session exits, '
+        'Then it emits its own exit line (dedup flag reset on start)',
+        () async {
+          // Arrange (Given)：同一实例，两次会话各用一个独立 PTY（各自的输出流 + 退出码）。
+          final c1 = StreamController<Uint8List>.broadcast();
+          final e1 = Completer<int>();
+          final pty1 = MockPty();
+          when(() => pty1.output).thenAnswer((_) => c1.stream);
+          when(() => pty1.exitCode).thenAnswer((_) => e1.future);
+          when(() => pty1.pid).thenReturn(4242);
+          when(() => pty1.write(any())).thenReturn(null);
+          when(() => pty1.resize(any(), any())).thenReturn(null);
+          when(() => pty1.kill(any())).thenReturn(true);
+          when(() => pty1.ackRead()).thenReturn(null);
+
+          final c2 = StreamController<Uint8List>.broadcast();
+          final e2 = Completer<int>();
+          final pty2 = MockPty();
+          when(() => pty2.output).thenAnswer((_) => c2.stream);
+          when(() => pty2.exitCode).thenAnswer((_) => e2.future);
+          when(() => pty2.pid).thenReturn(4243);
+          when(() => pty2.write(any())).thenReturn(null);
+          when(() => pty2.resize(any(), any())).thenReturn(null);
+          when(() => pty2.kill(any())).thenReturn(true);
+          when(() => pty2.ackRead()).thenReturn(null);
+
+          final ptys = [pty1, pty2];
+          var idx = 0;
+          final svc = LocalTerminalService(
+            ptyStarter: (String shell, {List<String> arguments = const [], Map<String, String>? environment, int rows = 80, String? workingDirectory}) => ptys[idx++],
+          );
+          final outputs = <String>[];
+          svc.outputStream.listen(outputs.add);
+
+          // Act (When)：会话1 启动并自然退出（onDone + exitCode）→ 去重后打印一条退出行，
+          // _pty=null、_processExited=true。
+          await svc.start();
+          await c1.close();
+          e1.complete(0);
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          expect(
+            outputs.where((o) => o.contains('进程已')).length,
+            1,
+            reason: '会话1 自然退出应打印一条退出信息',
+          );
+
+          // Act (When)：同一实例再次 start()（守卫 _pty==null 通过，返回 pty2）。start() 必须
+          // 复位 _processExited，否则会话2 的退出行会被上一会话残留的 true 抑制。
+          await svc.start();
+          e2.complete(9);
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+
+          // Assert (Then)：两个会话各打印一条退出行（修复前会话2 被抑制 → 仅一条）。
+          final exitLines = outputs.where((o) => o.contains('进程已')).toList();
+          expect(
+            exitLines.length,
+            2,
+            reason: '重启会话后 start() 应复位去重标记，第二次退出也要打印退出行',
+          );
+
+          // 关闭 pty2 输出流以满足 close_sinks（此时 _processExited 已为 true，onDone 会被抑制）。
+          await c2.close();
+          await svc.stop();
+        },
+      );
+
       test('Given pty exits with error, When exitCode fails, '
           'Then emits abnormal-exit message and disconnects', () async {
         // Arrange (Given)
