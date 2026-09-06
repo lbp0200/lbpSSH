@@ -1,3 +1,8 @@
+- fix(local-terminal): 会话重启时复位退出去重标记，修复第二次退出状态行被抑制 (f8b9905)
+- fix(tui): 编辑连接保存后保留跳板机/代理/备注等非表单字段 (49ebe5a)
+- fix(terminal): OSC 52 剪贴板读取响应改经出站通道发往远端 pty (b867c4c)
+- fix(local-terminal): 自然退出时去重，只打印一条退出信息 (0e410f6)
+- docs: update CHANGELOG (be6bc84)
 - fix(ci): 补锁 file_picker_linux，完整锁定全部 8 个平台实现包 (007d3a0)
 - fix(ci): 锁定 file_picker 系依赖到已验证版本，修复 CI 解析漂移导致 analyze 失败 (b730eef)
 - release: bump version to 1.9.8 (91312c0)
