@@ -82,6 +82,19 @@ class SftpNotifier extends Notifier<SftpState> {
 
   /// 关闭标签页
   Future<void> closeTab(String tabId) async {
+    // 收集该标签页的传输服务并在移除前释放：进行中的下载可能持有打开的文件句柄，
+    // 若仅从 state 移除而不 dispose，这些资源会泄漏（与 TerminalProvider 关闭会话时
+    // 释放服务的做法保持一致）。
+    final servicesToDispose = <KittyFileTransferService>[];
+    for (final tab in state.tabs) {
+      if (tab.id == tabId) {
+        servicesToDispose.add(tab.service);
+      }
+    }
+    for (final service in servicesToDispose) {
+      await service.dispose();
+    }
+
     state = state.copyWith(
       tabs: state.tabs.where((t) => t.id != tabId).toList(),
     );

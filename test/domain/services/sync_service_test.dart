@@ -757,6 +757,11 @@ void main() {
           SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
         );
 
+        // 构造真实冲突：本地更新（version=2, updatedAt=t3），远端更旧（version=1, updatedAt=t2）。
+        final t0 = DateTime(2024, 2, 5);
+        final t2 = DateTime(2024, 3, 5);
+        final t3 = DateTime(2024, 4, 5);
+
         when(
           () => mockDio.get<Map<String, dynamic>>(
             any(),
@@ -771,7 +776,18 @@ void main() {
                   'content': jsonEncode({
                     'version': 1,
                     'timestamp': DateTime.now().toIso8601String(),
-                    'connections': <Map<String, dynamic>>[],
+                    'connections': <Map<String, dynamic>>[
+                      {
+                        'id': 'local_1',
+                        'name': 'Remote',
+                        'host': '5.6.7.8',
+                        'username': 'remote_user',
+                        'authType': 'password',
+                        'version': 1,
+                        'createdAt': t0.toIso8601String(),
+                        'updatedAt': t2.toIso8601String(),
+                      },
+                    ],
                   }),
                 },
               },
@@ -781,15 +797,30 @@ void main() {
           ),
         );
 
-        when(() => mockRepository.getAllConnections()).thenReturn([]);
+        // 本地存在同 id、更新版本的连接 → 若不跳过会触发 SyncConflictException。
+        when(
+          () => mockRepository.getAllConnections(),
+        ).thenReturn([
+          SshConnection(
+            id: 'local_1',
+            name: 'Local',
+            host: '1.2.3.4',
+            username: 'local_user',
+            authType: AuthType.password,
+            version: 2,
+            createdAt: t0,
+            updatedAt: t3,
+          ),
+        ]);
         when(
           () => mockRepository.saveConnections(any()),
         ).thenAnswer((_) async {});
 
+        // skip=true：跳过冲突检测 → 不抛错、不落盘。
         await service.downloadConfig(skipConflictCheck: true);
 
         expect(service.status, SyncStatusEnum.success);
-        verify(() => mockRepository.saveConnections(any())).called(1);
+        verifyNever(() => mockRepository.saveConnections(any()));
       },
     );
 
@@ -909,6 +940,53 @@ void main() {
         ),
       ).called(1);
     });
+
+    test(
+      'downloadConfig(skipConflictCheck: true) does not save connections (test connection must not modify local data)',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final service = SyncService(mockRepository, dio: mockDio);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        await service.saveConfig(
+          SyncConfig(accessToken: 'token123', gistId: 'gist_xyz'),
+        );
+
+        when(
+          () => mockDio.get<Map<String, dynamic>>(
+            any(),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer(
+          (_) async => Response(
+            data: {
+              'id': 'gist_xyz',
+              'files': {
+                'ssh_connections.json': {
+                  'content': jsonEncode({
+                    'version': 1,
+                    'timestamp': DateTime.now().toIso8601String(),
+                    'connections': <Map<String, dynamic>>[],
+                  }),
+                },
+              },
+            },
+            statusCode: 200,
+            requestOptions: RequestOptions(),
+          ),
+        );
+
+        when(() => mockRepository.getAllConnections()).thenReturn([]);
+        when(
+          () => mockRepository.saveConnections(any()),
+        ).thenAnswer((_) async {});
+
+        await service.downloadConfig(skipConflictCheck: true);
+
+        // 修复前：testConnection 复用 downloadConfig，会把远端连接 saveConnections 覆盖本地。
+        verifyNever(() => mockRepository.saveConnections(any()));
+      },
+    );
 
     test(
       'downloadConfig throws when Gist does not exist (null data)',
@@ -1082,6 +1160,72 @@ void main() {
           throwsA(isA<SyncConflictException>()),
         );
         expect(service.status, SyncStatusEnum.error);
+      },
+    );
+
+    test(
+      'downloadConfig does not flag conflict when local is older than remote (remote wins, no exception)',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final service = SyncService(mockRepository, dio: mockDio);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        await service.saveConfig(
+          SyncConfig(accessToken: 'token123', gistId: 'gist_abc'),
+        );
+
+        // 本地连接更旧：version 1、updatedAt 早于远端。冲突判定三条件之一
+        // （local.updatedAt.isAfter(remote.updatedAt)）为假 → 不构成冲突，
+        // 远端胜出并落盘（全量替换）。若谓词过度激进会误抛 SyncConflictException。
+        final local = SshConnection(
+          id: 'conn1',
+          name: 'Local Stale',
+          host: '1.2.3.4',
+          username: 'local_user',
+          authType: AuthType.password,
+          createdAt: DateTime(2024, 2, 3),
+          updatedAt: DateTime(2024, 2, 5),
+        );
+        when(() => mockRepository.getAllConnections()).thenReturn([local]);
+
+        // 远端同 id、version 更新、updatedAt 更新 → 应胜出。
+        final remoteJson = local.toJson()
+          ..['version'] = 2
+          ..['updatedAt'] = DateTime(2024, 3, 5).toIso8601String();
+
+        when(
+          () => mockDio.get<Map<String, dynamic>>(
+            any(),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer(
+          (_) async => Response<Map<String, dynamic>>(
+            data: {
+              'id': 'gist_abc',
+              'files': {
+                'ssh_connections.json': {
+                  'content': jsonEncode({
+                    'version': 1,
+                    'timestamp': DateTime.now().toIso8601String(),
+                    'connections': [remoteJson],
+                  }),
+                },
+              },
+            },
+            statusCode: 200,
+            requestOptions: RequestOptions(),
+          ),
+        );
+
+        when(
+          () => mockRepository.saveConnections(any()),
+        ).thenAnswer((_) async {});
+
+        // 本地更旧 → 不抛冲突，远端胜出并落盘。
+        await service.downloadConfig();
+
+        expect(service.status, SyncStatusEnum.success);
+        verify(() => mockRepository.saveConnections(any())).called(1);
       },
     );
   });

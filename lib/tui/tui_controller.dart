@@ -72,6 +72,24 @@ class TuiController {
     }
   }
 
+  /// 依次处理一批按键并更新本控制器状态，返回是否应结束本次 TUI 循环。
+  ///
+  /// Enter 选中连接（[running] 置 false）或 Ctrl+C 都会使返回值变为 true；
+  /// Ctrl+C 不作为普通按键分发给列表/表单处理器。TUI 主循环据此退出并消费
+  /// [sshRequest]，从而真正建立连接（此前仅 Ctrl+C 会触发退出，Enter 选中
+  /// 连接后 TUI 卡死、无法进入连接流程）。
+  bool processKeys(List<String> keys) {
+    for (final k in keys) {
+      if (k == 'ctrl_c') {
+        running = false;
+      } else {
+        handleKey(k);
+      }
+      if (!running) break;
+    }
+    return !running;
+  }
+
   void _handleListKey(String key) {
     final conns = state.filteredConnections;
 

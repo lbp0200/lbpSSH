@@ -52,9 +52,11 @@ $error
 
     await Clipboard.setData(ClipboardData(text: report));
 
-    setState(() {
-      _copied = true;
-    });
+    if (mounted) {
+      setState(() {
+        _copied = true;
+      });
+    }
 
     final Uri issuesUrl = Uri.parse(
       'https://github.com/lbp0200/lbpSSH/issues/new',

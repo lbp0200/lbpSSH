@@ -69,8 +69,10 @@ class KittyFileTransferEncoder {
     String? linkTarget,
   }) {
     final encodedName = encodeFileName(fileName);
+    // kitty 文件传输协议中 size 的线上字段名是 `sz`（非 `size`）；未知键会被解码端忽略，
+    // 若误用 `size=` 终端将按 0 字节处理。与 parseStatusResponse 读取 status 时的 `sz=` 保持一致。
     String cmd =
-        '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;size=$fileSize';
+        '\x1b]5113;ac=file;id=$sessionId;fid=$fileId;n=$encodedName;sz=$fileSize';
 
     switch (fileType) {
       case FileType.directory:

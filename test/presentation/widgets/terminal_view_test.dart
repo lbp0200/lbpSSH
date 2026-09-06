@@ -730,6 +730,71 @@ void main() {
         expect(tester.takeException(), isNull);
         await teardownTabs(tester);
       });
+
+      testWidgets('Given two sessions, When active session switches to second, '
+          'Then selection-copy listener rebinds to new session (no leak)',
+          (tester) async {
+        // 拦截剪贴板调用，避免真实平台通道等待
+        final clipboardCalls = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              clipboardCalls.add(
+                (call.arguments as Map<dynamic, dynamic>)['text'] as String,
+              );
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+
+        final s1 = makeSession('s1', 'Server Alpha');
+        final s2 = makeSession('s2', 'Server Beta');
+
+        // 单一稳定 notifier：初始激活 s1，_onSelectionChanged 监听器绑到 s1.controller
+        final notifier = _RecordingTerminalNotifier(
+          TerminalState(sessions: [s1, s2], activeSessionId: 's1'),
+        );
+        await pumpTabs(tester, terminalNotifier: notifier);
+
+        // 写入并全选（0..4）辅助：触发选区变更 → 自动复制到剪贴板
+        void selectAll(TerminalSession s) {
+          s.terminal.write('beta');
+          final line = s.terminal.buffer.currentLine;
+          s.controller.setSelection(
+            CellAnchor(0, owner: line),
+            CellAnchor(4, owner: line),
+          );
+        }
+
+        // 会话级缓存基线：在 s1 上全选 → 触发自动复制（_lastSelection='beta'）
+        selectAll(s1);
+        await tester.pump();
+        expect(clipboardCalls, equals(const ['beta']));
+
+        // 同一元素位置切到 s2（生产路径：notifier.state 变更）：
+        // State 复用 → didUpdateWidget 触发，监听器应从 s1.controller 移到 s2.controller，
+        // 且 _lastSelection 应被清空（否则新会话选中相同文本会被误判为“未变化”而漏复制）
+        notifier.state = TerminalState(
+          sessions: [s1, s2],
+          activeSessionId: 's2',
+        );
+        await tester.pump();
+
+        // 在新激活的 s2 上写入并全选（与 s1 相同文本 'beta'）→ 仍应触发自动复制
+        selectAll(s2);
+        await tester.pump();
+
+        // 两次复制都应发生：s1 一次、s2 一次（监听器已重绑 + _lastSelection 已清空）
+        expect(clipboardCalls, equals(const ['beta', 'beta']));
+        await teardownTabs(tester);
+      });
     });
 
     group('config change', () {

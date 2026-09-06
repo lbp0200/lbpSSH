@@ -125,6 +125,76 @@ Host multi
           expect(entries[0].identityFiles!.length, 3);
         },
       );
+
+      test(
+        'Given config with Port 0 or missing Port, When parsing, Then port is null (not 0)',
+        () {
+          const config = '''
+Host zeroport
+    HostName 192.168.1.1
+    Port 0
+
+Host noport
+    HostName 192.168.1.2
+
+Host goodport
+    HostName 192.168.1.3
+    Port 2222
+''';
+
+          final entries = SshConfigEntry.parse(config);
+
+          expect(entries.length, 3);
+          // Port 0 is not a valid target port -> treated as "unspecified"
+          expect(entries[0].hostName, 'zeroport');
+          expect(entries[0].port, isNull);
+          // Missing Port line -> unspecified
+          expect(entries[1].hostName, 'noport');
+          expect(entries[1].port, isNull);
+          // A valid port still parses normally (guards against over-correction)
+          expect(entries[2].hostName, 'goodport');
+          expect(entries[2].port, 2222);
+        },
+      );
+
+      test(
+        'Given out-of-range or boundary Ports, When parsing, Then clamps to valid 1-65535 else null',
+        () {
+          const config = '''
+Host maxok
+    HostName 192.168.1.1
+    Port 65535
+
+Host justover
+    HostName 192.168.1.2
+    Port 65536
+
+Host hugeport
+    HostName 192.168.1.3
+    Port 99999
+
+Host negativeport
+    HostName 192.168.1.4
+    Port -1
+''';
+
+          final entries = SshConfigEntry.parse(config);
+
+          expect(entries.length, 4);
+          // Upper bound inclusive: 65535 is a valid target port.
+          expect(entries[0].hostName, 'maxok');
+          expect(entries[0].port, 65535);
+          // 65536 is out of range -> treated as "unspecified" (null).
+          expect(entries[1].hostName, 'justover');
+          expect(entries[1].port, isNull);
+          // Far-out-of-range value -> unspecified.
+          expect(entries[2].hostName, 'hugeport');
+          expect(entries[2].port, isNull);
+          // Negative port -> invalid -> unspecified.
+          expect(entries[3].hostName, 'negativeport');
+          expect(entries[3].port, isNull);
+        },
+      );
     });
 
     group('getConnectHost', () {
@@ -364,6 +434,95 @@ Host specific
           expect(entry.actualHost, '10.0.0.1');
         },
       );
+
+      test(
+        'Given config with wildcard Host line, When finding a literal host, Then matches the wildcard entry',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+
+          final configFile = File('${tempDir.path}/config');
+          // 标准 SSH 语义：通配符在 config 侧（Host *.example.com），查找的是字面主机名。
+          // 修复前 findHostEntry 只把"搜索词"当 glob、再精确匹配 entry.hostName，
+          // 导致字面主机 app1.example.com 无法命中 Host *.example.com -> null（误报未找到）。
+          configFile.writeAsStringSync('''
+Host *.example.com
+    HostName 10.0.0.1
+    User admin
+''');
+
+          final entry = SshConfigService.findHostEntry(
+            'app1.example.com',
+            filePath: configFile.path,
+          );
+
+          expect(entry, isNotNull);
+          expect(entry!.hostName, '*.example.com');
+          expect(entry.actualHost, '10.0.0.1');
+        },
+      );
+
+      test(
+        'Given Host line with multiple space-separated patterns, When finding a host matching a later pattern, Then matches (each pattern is checked)',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+
+          final configFile = File('${tempDir.path}/config');
+          // 一行 Host 含多个空格分隔的模式：第一个是字面名，第二个才是通配。
+          // 命中必须发生在"遍历各模式"上（匹配到第二个 *.example.com），
+          // 单模式用例无法区分"逐个模式匹配"与"只看单个模式"——故需此多模式用例锁定 split 行为。
+          configFile.writeAsStringSync('''
+Host legacy *.example.com
+    HostName 10.0.0.9
+    User admin
+''');
+
+          // app2.example.com 命中第二个模式（*.example.com），而非第一个（legacy）。
+          final entry = SshConfigService.findHostEntry(
+            'app2.example.com',
+            filePath: configFile.path,
+          );
+          expect(entry, isNotNull);
+          expect(entry!.hostName, 'legacy *.example.com');
+          expect(entry.actualHost, '10.0.0.9');
+
+          // 不匹配任何模式的主机 -> null。
+          final miss = SshConfigService.findHostEntry(
+            'app2.other.com',
+            filePath: configFile.path,
+          );
+          expect(miss, isNull);
+        },
+      );
+
+      test(
+        'Given a Host pattern with literal dots, When the hostname differs only at the dot positions, Then it does not match (dots are literal, not regex wildcards)',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+
+          final configFile = File('${tempDir.path}/config');
+          configFile.writeAsStringSync('''
+Host app1.example.com
+    Port 22
+''');
+
+          // 'app1XexampleYcom' would only match if '.' were treated as a regex
+          // "any character" — pinning the RegExp.escape fix in _globToRegex.
+          expect(
+            SshConfigService.findHostEntry('app1XexampleYcom', filePath: configFile.path),
+            isNull,
+          );
+
+          // The exact literal hostname matches.
+          final hit = SshConfigService.findHostEntry(
+            'app1.example.com',
+            filePath: configFile.path,
+          );
+          expect(hit, isNotNull);
+        },
+      );
     });
 
     group('_globToRegex', () {
@@ -425,6 +584,29 @@ Host host1
             filePath: configFile.path,
           );
           expect(result3, isNull);
+        },
+      );
+
+      test(
+        'Given dotted pattern matching no host, When finding host, Then does not over-match a different host',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+
+          final configFile = File('${tempDir.path}/config');
+          // decoy 主机名与模式 'app1.example.com' 等长、逐位对应，仅把点号换成任意字符。
+          // 修复前 _globToRegex 未转义正则元字符，模式里的 '.' 被当作"任意字符"而误匹配它；
+          // 修复后点号按字面匹配，config 中无名为 'app1.example.com' 的主机 -> null。
+          configFile.writeAsStringSync('''
+Host app1xexample2com
+    HostName app1xexample2com.example.com
+''');
+
+          final entry = SshConfigService.findHostEntry(
+            'app1.example.com',
+            filePath: configFile.path,
+          );
+          expect(entry, isNull);
         },
       );
     });

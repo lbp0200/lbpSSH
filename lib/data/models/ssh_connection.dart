@@ -337,13 +337,20 @@ class SshConfigEntry {
     return SshConfigEntry(
       hostName: host,
       actualHost: config['hostname']?.firstOrNull,
-      port: int.tryParse(config['port']?.firstOrNull ?? ''),
+      port: _parsePort(config['port']?.firstOrNull),
       user: config['user']?.firstOrNull,
       identityFiles: config['identityfile'],
       identityOnly: config['identityonly']?.firstOrNull?.toLowerCase() == 'yes',
       proxyCommand: config['proxycommand']?.firstOrNull,
       connectTimeout: int.tryParse(config['connecttimeout']?.firstOrNull ?? ''),
     );
+  }
+
+  /// 解析端口。SSH 目标端口必须落在 1–65535；配置里出现 `Port 0`、缺省或非法值时
+  /// 视为"未指定"（返回 null），让调用方回退到默认端口，而不是连到无意义的端口 0。
+  static int? _parsePort(String? raw) {
+    final port = int.tryParse(raw ?? '');
+    return (port != null && port >= 1 && port <= 65535) ? port : null;
   }
 
   /// 获取实际连接地址

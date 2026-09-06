@@ -48,8 +48,30 @@ void main() {
     });
 
     testWidgets('should render without excessive rebuilds', (tester) async {
-      // Placeholder test - actual performance testing would require integration
-      expect(true, isTrue);
+      int rebuildCount = 0;
+      final notifier = ChangeNotifier();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: notifier,
+              builder: (context, child) {
+                rebuildCount++;
+                return RepaintBoundary(child: Container(color: Colors.red));
+              },
+            ),
+          ),
+        ),
+      );
+
+      final initialCount = rebuildCount;
+
+      // A single notification must cause exactly one extra build — no more.
+      notifier.notifyListeners();
+      await tester.pump();
+
+      expect(rebuildCount, initialCount + 1);
     });
   });
 }

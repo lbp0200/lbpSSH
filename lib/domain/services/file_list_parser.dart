@@ -42,8 +42,17 @@ class FileListParser {
     final permissions = parts[0];
     final isDirectory = permissions.startsWith('d');
 
+    // 名称起始索引必须与下方日期解析的格式判断一致：
+    // Linux long-iso "YYYY-MM-DD HH:MM" → 名称从索引 7 起；
+    // macOS/月名 "Mon DD HH:MM" → 名称从索引 8 起。
+    // 若按 parts.length>=9 猜测，long-iso + 含空格的文件名会被误从索引 8 截取而丢失首段。
+    final isIsoDate = parts[5].contains('-') && parts[6].contains(':');
+    final nameStart = isIsoDate ? 7 : 8;
+
     // 跳过 . 和 ..
-    final name = parts.length >= 9 ? parts.sublist(8).join(' ') : parts[7];
+    final name = parts.length > nameStart
+        ? parts.sublist(nameStart).join(' ')
+        : (parts.length > 7 ? parts[7] : '');
     if (name == '.' || name == '..') return null;
 
     // 解析大小

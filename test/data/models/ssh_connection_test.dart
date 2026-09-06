@@ -33,6 +33,31 @@ void main() {
     );
 
     test(
+      'Given sshConfigHost, connectTimeout and keepaliveInterval, When serializing, Then all three round-trip',
+      () {
+        // Non-default values: if any field were dropped by toJson(), fromJson()
+        // would revert it to the default (30000 / null) and this would fail.
+        final connection = SshConnection(
+          id: 'timeout-test',
+          name: 'Timeout Test',
+          host: '10.0.0.50',
+          username: 'user',
+          authType: AuthType.password,
+          sshConfigHost: 'my-config-host',
+          connectTimeout: 5000,
+          keepaliveInterval: 7000,
+        );
+
+        final json = connection.toJson();
+        final deserialized = SshConnection.fromJson(json);
+
+        expect(deserialized.sshConfigHost, 'my-config-host');
+        expect(deserialized.connectTimeout, 5000);
+        expect(deserialized.keepaliveInterval, 7000);
+      },
+    );
+
+    test(
       'Given key authentication fields, When serializing connection, Then preserves key auth fields',
       () {
         final connection = SshConnection(

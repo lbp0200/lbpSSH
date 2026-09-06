@@ -6,7 +6,6 @@ import 'package:dartssh2/dartssh2.dart';
 
 import '../../data/models/ssh_connection.dart';
 import 'app_config_service.dart';
-import 'jump_host_tunnel.dart';
 import 'socks5_proxy_socket.dart';
 import 'ssh_config_service.dart';
 import 'terminal_input_service.dart';
@@ -31,19 +30,32 @@ typedef SSHClientFactory =
 typedef SSHSocketConnector =
     Future<SSHSocket> Function(String host, int port, {Duration? timeout});
 
+/// ~/.ssh/config 条目解析器签名（测试时可注入替身，默认使用 [SshConfigService.findHostEntry]）
+typedef SshConfigEntryResolver =
+    SshConfigEntry? Function(String host, {String? filePath});
+
 /// SSH 连接服务
 class SshService implements TerminalInputService {
   final AppConfigService? _appConfigService;
   final SSHClientFactory? _clientFactory;
   final SSHSocketConnector? _socketConnector;
+  final SshConfigEntryResolver? _sshConfigResolver;
 
   SshService({
     AppConfigService? appConfigService,
     SSHClientFactory? clientFactory,
     SSHSocketConnector? socketConnector,
+    SshConfigEntryResolver? sshConfigResolver,
   }) : _appConfigService = appConfigService,
        _clientFactory = clientFactory,
-       _socketConnector = socketConnector;
+       _socketConnector = socketConnector,
+       _sshConfigResolver = sshConfigResolver;
+
+  /// 解析 ~/.ssh/config 条目（优先使用注入的解析器，默认 [SshConfigService.findHostEntry]）
+  SshConfigEntry? _resolveSshConfigEntry(String host, {String? filePath}) {
+    final resolver = _sshConfigResolver;
+    return (resolver ?? SshConfigService.findHostEntry)(host, filePath: filePath);
+  }
 
   AppConfigService get _config =>
       _appConfigService ?? AppConfigService.getInstance();
@@ -200,24 +212,29 @@ class SshService implements TerminalInputService {
 
       // 通过 SOCKS5 代理连接（如果配置了）
       final timeout = Duration(milliseconds: connection.connectTimeout);
-      SSHSocket socket;
-      if (connection.socks5Proxy != null) {
-        final proxy = connection.socks5Proxy!;
-        socket = await connectViaSocks5Proxy(
-          proxy.host,
-          proxy.port,
-          connection.host,
-          connection.port,
-          username: proxy.username,
-          password: proxy.password,
-          timeout: timeout,
-        );
-      } else {
-        socket = await _connectSocket(
-          connection.host,
-          connection.port,
-          timeout: timeout,
-        );
+      // 跳板机模式下目标主机通常不可直达，连接由 _connectViaJumpHost 独立完成
+      // （先连跳板机，再经其 direct-tcpip 通道打穿到目标）。这里不预先直连
+      // 目标主机，否则会白白发起并泄漏一条 TCP 连接。
+      SSHSocket? socket;
+      if (connection.jumpHost == null) {
+        if (connection.socks5Proxy != null) {
+          final proxy = connection.socks5Proxy!;
+          socket = await connectViaSocks5Proxy(
+            proxy.host,
+            proxy.port,
+            connection.host,
+            connection.port,
+            username: proxy.username,
+            password: proxy.password,
+            timeout: timeout,
+          );
+        } else {
+          socket = await _connectSocket(
+            connection.host,
+            connection.port,
+            timeout: timeout,
+          );
+        }
       }
 
       // 根据认证方式准备认证信息
@@ -269,7 +286,7 @@ class SshService implements TerminalInputService {
             throw Exception('SSH Config 主机名未设置');
           }
 
-          final configEntry = SshConfigService.findHostEntry(configHost);
+          final configEntry = _resolveSshConfigEntry(configHost);
           if (configEntry == null) {
             throw Exception('未在 ~/.ssh/config 中找到主机 "$configHost" 的配置');
           }
@@ -281,25 +298,30 @@ class SshService implements TerminalInputService {
           // 重新创建 socket（如果使用了不同的 host/port）
           // 避免首个 socket 泄漏
           try {
-            await socket.close();
+            await socket?.close();
           } catch (_) {}
-          if (connection.socks5Proxy != null) {
-            final proxy = connection.socks5Proxy!;
-            socket = await connectViaSocks5Proxy(
-              proxy.host,
-              proxy.port,
-              targetHost,
-              targetPort,
-              username: proxy.username,
-              password: proxy.password,
-              timeout: timeout,
-            );
-          } else {
-            socket = await _connectSocket(
-              targetHost,
-              targetPort,
-              timeout: timeout,
-            );
+          // 跳板机模式下目标主机通常不可直达，连接由 _connectViaJumpHost 独立完成。
+          // 这里不预先直连目标主机（否则会白白发起并泄漏一条 TCP 连接，
+          // 且目标不可直达时还会导致连接失败）。
+          if (connection.jumpHost == null) {
+            if (connection.socks5Proxy != null) {
+              final proxy = connection.socks5Proxy!;
+              socket = await connectViaSocks5Proxy(
+                proxy.host,
+                proxy.port,
+                targetHost,
+                targetPort,
+                username: proxy.username,
+                password: proxy.password,
+                timeout: timeout,
+              );
+            } else {
+              socket = await _connectSocket(
+                targetHost,
+                targetPort,
+                timeout: timeout,
+              );
+            }
           }
 
           // 处理身份文件
@@ -351,7 +373,7 @@ class SshService implements TerminalInputService {
       } else {
         // 直接连接到目标服务器，创建 SSH 客户端
         _client = _createClient(
-          socket,
+          socket!,
           username: connection.username,
           onPasswordRequest: connection.authType == AuthType.password
               ? () => password!
@@ -435,6 +457,18 @@ class SshService implements TerminalInputService {
 
       _updateState(SshConnectionState.connected);
     } catch (e) {
+      // 连接失败时回收已创建的客户端（含跳板机），避免泄漏打开的连接。
+      // shell() 建立失败是典型场景：_client 已在前面创建但会话未建立；
+      // 跳板机模式下 _jumpClient 及其上的 ssh -L 隧道同理。close() 幂等。
+      try {
+        unawaited(_jumpClient?.close());
+      } catch (_) {}
+      _jumpClient = null;
+      try {
+        unawaited(_client?.close());
+      } catch (_) {}
+      _client = null;
+
       _updateState(SshConnectionState.error);
       _outputController.add('连接错误: $e\n');
       rethrow;
@@ -626,30 +660,32 @@ class SshService implements TerminalInputService {
           ? () => jumpPassword!
           : null,
       identities: jumpIdentities,
+      keepAliveInterval: Duration(
+        milliseconds: _config.ssh.keepaliveInterval,
+      ),
     );
+
+    // 立即记录跳板机客户端：其后的 forwardLocal / 目标客户端创建若失败，
+    // connect() 的 catch 才能通过 _jumpClient 关闭它，避免已建立的跳板机连接泄漏。
+    _jumpClient = jumpClient;
 
     _outputController.add('跳板机连接成功\r\n');
 
-    // 2. 在跳板机上创建到目标服务器的端口转发
+    // 2. 在跳板机上创建到目标服务器的端口转发。
+    //    使用 dartssh2 原生的 direct-tcpip 转发通道：由 SSH 协议通过已建立的
+    //    跳板机连接直接打穿到 targetHost:targetPort，无需再在跳板机上 shell
+    //    执行 `ssh -L`、分配本地端口并轮询探测（那套做法只在「本机==跳板机」时成立）。
     _outputController.add('建立跳板机隧道...\r\n');
 
-    // 使用随机可用本地端口，避免多连接并发时 2222 冲突
-    final localPort = await _findAvailablePort();
+    final targetSocket = await jumpClient.forwardLocal(
+      connection.host,
+      connection.port,
+    );
 
-    // 先在跳板机上建立隧道
-    final tunnelCmd =
-        'ssh -L $localPort:${connection.host}:${connection.port} localhost';
-    await jumpClient.execute(tunnelCmd);
-
-    // 轮询探测隧道是否就绪，替代固定 2s 等待
-    await _waitForTunnelReady(localPort);
-
-    _outputController.add('跳板机隧道建立成功 (本地端口: $localPort)\r\n');
+    _outputController.add('跳板机隧道建立成功\r\n');
 
     // 3. 通过隧道连接到目标服务器
     _outputController.add('通过跳板机连接到目标服务器...\r\n');
-
-    final targetSocket = await _connectSocket('localhost', localPort);
 
     // 创建目标服务器的SSH客户端
     // 注意：这里需要重新创建identities，因为前面的局部变量已经超出作用域
@@ -681,33 +717,23 @@ class SshService implements TerminalInputService {
           ? () => connection.password!
           : null,
       identities: targetIdentities,
+      keepAliveInterval: Duration(
+        milliseconds: _config.ssh.keepaliveInterval,
+      ),
     );
 
     _outputController.add('跳板机连接建立成功\r\n');
-
-    // 保存跳板机相关资源以便关闭连接时清理
-    _jumpClient = jumpClient;
   }
-
-  Future<int> _findAvailablePort() => findAvailablePort();
-
-  Future<void> _waitForTunnelReady(int port) => waitForTunnelReady(port);
 
   /// 清理资源
   @override
   void dispose() {
     _isDisposed = true;
 
-    // 清理定时器
-    _outputTimer?.cancel();
-    if (_sessionDoneCompleter?.isCompleted == false) {
-      _sessionDoneCompleter?.complete();
-    }
-
-    disconnect();
-
-    // 清理输出缓冲
-    _outputBuffer.clear();
+    // 执行真正的拆除。不能复用 disconnect() —— 它开头的 `if (_isDisposed) return;`
+    // 会因 _isDisposed 已置位而直接早退，导致目标客户端（及跳板机客户端与其上
+    // 的 ssh -L 隧道孤儿进程）泄漏。
+    _teardown();
 
     if (!_stateController.isClosed) {
       _stateController.close();
@@ -715,5 +741,32 @@ class SshService implements TerminalInputService {
     if (!_outputController.isClosed) {
       _outputController.close();
     }
+  }
+
+  /// dispose 专用拆除：关闭会话与底层客户端（跳板机 + 目标），并清空缓冲。
+  ///
+  /// 与各 close() 一致，采用同步触发、fire-and-forget 的写法；各 close() 幂等，
+  /// 重复调用安全。
+  void _teardown() {
+    _outputTimer?.cancel();
+    _outputBuffer.clear();
+    if (_sessionDoneCompleter?.isCompleted == false) {
+      _sessionDoneCompleter?.complete();
+    }
+
+    try {
+      _session?.close();
+    } catch (_) {}
+    // 先关跳板机：其上的 ssh -L 隧道进程随客户端关闭而终止，避免孤儿进程。
+    try {
+      unawaited(_jumpClient?.close());
+    } catch (_) {}
+    _jumpClient = null;
+
+    try {
+      unawaited(_client?.close());
+    } catch (_) {}
+    _client = null;
+    _session = null;
   }
 }

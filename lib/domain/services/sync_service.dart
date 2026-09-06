@@ -193,12 +193,12 @@ class SyncService {
           // 有冲突，需要用户解决
           throw SyncConflictException(conflicts);
         }
+
+        // 保存配置（仅真正的同步才落盘）
+        await _repository.saveConnections(connections);
+        _lastSyncTime = DateTime.now();
       }
 
-      // 保存配置
-      await _repository.saveConnections(connections);
-
-      _lastSyncTime = DateTime.now();
       _status = SyncStatusEnum.success;
     } catch (e, stackTrace) {
       // 401/429/超时等网络错误同样上报，便于在 Sentry 中按 DioException 细分

@@ -45,19 +45,23 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
       final tab = await ref
           .read(sftpProvider.notifier)
           .openTab(widget.connection);
+      if (!mounted) return;
       setState(() {
         _transferService = tab.service;
         _currentPath = tab.currentPath;
       });
       await _refresh();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
       });
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -70,18 +74,22 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
 
     try {
       final items = await _transferService!.listCurrentDirectory();
+      if (!mounted) return;
       setState(() {
         _items = items;
         _currentPath = _transferService!.currentPath;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
       });
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -110,6 +118,9 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
   }
 
   Future<void> _uploadFile() async {
+    // 传输服务未就绪（连接失败时）不能发起上传：否则 _transferService?.sendFile
+    // 求值为 null、实际没有传输，却仍走到成功分支弹出"上传成功"并泄漏 progressController。
+    if (_transferService == null) return;
     final file = await FilePicker.pickFile();
     if (file != null && file.path != null) {
       final String localPath = file.path!;
@@ -143,7 +154,11 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
           localPath: localPath,
           remoteFileName: '$_currentPath/$fileName',
           onProgress: (progress) {
-            progressController.add(progress);
+            // 取消后 onCancel 已 close() 该控制器；传输仍在进行，后续 chunk
+            // 触发的 onProgress 若再 add 会抛 "Cannot add new events after calling close"。
+            if (!progressController.isClosed) {
+              progressController.add(progress);
+            }
           },
         );
 
@@ -161,6 +176,8 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
   }
 
   Future<void> _downloadFile(FileItem item) async {
+    // 传输服务未就绪（连接失败时）不能发起下载：同上传，会误报"下载成功"。
+    if (_transferService == null) return;
     final dir = await FilePicker.getDirectoryPath(dialogTitle: '选择下载目录');
     if (dir == null) return;
     final result = '$dir/${item.name}';
@@ -191,7 +208,11 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
         item.path,
         result,
         onProgress: (progress) {
-          progressController.add(progress);
+          // 取消后 onCancel 已 close()；传输仍在进行，后续 chunk 触发
+          // onProgress 若再 add 会抛 "Cannot add new events after calling close"。
+          if (!progressController.isClosed) {
+            progressController.add(progress);
+          }
         },
       );
 
@@ -266,12 +287,14 @@ class _SftpBrowserScreenState extends ConsumerState<SftpBrowserScreen> {
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: LinearColors.error),
     );
   }
 
   void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));

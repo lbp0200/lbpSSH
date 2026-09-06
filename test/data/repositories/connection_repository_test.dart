@@ -132,6 +132,18 @@ void main() {
       );
     });
 
+    test('saveConnection writes atomically and leaves no temp file behind', () async {
+      final connection = createTestConnection(id: 'atom-1', name: 'Atomic');
+      await repo.saveConnection(connection);
+
+      // 主文件内容为合法 JSON（连接已持久化）
+      expect(configFile.readAsStringSync(), contains('atom-1'));
+
+      // 原子写入不应残留 .part 临时文件
+      final tempFile = File('${configFile.path}.part');
+      expect(tempFile.existsSync(), isFalse);
+    });
+
     test('init with existing file loads connections from file', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'lbp_ssh_repo_test_',

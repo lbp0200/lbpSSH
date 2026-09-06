@@ -276,5 +276,46 @@ void main() {
         expect(find.textContaining('MB'), findsNothing);
       },
     );
+
+    testWidgets(
+      'Given progress stream subscription, When dialog disposed, '
+      'Then subscription is cancelled (no listener leak)',
+      (WidgetTester tester) async {
+        // Set up screen size
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // ignore: close_sinks
+        final progressController =
+            StreamController<TransferProgress>.broadcast();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TransferProgressDialog(
+                fileName: 'test_file.txt',
+                totalBytes: 1024,
+                progressStream: progressController.stream,
+                onCancel: () {},
+              ),
+            ),
+          ),
+        );
+
+        // While mounted the dialog is listening to the stream.
+        expect(progressController.hasListener, isTrue);
+
+        // Dispose the dialog — its StreamSubscription must be cancelled so no
+        // listener (or State) is leaked after the transfer dialog is popped.
+        await tester.pumpWidget(const SizedBox.shrink());
+        expect(progressController.hasListener, isFalse);
+
+        await progressController.close();
+      },
+    );
   });
 }

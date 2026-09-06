@@ -53,6 +53,21 @@ class StubLocalTerminalService extends LocalTerminalService {
   }
 }
 
+/// start() 必然抛错的本地终端替身：模拟 shellPath 无效导致 spawn 失败，
+/// 用于验证 createLocalTerminal 失败路径的资源清理。
+class FailingLocalTerminalService extends LocalTerminalService {
+  bool disposed = false;
+
+  @override
+  Future<void> start() async => throw Exception('local terminal spawn failed');
+
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
+}
+
 void main() {
   late MockTerminalService mockTerminalService;
   late MockAppConfigService mockAppConfigService;
@@ -555,6 +570,86 @@ void main() {
         expect(state.sessions, [mockSession]);
         expect(state.activeSessionId, 'ssh-session');
       });
+
+      test('Given SSH connect fails during reconnect, When reconnectSession called, '
+          'Then the newly created ssh service is disposed (no leak) and session preserved',
+          () async {
+        // Arrange — 首次 createSession 用 oldService（连接成功），重连用 newService（连接失败）
+        final oldService = MockSshService();
+        when(() => oldService.connect(any())).thenAnswer((_) async {});
+        when(
+          () => oldService.executeCommand(
+            any(),
+            silent: any(named: 'silent'),
+          ),
+        ).thenAnswer((_) async => '/home/user');
+        when(() => oldService.dispose()).thenReturn(null);
+
+        final newService = MockSshService();
+        when(
+          () => newService.connect(any()),
+        ).thenThrow(Exception('connection failed'));
+        when(() => newService.dispose()).thenReturn(null);
+
+        // 工厂按调用顺序返回：createSession → oldService，reconnect → newService
+        final orderedServices = [oldService, newService];
+        int factoryIndex = 0;
+
+        final mockSession = MockTerminalSession();
+        when(() => mockSession.id).thenReturn('ssh-session');
+        when(() => mockSession.name).thenReturn('MyServer');
+        when(() => mockSession.serverInfo).thenReturn('root@127.0.0.1');
+        when(
+          () => mockTerminalService.createSession(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            inputService: any(named: 'inputService'),
+            terminalConfig: any(named: 'terminalConfig'),
+            serverInfo: any(named: 'serverInfo'),
+          ),
+        ).thenReturn(mockSession);
+        when(
+          () => mockTerminalService.getAllSessions(),
+        ).thenReturn([mockSession]);
+        when(
+          () => mockTerminalService.getSession(any()),
+        ).thenReturn(mockSession);
+
+        container = ProviderContainer(
+          overrides: [
+            terminalServiceProvider.overrideWithValue(mockTerminalService),
+            appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+            sshServiceFactoryProvider.overrideWithValue(() {
+              final i = factoryIndex < orderedServices.length
+                  ? factoryIndex++
+                  : orderedServices.length - 1;
+              return orderedServices[i];
+            }),
+          ],
+        );
+
+        // 先建一个 SSH 会话，使 state.sessions 非空（供 reconnect 找到 existingSession）
+        final conn = SshConnection(
+          id: 'conn1',
+          name: 'MyServer',
+          host: '127.0.0.1',
+          username: 'root',
+          authType: AuthType.password,
+          password: 'secret',
+        );
+        await container.read(terminalProvider.notifier).createSession(conn);
+
+        // Act (When) — 重连时新建的 newService.connect 抛错
+        await expectLater(
+          container.read(terminalProvider.notifier).reconnectSession('ssh-session'),
+          throwsA(isA<Exception>()),
+        );
+
+        // Assert (Then) — 新建服务被销毁（无泄漏），且会话对象保留以支持重试
+        verify(() => newService.dispose()).called(1);
+        final state = container.read(terminalProvider);
+        expect(state.sessions, isNotEmpty);
+      });
     });
 
     group('createLocalTerminal / initialize', () {
@@ -611,6 +706,46 @@ void main() {
             container.read(terminalProvider.notifier).disposeServices,
             returnsNormally,
           );
+        },
+      );
+    });
+
+    group('createLocalTerminal failure cleanup', () {
+      test(
+        'Given local service start fails, When createLocalTerminal called, '
+        'Then registered session is closed and service disposed (no leak)',
+        () async {
+          // Arrange — 真实 TerminalService + 必然失败的本地终端工厂
+          final realTerminalService = TerminalService();
+          late FailingLocalTerminalService failingLocal;
+
+          final container2 = ProviderContainer(
+            overrides: [
+              terminalServiceProvider.overrideWithValue(
+                realTerminalService,
+              ),
+              appConfigServiceProvider.overrideWithValue(
+                mockAppConfigService,
+              ),
+              localTerminalServiceFactoryProvider.overrideWithValue(() {
+                failingLocal = FailingLocalTerminalService();
+                return failingLocal;
+              }),
+            ],
+          );
+
+          // Act & Assert — start() 抛错向上传播，且失败路径完成资源清理
+          await expectLater(
+            container2.read(terminalProvider.notifier).createLocalTerminal(),
+            throwsA(isA<Exception>()),
+          );
+
+          // Then — 无孤儿会话（已 closeSession）、本地服务已销毁（无泄漏）
+          expect(realTerminalService.getAllSessions(), isEmpty);
+          expect(failingLocal.disposed, isTrue);
+          expect(container2.read(terminalProvider).sessions, isEmpty);
+
+          container2.dispose();
         },
       );
     });

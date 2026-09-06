@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/services/kitty_file_transfer_service.dart';
@@ -26,11 +27,12 @@ class _TransferProgressDialogState extends State<TransferProgressDialog> {
   double _percent = 0;
   int _transferred = 0;
   int _bytesPerSecond = 0;
+  StreamSubscription<TransferProgress>? _progressSubscription;
 
   @override
   void initState() {
     super.initState();
-    widget.progressStream.listen((progress) {
+    _progressSubscription = widget.progressStream.listen((progress) {
       if (mounted) {
         setState(() {
           _percent = progress.percent;
@@ -39,6 +41,12 @@ class _TransferProgressDialogState extends State<TransferProgressDialog> {
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _progressSubscription?.cancel();
+    super.dispose();
   }
 
   String _formatSize(int bytes) => formatFileSize(bytes);

@@ -253,6 +253,48 @@ void main() {
     );
 
     testWidgets(
+      'Given lineHeight field, When 0 entered, Then height stays default not collapsed',
+      (tester) async {
+        await pumpPage(tester);
+
+        await enterField(tester, '行高', '0');
+
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
+        // 0 被守卫拒绝：行高保持默认 1.2（若塌缩为 0，终端文字高度为 0、不可见）。
+        expect(line.style?.height, 1.2);
+      },
+    );
+
+    testWidgets(
+      'Given lineHeight field, When -1 entered, Then height stays default not negative',
+      (tester) async {
+        await pumpPage(tester);
+
+        await enterField(tester, '行高', '-1');
+
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
+        expect(line.style?.height, 1.2);
+      },
+    );
+
+    testWidgets(
+      'Given font size below slider min, When 缩小 tapped past range, Then clamps to 8 not crash',
+      (tester) async {
+        await pumpPage(tester);
+
+        // 默认字号 17，预览区"缩小"每步 -2：连点 5 次原始值到 7（越过 Slider 下限 8），应钳制为 8。
+        // 若无守卫，fontSize=7 会使下方 Slider(value:7, min:8) 触发断言、页面崩溃。
+        for (var i = 0; i < 5; i++) {
+          await tester.tap(find.text('缩小'));
+          await tester.pump();
+        }
+
+        final line = tester.widget<Text>(find.text(r'user@hostname:~$').first);
+        expect(line.style?.fontSize, 8.0);
+      },
+    );
+
+    testWidgets(
       'Given bg color field, When color entered, Then preview bg updates',
       (tester) async {
         await pumpPage(tester);

@@ -111,16 +111,20 @@ class TerminalPreview extends StatelessWidget {
   }
 
   Widget _previewLine(String text, Color color, {bool showCursor = false}) {
+    // Text 置于 Expanded 中：作为 Row 的弹性子项，在可用宽度内软换行。
+    // 否则会拿到无界宽度，大字号下长样本行超出固定宽度容器触发 RenderFlex 横向溢出（debug 红屏）。
     return Row(
       children: [
-        Text(
-          text,
-          style: TextStyle(
-            fontFamily: config.fontFamily.isNotEmpty ? config.fontFamily : null,
-            fontSize: config.fontSize,
-            height: config.lineHeight,
-            color: color,
-            letterSpacing: config.letterSpacing,
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: config.fontFamily.isNotEmpty ? config.fontFamily : null,
+              fontSize: config.fontSize,
+              height: config.lineHeight,
+              color: color,
+              letterSpacing: config.letterSpacing,
+            ),
           ),
         ),
         if (showCursor)

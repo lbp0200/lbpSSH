@@ -52,7 +52,8 @@ class LocalTerminalService implements TerminalInputService {
       final parts = _currentDirectory.split('/');
       if (parts.length > 1) {
         parts.removeLast();
-        return parts.join('/');
+        // 向上遍历到根时 split 会得到单个空串，join 后为 ''，需归一化为 '/'
+        return parts.join('/').isEmpty ? '/' : parts.join('/');
       }
       return '/';
     } else if (targetDir == '.') {
@@ -346,16 +347,33 @@ class LocalTerminalService implements TerminalInputService {
     _commandBuffer.clear();
   }
 
+  /// 解析 `lsof -F n -a -p <pid> -d cwd` 的输出，返回进程当前工作目录（绝对路径）。
+  ///
+  /// `-F n` 让 lsof 把文件名单独输出一行（形如 `n/private/tmp/foo bar`），避免默认列式输出
+  /// 把含空格的目录按空白拆散、只取到最后一列的问题。无有效行时返回 null。
+  static String? parseLsofCwd(String stdout) {
+    for (final rawLine in stdout.split('\n')) {
+      final line = rawLine.trim();
+      // lsof -F n 的每行以字段前缀开头（cwd 的名称字段为 'n'），去掉前缀即路径。
+      if (line.startsWith('n') && line.length > 1) {
+        final path = line.substring(1);
+        if (path.startsWith('/')) return path;
+      }
+    }
+    return null;
+  }
+
   /// 使用 lsof 获取 PTY shell 的实际工作目录（不会在终端显示输出）
   Future<void> _getActualDirectoryFromLsof() async {
     if (_pty == null || _isShuttingDown) return;
 
     try {
-      // lsof -a -p <pid> -d cwd 获取进程的当前工作目录
-      // flutter_pty 的 pty.start 返回的 Process 对象有 pid
+      // lsof -F n -a -p <pid> -d cwd：用 -F n 把目录名单独输出一行，保留含空格的路径
       final pid = _pty!.pid;
 
       final result = await Process.run('lsof', [
+        '-F',
+        'n',
         '-a',
         '-p',
         '$pid',
@@ -364,25 +382,14 @@ class LocalTerminalService implements TerminalInputService {
       ]);
 
       if (result.exitCode == 0) {
-        // lsof 输出格式: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
-        // 最后一行是目录路径
-        final lines = result.stdout.toString().trim().split('\n');
-        if (lines.length >= 2) {
-          // 最后一行包含目录路径
-          final lastLine = lines.last.trim();
-          // 解析路径（最后一列）
-          final parts = lastLine.split(RegExp(r'\s+'));
-          if (parts.isNotEmpty) {
-            final actualDir = parts.last;
-            if (actualDir.startsWith('/') && actualDir != _currentDirectory) {
-              _currentDirectory = actualDir;
-              onActualDirectoryChange?.call(actualDir);
-            }
-          }
+        final actualDir = parseLsofCwd(result.stdout.toString());
+        if (actualDir != null && actualDir != _currentDirectory) {
+          _currentDirectory = actualDir;
+          onActualDirectoryChange?.call(actualDir);
         }
       }
-    } catch (e) {
-      // 静默处理错误
+    } catch (_) {
+      // 静默处理错误（lsof 不可用或查询失败时忽略）
     }
   }
 

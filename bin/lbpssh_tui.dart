@@ -57,15 +57,12 @@ Future<void> _runTui() async {
   await _stdSub?.cancel();
   _stdSub = stdin.listen((bytes) {
     final keys = _parseKeys(bytes);
-    for (final k in keys) {
-      if (k == 'ctrl_c') {
-        _controller.running = false;
-        completer.complete();
-        return;
-      }
-      _controller.handleKey(k);
-      _render(lastFrame);
+    if (_controller.processKeys(keys)) {
+      // Enter 选中连接（或 Ctrl+C）：退出 TUI，让主循环消费 sshRequest 真正建立连接
+      completer.complete();
+      return;
     }
+    _render(lastFrame);
   });
 
   await completer.future;

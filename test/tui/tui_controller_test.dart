@@ -52,6 +52,68 @@ void main() {
     } catch (_) {}
   });
 
+  group('TuiController processKeys (loop-stop decision)', () {
+    test(
+      'Given list with a selection, When Enter batch processed, Then returns '
+      'true and sets sshRequest so the TUI loop exits to connect',
+      () {
+        final conn = _conn(id: 'c1');
+        controller.state = TuiState(connections: [conn]);
+        // Regression: Enter must signal "stop the TUI" (previously only Ctrl+C
+        // did, so Enter left the loop frozen and never connected).
+        final stop = controller.processKeys(['enter']);
+        expect(stop, isTrue);
+        expect(controller.sshRequest, same(conn));
+        expect(controller.running, isFalse);
+      },
+    );
+
+    test(
+      'Given list, When Ctrl+C batch processed, Then returns true with no sshRequest',
+      () {
+        controller.state = TuiState(connections: [_conn(id: 'c1')]);
+        final stop = controller.processKeys(['ctrl_c']);
+        expect(stop, isTrue);
+        expect(controller.sshRequest, isNull);
+        expect(controller.running, isFalse);
+      },
+    );
+
+    test(
+      'Given list, When non-terminal key batch processed, Then returns false and keeps running',
+      () {
+        controller.state = TuiState(connections: [_conn(id: 'c1')]);
+        final stop = controller.processKeys(['down']);
+        expect(stop, isFalse);
+        expect(controller.running, isTrue);
+      },
+    );
+
+    test(
+      'Given a batch ending in Enter, When processed, Then all prior keys apply then stops',
+      () {
+        final c1 = _conn(id: 'c1');
+        final c2 = _conn(id: 'c2', name: 'server-2', host: '10.0.0.2');
+        controller.state = TuiState(connections: [c1, c2]);
+        // 'down' moves selection to c2, then Enter connects to it and stops.
+        final stop = controller.processKeys(['down', 'enter']);
+        expect(stop, isTrue);
+        expect(controller.sshRequest, same(c2));
+      },
+    );
+
+    test(
+      'Given a batch with Ctrl+C then more keys, When processed, Then later keys are not dispatched',
+      () {
+        controller.state = TuiState(connections: [_conn(id: 'c1')]);
+        // ctrl_c stops the loop; the trailing 'a' must NOT switch to the form.
+        final stop = controller.processKeys(['ctrl_c', 'a']);
+        expect(stop, isTrue);
+        expect(controller.state.screen, 'list');
+      },
+    );
+  });
+
   group('TuiController list navigation', () {
     test('Given empty list, When down pressed, Then selection stays at 0', () {
       controller.handleKey('down');

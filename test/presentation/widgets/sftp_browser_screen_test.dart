@@ -759,6 +759,34 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Given connection failed (no transfer service), When upload pressed, Then no false success and no progress dialog',
+      (tester) async {
+        // 连接失败（openTab 抛错）→ _transferService 为 null，但工具栏"上传"按钮仍可点击。
+        // 修复前：_transferService?.sendFile 求值为 null、无实际传输，却仍走到成功分支
+        // 弹出"上传成功"并泄漏 progressController；
+        // 修复后：_transferService==null 提前返回，无任何成功提示与进度对话框。
+        final fake = _FakeFilePickerPlatform()
+          ..pickFileResult = _createPlatformFile('/tmp/up.txt');
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
+
+        await tester.pumpWidget(createTestWidget(_FailingSftpNotifier()));
+        await tester.pumpAndSettle();
+
+        // 确认处于连接失败错误态，且工具栏仍可见可点
+        expect(find.text('重试'), findsOneWidget);
+        expect(find.byTooltip('上传'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('上传成功'), findsNothing);
+        expect(find.text('取消'), findsNothing); // 未弹出进度对话框
+      },
+    );
+
     testWidgets('Given upload in progress, When cancel tapped, '
         'Then progress dialog closes and no success message shown', (
       tester,
@@ -855,6 +883,144 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('取消'), findsNothing);
+      expect(find.text('下载成功'), findsNothing);
+
+      downloadCompleter.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'Given upload canceled, When a progress event arrives after cancel, '
+        'Then no StateError is thrown (progress stream already closed)',
+        (tester) async {
+      final uploadCompleter = Completer<void>();
+      late void Function(TransferProgress) onProgress;
+      when(
+        () => transferService.listCurrentDirectory(),
+      ).thenAnswer((_) async => <FileItem>[]);
+      when(
+        () => transferService.sendFile(
+          localPath: any(named: 'localPath'),
+          remoteFileName: any(named: 'remoteFileName'),
+          onProgress: any(named: 'onProgress'),
+        ),
+      ).thenAnswer((invocation) {
+        // 捕获真实进度回调；传输挂起，让对话框保持打开
+        onProgress = invocation.namedArguments[#onProgress]!
+            as void Function(TransferProgress);
+        return uploadCompleter.future;
+      });
+
+      final fake = _FakeFilePickerPlatform()
+        ..pickFileResult = _createPlatformFile('/tmp/up.txt');
+      final original = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = fake;
+      addTearDown(() => FilePickerPlatform.instance = original);
+
+      final tab = SftpTab(
+        id: 'tab1',
+        connection: connection,
+        service: transferService,
+        currentPath: '/',
+      );
+
+      await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('上传'));
+      await tester.pumpAndSettle();
+      expect(find.text('取消'), findsOneWidget);
+
+      // 点击取消 → onCancel close() 进度流并关闭对话框
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.text('取消'), findsNothing);
+
+      // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
+      // 修复前：progressController.add() 命中已 close 的流 → StateError（同步抛出，RED）。
+      // 修复后：isClosed 守卫使其 no-op，无异常。
+      onProgress(
+        TransferProgress(
+          fileName: 'up.txt',
+          transferredBytes: 10,
+          totalBytes: 100,
+          percent: 10,
+          bytesPerSecond: 0,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('上传成功'), findsNothing);
+
+      uploadCompleter.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'Given download canceled, When a progress event arrives after cancel, '
+        'Then no StateError is thrown (progress stream already closed)',
+        (tester) async {
+      final downloadCompleter = Completer<void>();
+      late void Function(TransferProgress) onProgress;
+      when(() => transferService.listCurrentDirectory()).thenAnswer(
+        (_) async => [
+          FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false),
+        ],
+      );
+      when(
+        () => transferService.downloadFile(
+          any(),
+          any(),
+          onProgress: any(named: 'onProgress'),
+        ),
+      ).thenAnswer((invocation) {
+        // 捕获真实进度回调；传输挂起，让对话框保持打开
+        onProgress = invocation.namedArguments[#onProgress]!
+            as void Function(TransferProgress);
+        return downloadCompleter.future;
+      });
+
+      final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+      final original = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = fake;
+      addTearDown(() => FilePickerPlatform.instance = original);
+
+      final tab = SftpTab(
+        id: 'tab1',
+        connection: connection,
+        service: transferService,
+        currentPath: '/',
+      );
+
+      await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+      await tester.pumpAndSettle();
+
+      await tester.longPress(find.text('a.txt'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('下载'));
+      await tester.pumpAndSettle();
+      expect(find.text('取消'), findsOneWidget);
+
+      // 点击取消 → onCancel close() 进度流并关闭对话框
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.text('取消'), findsNothing);
+
+      // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
+      // 修复前 → StateError（同步抛出，RED）；修复后 isClosed 守卫使其 no-op。
+      onProgress(
+        TransferProgress(
+          fileName: 'a.txt',
+          transferredBytes: 10,
+          totalBytes: 1024,
+          percent: 1,
+          bytesPerSecond: 0,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
       expect(find.text('下载成功'), findsNothing);
 
       downloadCompleter.complete();
@@ -1094,5 +1260,36 @@ void main() {
       // 进度流被消费后对话框展示进度，上传完成后显示成功
       expect(find.text('上传成功'), findsOneWidget);
     });
+
+    testWidgets(
+      'Given refresh in flight, When screen disposed, Then no setState-after-dispose error',
+      (tester) async {
+        final completer = Completer<List<FileItem>>();
+        when(
+          () => transferService.listCurrentDirectory(),
+        ).thenAnswer((_) => completer.future);
+
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/home/user',
+        );
+
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pump(); // 触发 _connect → _refresh，卡在 listCurrentDirectory
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        // 用户离开页面：卸载 SftpBrowserScreen（state.dispose）。
+        // 此时刷新仍在进行；列表随后返回会命中已 dispose 的 State。
+        await tester.pumpWidget(const SizedBox());
+
+        completer.complete([]);
+        await tester.pump();
+
+        // 修复前：setState() called after dispose() → takeException 非空（RED）。
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

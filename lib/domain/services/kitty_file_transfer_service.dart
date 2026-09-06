@@ -17,6 +17,15 @@ export 'kitty_file_transfer_models.dart';
 ///
 /// 通过 SSH 终端发送 OSC 5113 控制序列实现文件传输
 class KittyFileTransferService extends KittyServiceBase {
+  /// 转义双引号 shell 参数中的特殊字符（\、"、$、`），防止远程文件名/路径里的
+  /// 反引号、$(...)、内嵌引号在回退终端命令中触发注入或破坏。
+  String _escapeForDoubleQuotes(String s) {
+    return s
+        .replaceAll(r'\', r'\\') // \ → \\
+        .replaceAll('"', r'\"') // " → \"
+        .replaceAll(r'$', r'\$') // $ → \$
+        .replaceAll('`', r'\`'); // ` → \`
+  }
   final KittyFileTransferEncoder _encoder = const KittyFileTransferEncoder();
   String _currentPath;
   SftpClient? _sftpClient;
@@ -85,7 +94,7 @@ class KittyFileTransferService extends KittyServiceBase {
     // 使用 shell 命令作为回退方案
     const lsCommand = 'ls -la';
     final output = await session.inputService.executeCommand(
-      'cd "$_currentPath" && $lsCommand',
+      'cd "${_escapeForDoubleQuotes(_currentPath)}" && $lsCommand',
       silent: true,
     );
 
@@ -166,7 +175,7 @@ class KittyFileTransferService extends KittyServiceBase {
 
     // 回退到 shell 命令
     final path = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
-    await session.executeCommand('mkdir "$path"');
+    await session.executeCommand('mkdir "${_escapeForDoubleQuotes(path)}"');
   }
 
   /// 删除文件
@@ -178,7 +187,7 @@ class KittyFileTransferService extends KittyServiceBase {
     }
 
     // 回退到 shell 命令
-    await session.executeCommand('rm "$path"');
+    await session.executeCommand('rm "${_escapeForDoubleQuotes(path)}"');
   }
 
   /// 删除目录
@@ -190,7 +199,7 @@ class KittyFileTransferService extends KittyServiceBase {
     }
 
     // 回退到 shell 命令
-    await session.executeCommand('rmdir "$path"');
+    await session.executeCommand('rmdir "${_escapeForDoubleQuotes(path)}"');
   }
 
   /// 下载文件
@@ -210,9 +219,10 @@ class KittyFileTransferService extends KittyServiceBase {
     final transferId = 'dl_${DateTime.now().millisecondsSinceEpoch}';
     final fileName = remotePath.split('/').last;
 
-    // 创建本地文件
-    final file = File(localPath);
-    _activeDownloadSink = file.openWrite();
+    // 先写入临时文件，成功后原子重命名为最终路径；失败时删除临时文件，
+    // 避免在目标路径留下截断/损坏的文件（覆盖已有本地文件时尤其危险）
+    final partFile = File('$localPath.part');
+    _activeDownloadSink = partFile.openWrite();
     final sink = _activeDownloadSink!;
 
     int transferred = 0;
@@ -253,6 +263,10 @@ class KittyFileTransferService extends KittyServiceBase {
             break;
           case 'end':
             await sink.close();
+            // 传输完整结束：将临时文件原子重命名为最终路径
+            if (partFile.existsSync()) {
+              await partFile.rename(localPath);
+            }
             if (!completer.isCompleted) {
               completer.complete();
             }
@@ -261,6 +275,8 @@ class KittyFileTransferService extends KittyServiceBase {
       },
       onError: (Object error) async {
         await sink.close();
+        // 失败：删除临时文件，避免残留截断内容
+        _deletePartFile(partFile);
         if (!completer.isCompleted) {
           completer.completeError(error);
         }
@@ -274,8 +290,9 @@ class KittyFileTransferService extends KittyServiceBase {
     try {
       await completer.future.timeout(const Duration(minutes: 5));
     } catch (e) {
-      // 超时
+      // 超时/失败：关闭文件流并删除临时文件，避免残留截断内容
       await sink.close();
+      _deletePartFile(partFile);
       rethrow;
     } finally {
       await subscription.cancel();
@@ -678,6 +695,17 @@ class KittyFileTransferService extends KittyServiceBase {
   /// 取消传输
   Future<void> cancelTransfer(String transferId) async {
     writeRaw(_encoder.createCancelSession(transferId));
+  }
+
+  /// 删除下载临时文件（失败时清理）；目标可能已被重命名或不存在，静默处理
+  void _deletePartFile(File partFile) {
+    try {
+      if (partFile.existsSync()) {
+        partFile.deleteSync();
+      }
+    } catch (_) {
+      // 忽略：文件可能已成功重命名或本就不存在
+    }
   }
 
   /// 清理资源（关闭活动文件流）

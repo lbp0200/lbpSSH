@@ -887,8 +887,98 @@ void main() {
       await tester.pump();
       expect(inputService.resizeCount, 1);
       expect(inputService.lastResize, (30, 100));
-    });
   });
+});
+
+group('TerminalSession rebind() — 重连后切换到新输入服务', () {
+  test(
+    'Given initialized session, When rebound to a new service, '
+    'Then output from the new service is written and old stream ignored',
+    () async {
+      final oldService = _ControlledInputService();
+      final newService = _ControlledInputService();
+      final session = TerminalSession(
+        id: 'rebind-test',
+        name: 'Rebind',
+        inputService: oldService,
+      );
+      // ignore: unawaited_futures
+      session.initialize();
+
+      session.rebind(newService);
+
+      newService.outputController.add('from new service');
+      oldService.outputController.add('from old service');
+      await Future<void>.delayed(Duration.zero);
+
+      final buffer = session.terminal.buffer.toString();
+      expect(buffer, contains('from new service'));
+      expect(buffer, isNot(contains('from old service')));
+    },
+  );
+
+  test(
+    'Given initialized session, When rebound and input fired, '
+    'Then keystrokes route to the new service',
+    () async {
+      final oldService = _ControlledInputService();
+      final newService = _ControlledInputService();
+      final session = TerminalSession(
+        id: 'rebind-input',
+        name: 'Rebind Input',
+        inputService: oldService,
+      );
+      // ignore: unawaited_futures
+      session.initialize();
+
+      session.rebind(newService);
+      session.terminal.onOutput?.call('whoami');
+
+      expect(newService.sentInputs, contains('whoami'));
+      expect(oldService.sentInputs, isEmpty);
+    },
+  );
+
+  test(
+    'Given initialized session, When rebound and state stream emits true, '
+    'Then connectionState reflects the new service',
+    () async {
+      final oldService = _ControlledInputService();
+      final newService = _ControlledInputService();
+      final session = TerminalSession(
+        id: 'rebind-state',
+        name: 'Rebind State',
+        inputService: oldService,
+      );
+      // ignore: unawaited_futures
+      session.initialize();
+
+      session.rebind(newService);
+      newService.stateController.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(session.connectionState, SshConnectionState.connected);
+    },
+  );
+
+  test(
+    'Given disposed session, When rebind called, Then is a no-op',
+    () {
+      final oldService = _ControlledInputService();
+      final newService = _ControlledInputService();
+      final session = TerminalSession(
+        id: 'rebind-disposed',
+        name: 'Rebind Disposed',
+        inputService: oldService,
+      );
+      // ignore: unawaited_futures
+      session.initialize();
+      session.dispose();
+
+      expect(() => session.rebind(newService), returnsNormally);
+    },
+  );
+});
 }
 
 /// 输入服务:可控流 + 记录 sendInput/resize 调用

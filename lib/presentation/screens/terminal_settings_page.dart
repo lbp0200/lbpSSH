@@ -94,9 +94,12 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
   }
 
   void _onFontSizeChanged(double value) {
+    // 字号必须落在下方 Slider 的 [8, 32] 范围内：预览区的"缩小/放大"按钮以 ±2 步进且无边界，
+    // 若不在此钳制，fontSize 会越出 Slider.value 的合法区间，触发 Flutter 断言（min<=value<=max）导致本页面崩溃。
+    final clamped = value.clamp(8.0, 32.0).toDouble();
     setState(() {
-      _config = _config.copyWith(fontSize: value);
-      _fontSizeController.text = value.toInt().toString();
+      _config = _config.copyWith(fontSize: clamped);
+      _fontSizeController.text = clamped.toInt().toString();
     });
   }
 
@@ -260,7 +263,8 @@ class _TerminalSettingsPageState extends ConsumerState<TerminalSettingsPage> {
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
                       final lineHeight = double.tryParse(value);
-                      if (lineHeight != null) {
+                      // 行高必须为正数：0/负数会使 TextStyle.height 为 0，终端文字高度塌缩、不可见。
+                      if (lineHeight != null && lineHeight > 0) {
                         setState(() {
                           _config = _config.copyWith(lineHeight: lineHeight);
                         });

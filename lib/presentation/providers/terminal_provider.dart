@@ -113,6 +113,9 @@ class TerminalNotifier extends Notifier<TerminalState> {
     try {
       await localService.start();
     } catch (e) {
+      // 启动失败（如 shellPath 无效导致 spawn 抛错）：清理已注册的服务与终端会话，
+      // 避免残留孤儿 TerminalSession 与泄漏的 LocalTerminalService。
+      closeSession(sessionId);
       rethrow;
     }
 
@@ -251,10 +254,13 @@ class TerminalNotifier extends Notifier<TerminalState> {
     if (cached != null) {
       final sshService = _sshServiceFactory();
       _services[sessionId] = sshService;
+      // 旧服务已销毁，将存活的会话重新绑定到新服务（切换输出/状态流订阅），
+      // 须在 connect 之前，以捕获"已连接"状态事件与连接进度输出
+      existingSession.rebind(sshService);
       try {
         await sshService.connect(cached);
       } catch (e) {
-        _services.remove(sessionId);
+        _teardownService(sessionId);
         throw Exception('重连失败: $e');
       }
       state = TerminalState(
@@ -274,6 +280,9 @@ class TerminalNotifier extends Notifier<TerminalState> {
 
     final sshService = _sshServiceFactory();
     _services[sessionId] = sshService;
+    // 旧服务已销毁，将存活的会话重新绑定到新服务（切换输出/状态流订阅），
+    // 须在 connect 之前，以捕获"已连接"状态事件与连接进度输出
+    existingSession.rebind(sshService);
 
     try {
       await sshService.connect(
@@ -287,7 +296,7 @@ class TerminalNotifier extends Notifier<TerminalState> {
         ),
       );
     } catch (e) {
-      _services.remove(sessionId);
+      _teardownService(sessionId);
       throw Exception('重连失败: $e');
     }
 
@@ -295,6 +304,15 @@ class TerminalNotifier extends Notifier<TerminalState> {
       sessions: _snapshotSessions(_terminalService),
       activeSessionId: sessionId,
     );
+  }
+
+  /// 重连失败时销毁本次新建的 SSH 服务，但保留会话对象本身。
+  /// 注意：不能调用 closeSession —— 那会移除 TerminalService 中的会话、
+  /// 导致 tab 消失且无法再次"重连"重试；此处只释放连接资源（服务），
+  /// 让存活的会话继续显示，等待用户重试。
+  void _teardownService(String sessionId) {
+    _services[sessionId]?.dispose();
+    _services.remove(sessionId);
   }
 
   void disposeServices() {

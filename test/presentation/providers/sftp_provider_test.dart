@@ -141,6 +141,41 @@ void main() {
           expect(state.tabs, isEmpty);
         },
       );
+
+      test(
+        'Given tab with transfer service, When closeTab called, Then service is disposed',
+        () async {
+          // Arrange (Given): 构造一个持有 mock 传输服务标签页的实时状态，
+          // 模拟"关闭时仍有进行中的下载（文件句柄已打开）"的场景。
+          final connection = SshConnection(
+            id: 'conn1',
+            name: 'Test Server',
+            host: '192.168.1.1',
+            username: 'testuser',
+            authType: AuthType.password,
+          );
+          final mockTransferService = MockKittyFileTransferService();
+          // 桩：dispose() 是异步方法，未打桩的 mocktail 默认会抛异常。
+          when(() => mockTransferService.dispose()).thenAnswer((_) async {});
+          container.read(sftpProvider.notifier).state = SftpState(
+            tabs: [
+              SftpTab(
+                id: 'tab-1',
+                connection: connection,
+                service: mockTransferService,
+                currentPath: '/home/user',
+              ),
+            ],
+          );
+
+          // Act (When)
+          await container.read(sftpProvider.notifier).closeTab('tab-1');
+
+          // Assert (Then): 标签页被移除，且其传输服务被释放（关闭下载文件句柄）。
+          expect(container.read(sftpProvider).tabs, isEmpty);
+          verify(() => mockTransferService.dispose()).called(1);
+        },
+      );
     });
 
     group('getTab', () {

@@ -32,7 +32,7 @@ class FileTransferEvent {
 class TerminalSession {
   final String id;
   String _name;
-  final TerminalInputService inputService;
+  TerminalInputService inputService;
   final Terminal terminal;
   final TerminalController controller;
   StreamSubscription<String>? _outputSubscription;
@@ -246,8 +246,21 @@ class TerminalSession {
     osType = type;
   }
 
-  /// 初始化终端会话
-  Future<void> initialize() async {
+  /// 重新绑定输入服务（重连后旧服务已销毁，需切换到新服务）
+  ///
+  /// 取消旧订阅并重新订阅输出/状态流。`terminal.onOutput`/`onResize`
+  /// 闭包读取的是 [inputService] 字段而非固定引用，字段更新后输入与
+  /// 尺寸调整会自动路由到新服务，因此这里只需重建两个流的订阅。
+  void rebind(TerminalInputService service) {
+    if (_isDisposed) return;
+    _outputSubscription?.cancel();
+    _stateSubscription?.cancel();
+    inputService = service;
+    _subscribeToInputService();
+  }
+
+  /// 订阅输入服务的输出流与连接状态流
+  void _subscribeToInputService() {
     // 监听输出
     _outputSubscription = inputService.outputStream.listen(
       (output) {
@@ -279,6 +292,11 @@ class TerminalSession {
         // 状态流关闭
       },
     );
+  }
+
+  /// 初始化终端会话
+  Future<void> initialize() async {
+    _subscribeToInputService();
 
     // 监听终端输入
     terminal.onOutput = (data) {

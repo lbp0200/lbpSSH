@@ -244,6 +244,21 @@ class _TerminalViewWithSelectionState
   }
 
   @override
+  void didUpdateWidget(covariant _TerminalViewWithSelection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 同一 State 实例会随 activeSessionId 切换而复用（标签页保持存活），
+    // 此时 controller 指向新会话的控制器。需把监听从旧控制器摘到新的，
+    // 否则选择自动复制仍绑在首个会话上并泄漏旧监听器。
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onSelectionChanged);
+      widget.controller.addListener(_onSelectionChanged);
+      // _lastSelection 是会话级缓存：新会话尚无选区，须清空，否则若新会话选中
+      // 与上个会话相同的文本会被误判为“未变化”而漏掉自动复制。
+      _lastSelection = null;
+    }
+  }
+
+  @override
   void dispose() {
     widget.controller.removeListener(_onSelectionChanged);
     super.dispose();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -354,6 +355,48 @@ void main() {
         await tester.pump();
         expect(find.text('反馈问题'), findsOneWidget);
       });
+    });
+
+    group('Bug #11: dismiss during clipboard await', () {
+      testWidgets(
+        'Given feedback tapped, When dialog dismissed during Clipboard.setData, Then no setState-after-dispose error',
+        (tester) async {
+          // 用 Completer 挂起 Clipboard.setData（走 SystemChannels.platform），
+          // 制造"剪贴板写入尚未返回"的异步窗口，模拟用户在窗口期间离开对话框。
+          final completer = Completer<void>();
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                SystemChannels.platform,
+                (call) async {
+                  if (call.method == 'Clipboard.setData') {
+                    await completer.future;
+                  }
+                  return null;
+                },
+              );
+          addTearDown(() {
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+                .setMockMethodCallHandler(SystemChannels.platform, null);
+          });
+
+          final conn = _createConnection();
+          await pumpDialog(tester, connection: conn, errorMessage: 'test');
+
+          // 触发反馈 → 进入 Clipboard.setData，被 completer 挂起。
+          await tester.tap(find.text('反馈问题'));
+          await tester.pump();
+
+          // 用户在剪贴板写入期间离开对话框（state.dispose）。
+          await tester.pumpWidget(const SizedBox());
+
+          // 放行写入 → setState(_copied = true) 命中已 dispose 的 State。
+          // 修复前：setState() called after dispose() → takeException 非空（RED）。
+          completer.complete();
+          await tester.pump();
+
+          expect(tester.takeException(), isNull);
+        },
+      );
     });
   });
 }

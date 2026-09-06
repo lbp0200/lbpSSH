@@ -108,6 +108,10 @@ class _ConnectionFormScreenState extends ConsumerState<ConnectionFormScreen> {
     _privateKeyContent = connection.privateKeyContent;
     _notesController.text = connection.notes ?? '';
 
+    // 凭据（编辑时回填，避免保存时空字段把已存密码 / 密钥口令清成 null）
+    _passwordController.text = connection.password ?? '';
+    _keyPassphraseController.text = connection.keyPassphrase ?? '';
+
     if (connection.jumpHost != null) {
       _useJumpHost = true;
       _jumpHostController.text = connection.jumpHost!.host;

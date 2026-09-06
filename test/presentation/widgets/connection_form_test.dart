@@ -276,6 +276,28 @@ void main() {
     );
 
     testWidgets(
+      'Given existing password connection, When save without retyping password, Then preserves the stored password',
+      (tester) async {
+        final connection = SshConnection(
+          id: '1',
+          name: '生产服务器',
+          host: '192.168.1.100',
+          username: 'root',
+          authType: AuthType.password,
+          password: 'stored-password',
+        );
+
+        await pumpForm(tester, connection: connection);
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(mockNotifier.updated, isNotEmpty);
+        // 修复前：_loadConnection 未回填密码框，空字段导致 password 被置为 null（编辑即丢失凭据）。
+        expect(mockNotifier.updated.single.password, 'stored-password');
+      },
+    );
+
+    testWidgets(
       'Given empty form, When save pressed, Then shows validation errors',
       (tester) async {
         await pumpForm(tester);

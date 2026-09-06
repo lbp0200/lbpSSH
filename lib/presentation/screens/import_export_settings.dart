@@ -441,11 +441,13 @@ class _ImportExportSettingsScreenState
         return;
       }
 
-      setState(() {
-        // 持有副本，避免 clear() 污染调用方传入的列表
-        _importedConnections = List.of(connections);
-        _showImportPreview = true;
-      });
+      if (mounted) {
+        setState(() {
+          // 持有副本，避免 clear() 污染调用方传入的列表
+          _importedConnections = List.of(connections);
+          _showImportPreview = true;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

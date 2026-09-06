@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -368,6 +369,99 @@ void main() {
           final state = container.read(importExportProvider);
           expect(state.status, ImportExportStatus.error);
           expect(state.lastError, contains('导入失败'));
+        },
+      );
+    });
+
+    group('in-flight and cancel states', () {
+      test(
+        'Given export in progress, When called, Then status is exporting until it completes to success',
+        () async {
+          // Arrange (Given) - 用一个可手动完成的 Future 制造"进行中"窗口
+          final completer = Completer<File?>();
+          when(() => mockService.exportToLocalFile())
+              .thenAnswer((_) => completer.future);
+
+          // Act (When) - 发起导出但暂不等待完成
+          final pending = container
+              .read(importExportProvider.notifier)
+              .exportToLocalFile();
+
+          // Assert (Then) - 进行中状态应为 exporting（UI 据此禁用按钮/显示进度）
+          expect(
+            container.read(importExportProvider).status,
+            ImportExportStatus.exporting,
+          );
+
+          // 完成导出 -> 应为 success
+          final exported = File('/tmp/inflight_export.json');
+          completer.complete(exported);
+          final result = await pending;
+          expect(result, exported);
+          expect(
+            container.read(importExportProvider).status,
+            ImportExportStatus.success,
+          );
+        },
+      );
+
+      test(
+        'Given user cancels save dialog (service returns null), When export completes, Then status is idle not success',
+        () async {
+          // Arrange (Given) - 用户取消"保存位置"选择时 service 返回 null
+          when(() => mockService.exportToLocalFile())
+              .thenAnswer((_) async => null);
+
+          // Act (When)
+          final result = await container
+              .read(importExportProvider.notifier)
+              .exportToLocalFile();
+
+          // Assert (Then) - 未真正导出：不得误报为 success，应回到 idle
+          expect(result, isNull);
+          expect(
+            container.read(importExportProvider).status,
+            ImportExportStatus.idle,
+          );
+        },
+      );
+
+      test(
+        'Given import in progress, When called, Then status is importing until it completes to success',
+        () async {
+          // Arrange (Given)
+          final completer = Completer<List<SshConnection>>();
+          when(() => mockService.importFromLocalFile())
+              .thenAnswer((_) => completer.future);
+
+          // Act (When)
+          final pending = container
+              .read(importExportProvider.notifier)
+              .importFromLocalFile();
+
+          // Assert (Then) - 进行中状态应为 importing
+          expect(
+            container.read(importExportProvider).status,
+            ImportExportStatus.importing,
+          );
+
+          // 完成导入 -> 应为 success
+          final conns = [
+            SshConnection(
+              id: 'i1',
+              name: 'Imported',
+              host: '1.1.1.1',
+              username: 'u',
+              authType: AuthType.password,
+            ),
+          ];
+          completer.complete(conns);
+          final result = await pending;
+          expect(result, conns);
+          expect(
+            container.read(importExportProvider).status,
+            ImportExportStatus.success,
+          );
         },
       );
     });
