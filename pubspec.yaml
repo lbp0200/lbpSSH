@@ -2,7 +2,7 @@ name: lbp_ssh
 description: "跨平台 SSH 终端管理器，支持配置同步到 GitHub/Gitee"
 publish_to: "none"
 
-version: 1.9.8
+version: 1.9.9
 
 environment:
   sdk: ^3.10.7
