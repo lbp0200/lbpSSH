@@ -1,3 +1,4 @@
+- fix(ci): 锁定 file_picker 系依赖到已验证版本，修复 CI 解析漂移导致 analyze 失败 (b730eef)
 - release: bump version to 1.9.8 (91312c0)
 - fix: 自主加固批次 — SSH/终端/SFTP/kitty 多路修复与回归测试 (2a647f5)
 - test(jump-tunnel): cover findAvailablePort and waitForTunnelReady (1f6cb40)
