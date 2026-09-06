@@ -25,6 +25,9 @@ class LocalTerminalService implements TerminalInputService {
   final _outputController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
   bool _isShuttingDown = false;
+  // 进程退出状态是否已上报：onDone（输出流关闭）与 _watchExitCode（exitCode 完成）都会触发，
+  // 自然退出时二者先后到达，需去重避免重复打印退出信息。
+  bool _processExited = false;
   String _shellPath = '';
 
   /// 目录变化回调（当检测到 cd 命令时触发）
@@ -223,7 +226,8 @@ class LocalTerminalService implements TerminalInputService {
               if (!_isShuttingDown) {
                 _pty = null;
                 if (!_stateController.isClosed) _stateController.add(false);
-                if (!_outputController.isClosed) {
+                if (!_processExited && !_outputController.isClosed) {
+                  _processExited = true;
                   _outputController.add('\r\n[进程已正常退出]\r\n');
                 }
               }
@@ -250,7 +254,8 @@ class LocalTerminalService implements TerminalInputService {
       if (!_isShuttingDown) {
         _pty = null;
         if (!_stateController.isClosed) _stateController.add(false);
-        if (!_outputController.isClosed) {
+        if (!_processExited && !_outputController.isClosed) {
+          _processExited = true;
           _outputController.add('\r\n[进程已退出，退出码: $code]\r\n');
         }
       }
@@ -258,7 +263,8 @@ class LocalTerminalService implements TerminalInputService {
       if (!_isShuttingDown) {
         _pty = null;
         if (!_stateController.isClosed) _stateController.add(false);
-        if (!_outputController.isClosed) {
+        if (!_processExited && !_outputController.isClosed) {
+          _processExited = true;
           _outputController.add('\r\n[进程异常退出: $error]\r\n');
         }
       }
