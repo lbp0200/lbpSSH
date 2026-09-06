@@ -345,8 +345,16 @@ drwxrwxrwt  5 root root 4096 Feb 24 20:08 tmp''';
 
       // Realistic filename fragments (single spaces only, so round-trip is exact).
       const fragments = [
-        'a', 'b.txt', 'file-log.tar.gz', 'data_2024.csv', 'x_y_z',
-        'dir.name', 'a-b.c.d', 'notes (final).md', '1 2 3', 'report v2.pdf'
+        'a',
+        'b.txt',
+        'file-log.tar.gz',
+        'data_2024.csv',
+        'x_y_z',
+        'dir.name',
+        'a-b.c.d',
+        'notes (final).md',
+        '1 2 3',
+        'report v2.pdf',
       ];
 
       String randomName() {
@@ -358,99 +366,139 @@ drwxrwxrwt  5 root root 4096 Feb 24 20:08 tmp''';
       }
 
       const monthNums = {
-        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-        'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        'Jan': 1,
+        'Feb': 2,
+        'Mar': 3,
+        'Apr': 4,
+        'May': 5,
+        'Jun': 6,
+        'Jul': 7,
+        'Aug': 8,
+        'Sep': 9,
+        'Oct': 10,
+        'Nov': 11,
+        'Dec': 12,
       };
       final monthKeys = monthNums.keys.toList();
 
       String p2(int v) => v.toString().padLeft(2, '0');
 
       test(
-          'Given randomized long-iso and month-name lines with spaced/symlink names, When parse called, Then names, paths, sizes, dirs, dates round-trip',
-          () {
-        final fixedNow = DateTime(2026, 3, 4, 5, 6); // deterministic clock
+        'Given randomized long-iso and month-name lines with spaced/symlink names, When parse called, Then names, paths, sizes, dirs, dates round-trip',
+        () {
+          final fixedNow = DateTime(2026, 3, 4, 5, 6); // deterministic clock
 
-        // One generated record: the raw ls line + what the parser MUST yield.
-        final records = <Map<String, Object>>[];
-        for (var i = 0; i < 200; i++) {
-          // Sprinkle skip-able lines to pin the '.'/'..'/'total' short-circuits.
-          if (i % 25 == 0) {
+          // One generated record: the raw ls line + what the parser MUST yield.
+          final records = <Map<String, Object>>[];
+          for (var i = 0; i < 200; i++) {
+            // Sprinkle skip-able lines to pin the '.'/'..'/'total' short-circuits.
+            if (i % 25 == 0) {
+              records.add({
+                'line': 'drwxr-xr-x 2 user group 4096 2024-01-15 10:30 .',
+                'skip': true,
+              });
+              continue;
+            }
+            if (i % 25 == 1) {
+              records.add({'line': 'total ${100 + i}', 'skip': true});
+              continue;
+            }
+
+            final useIso = nextInt() % 2 == 0;
+            final kind = nextInt() % 3; // 0 file, 1 dir, 2 symlink
+            final isDir = kind == 1;
+            final symlink = kind == 2;
+            String name = randomName();
+            if (symlink) name = '$name -> ${randomName()}';
+
+            final size = nextInt() % 50000;
+            final y = 2020 + (nextInt() % 6);
+            final mo = 1 + nextInt() % 12;
+            final d = 1 + nextInt() % 28;
+            final hh = nextInt() % 24;
+            final mm = nextInt() % 60;
+
+            final perms = isDir
+                ? 'drwxr-xr-x'
+                : symlink
+                ? 'lrwxrwxrwx'
+                : '-rw-r--r--';
+            String line;
+            DateTime expMod;
+            if (useIso) {
+              line =
+                  '$perms 1 user group $size '
+                  '${y.toString().padLeft(4, '0')}-${p2(mo)}-${p2(d)} '
+                  '${p2(hh)}:${p2(mm)} $name';
+              expMod = DateTime(y, mo, d, hh, mm);
+            } else {
+              final mk = monthKeys[nextInt() % monthKeys.length];
+              line =
+                  '$perms 1 user group $size '
+                  '$mk ${p2(d)} ${p2(hh)}:${p2(mm)} $name';
+              // month-name lines carry no year -> parser uses clock.year (2026).
+              expMod = DateTime(fixedNow.year, monthNums[mk]!, d, hh, mm);
+            }
+
             records.add({
-              'line': 'drwxr-xr-x 2 user group 4096 2024-01-15 10:30 .',
-              'skip': true,
+              'line': line,
+              'skip': false,
+              'name': name,
+              'isDir': isDir,
+              'size': size,
+              'expMod': expMod,
             });
-            continue;
-          }
-          if (i % 25 == 1) {
-            records.add({'line': 'total ${100 + i}', 'skip': true});
-            continue;
           }
 
-          final useIso = nextInt() % 2 == 0;
-          final kind = nextInt() % 3; // 0 file, 1 dir, 2 symlink
-          final isDir = kind == 1;
-          final symlink = kind == 2;
-          String name = randomName();
-          if (symlink) name = '$name -> ${randomName()}';
+          for (final basePath in const ['/', '/home/user']) {
+            final output = records.map((r) => r['line'] as String).join('\n');
+            final items = FileListParser.parse(
+              output,
+              basePath,
+              clock: () => fixedNow,
+            );
 
-          final size = nextInt() % 50000;
-          final y = 2020 + (nextInt() % 6);
-          final mo = 1 + nextInt() % 12;
-          final d = 1 + nextInt() % 28;
-          final hh = nextInt() % 24;
-          final mm = nextInt() % 60;
+            final expectedRecords = records
+                .where((r) => r['skip'] == false)
+                .toList();
 
-          final perms = isDir ? 'drwxr-xr-x' : symlink ? 'lrwxrwxrwx' : '-rw-r--r--';
-          String line;
-          DateTime expMod;
-          if (useIso) {
-            line = '$perms 1 user group $size '
-                '${y.toString().padLeft(4, '0')}-${p2(mo)}-${p2(d)} '
-                '${p2(hh)}:${p2(mm)} $name';
-            expMod = DateTime(y, mo, d, hh, mm);
-          } else {
-            final mk = monthKeys[nextInt() % monthKeys.length];
-            line = '$perms 1 user group $size '
-                '$mk ${p2(d)} ${p2(hh)}:${p2(mm)} $name';
-            // month-name lines carry no year -> parser uses clock.year (2026).
-            expMod = DateTime(fixedNow.year, monthNums[mk]!, d, hh, mm);
+            // Count invariant: only non-skipped lines produce items.
+            expect(
+              items.length,
+              expectedRecords.length,
+              reason: 'basePath=$basePath',
+            );
+
+            for (var i = 0; i < expectedRecords.length; i++) {
+              final e = expectedRecords[i];
+              final item = items[i];
+              // Name round-trips verbatim (incl. internal spaces and " -> target").
+              expect(
+                item.name,
+                e['name'],
+                reason: 'name basePath=$basePath idx=$i',
+              );
+              // Path is always derived from name + currentPath.
+              final expPath = basePath == '/'
+                  ? '/${item.name}'
+                  : '$basePath/${item.name}';
+              expect(
+                item.path,
+                expPath,
+                reason: 'path basePath=$basePath idx=$i',
+              );
+              expect(item.isDirectory, e['isDir'] as bool);
+              expect(item.size, e['size'] as int);
+              // Date round-trips to the exact expected instant.
+              expect(
+                item.modified,
+                e['expMod'],
+                reason: 'date basePath=$basePath idx=$i',
+              );
+            }
           }
-
-          records.add({
-            'line': line,
-            'skip': false,
-            'name': name,
-            'isDir': isDir,
-            'size': size,
-            'expMod': expMod,
-          });
-        }
-
-        for (final basePath in const ['/', '/home/user']) {
-          final output = records.map((r) => r['line'] as String).join('\n');
-          final items =
-              FileListParser.parse(output, basePath, clock: () => fixedNow);
-
-          final expectedRecords = records.where((r) => r['skip'] == false).toList();
-
-          // Count invariant: only non-skipped lines produce items.
-          expect(items.length, expectedRecords.length, reason: 'basePath=$basePath');
-
-          for (var i = 0; i < expectedRecords.length; i++) {
-            final e = expectedRecords[i];
-            final item = items[i];
-            // Name round-trips verbatim (incl. internal spaces and " -> target").
-            expect(item.name, e['name'], reason: 'name basePath=$basePath idx=$i');
-            // Path is always derived from name + currentPath.
-            final expPath = basePath == '/' ? '/${item.name}' : '$basePath/${item.name}';
-            expect(item.path, expPath, reason: 'path basePath=$basePath idx=$i');
-            expect(item.isDirectory, e['isDir'] as bool);
-            expect(item.size, e['size'] as int);
-            // Date round-trips to the exact expected instant.
-            expect(item.modified, e['expMod'], reason: 'date basePath=$basePath idx=$i');
-          }
-        }
-      });
+        },
+      );
     });
   });
 }

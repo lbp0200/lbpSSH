@@ -571,85 +571,87 @@ void main() {
         expect(state.activeSessionId, 'ssh-session');
       });
 
-      test('Given SSH connect fails during reconnect, When reconnectSession called, '
-          'Then the newly created ssh service is disposed (no leak) and session preserved',
-          () async {
-        // Arrange — 首次 createSession 用 oldService（连接成功），重连用 newService（连接失败）
-        final oldService = MockSshService();
-        when(() => oldService.connect(any())).thenAnswer((_) async {});
-        when(
-          () => oldService.executeCommand(
-            any(),
-            silent: any(named: 'silent'),
-          ),
-        ).thenAnswer((_) async => '/home/user');
-        when(() => oldService.dispose()).thenReturn(null);
+      test(
+        'Given SSH connect fails during reconnect, When reconnectSession called, '
+        'Then the newly created ssh service is disposed (no leak) and session preserved',
+        () async {
+          // Arrange — 首次 createSession 用 oldService（连接成功），重连用 newService（连接失败）
+          final oldService = MockSshService();
+          when(() => oldService.connect(any())).thenAnswer((_) async {});
+          when(
+            () =>
+                oldService.executeCommand(any(), silent: any(named: 'silent')),
+          ).thenAnswer((_) async => '/home/user');
+          when(() => oldService.dispose()).thenReturn(null);
 
-        final newService = MockSshService();
-        when(
-          () => newService.connect(any()),
-        ).thenThrow(Exception('connection failed'));
-        when(() => newService.dispose()).thenReturn(null);
+          final newService = MockSshService();
+          when(
+            () => newService.connect(any()),
+          ).thenThrow(Exception('connection failed'));
+          when(() => newService.dispose()).thenReturn(null);
 
-        // 工厂按调用顺序返回：createSession → oldService，reconnect → newService
-        final orderedServices = [oldService, newService];
-        int factoryIndex = 0;
+          // 工厂按调用顺序返回：createSession → oldService，reconnect → newService
+          final orderedServices = [oldService, newService];
+          int factoryIndex = 0;
 
-        final mockSession = MockTerminalSession();
-        when(() => mockSession.id).thenReturn('ssh-session');
-        when(() => mockSession.name).thenReturn('MyServer');
-        when(() => mockSession.serverInfo).thenReturn('root@127.0.0.1');
-        when(
-          () => mockTerminalService.createSession(
-            id: any(named: 'id'),
-            name: any(named: 'name'),
-            inputService: any(named: 'inputService'),
-            terminalConfig: any(named: 'terminalConfig'),
-            serverInfo: any(named: 'serverInfo'),
-          ),
-        ).thenReturn(mockSession);
-        when(
-          () => mockTerminalService.getAllSessions(),
-        ).thenReturn([mockSession]);
-        when(
-          () => mockTerminalService.getSession(any()),
-        ).thenReturn(mockSession);
+          final mockSession = MockTerminalSession();
+          when(() => mockSession.id).thenReturn('ssh-session');
+          when(() => mockSession.name).thenReturn('MyServer');
+          when(() => mockSession.serverInfo).thenReturn('root@127.0.0.1');
+          when(
+            () => mockTerminalService.createSession(
+              id: any(named: 'id'),
+              name: any(named: 'name'),
+              inputService: any(named: 'inputService'),
+              terminalConfig: any(named: 'terminalConfig'),
+              serverInfo: any(named: 'serverInfo'),
+            ),
+          ).thenReturn(mockSession);
+          when(
+            () => mockTerminalService.getAllSessions(),
+          ).thenReturn([mockSession]);
+          when(
+            () => mockTerminalService.getSession(any()),
+          ).thenReturn(mockSession);
 
-        container = ProviderContainer(
-          overrides: [
-            terminalServiceProvider.overrideWithValue(mockTerminalService),
-            appConfigServiceProvider.overrideWithValue(mockAppConfigService),
-            sshServiceFactoryProvider.overrideWithValue(() {
-              final i = factoryIndex < orderedServices.length
-                  ? factoryIndex++
-                  : orderedServices.length - 1;
-              return orderedServices[i];
-            }),
-          ],
-        );
+          container = ProviderContainer(
+            overrides: [
+              terminalServiceProvider.overrideWithValue(mockTerminalService),
+              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
+              sshServiceFactoryProvider.overrideWithValue(() {
+                final i = factoryIndex < orderedServices.length
+                    ? factoryIndex++
+                    : orderedServices.length - 1;
+                return orderedServices[i];
+              }),
+            ],
+          );
 
-        // 先建一个 SSH 会话，使 state.sessions 非空（供 reconnect 找到 existingSession）
-        final conn = SshConnection(
-          id: 'conn1',
-          name: 'MyServer',
-          host: '127.0.0.1',
-          username: 'root',
-          authType: AuthType.password,
-          password: 'secret',
-        );
-        await container.read(terminalProvider.notifier).createSession(conn);
+          // 先建一个 SSH 会话，使 state.sessions 非空（供 reconnect 找到 existingSession）
+          final conn = SshConnection(
+            id: 'conn1',
+            name: 'MyServer',
+            host: '127.0.0.1',
+            username: 'root',
+            authType: AuthType.password,
+            password: 'secret',
+          );
+          await container.read(terminalProvider.notifier).createSession(conn);
 
-        // Act (When) — 重连时新建的 newService.connect 抛错
-        await expectLater(
-          container.read(terminalProvider.notifier).reconnectSession('ssh-session'),
-          throwsA(isA<Exception>()),
-        );
+          // Act (When) — 重连时新建的 newService.connect 抛错
+          await expectLater(
+            container
+                .read(terminalProvider.notifier)
+                .reconnectSession('ssh-session'),
+            throwsA(isA<Exception>()),
+          );
 
-        // Assert (Then) — 新建服务被销毁（无泄漏），且会话对象保留以支持重试
-        verify(() => newService.dispose()).called(1);
-        final state = container.read(terminalProvider);
-        expect(state.sessions, isNotEmpty);
-      });
+          // Assert (Then) — 新建服务被销毁（无泄漏），且会话对象保留以支持重试
+          verify(() => newService.dispose()).called(1);
+          final state = container.read(terminalProvider);
+          expect(state.sessions, isNotEmpty);
+        },
+      );
     });
 
     group('createLocalTerminal / initialize', () {
@@ -721,12 +723,8 @@ void main() {
 
           final container2 = ProviderContainer(
             overrides: [
-              terminalServiceProvider.overrideWithValue(
-                realTerminalService,
-              ),
-              appConfigServiceProvider.overrideWithValue(
-                mockAppConfigService,
-              ),
+              terminalServiceProvider.overrideWithValue(realTerminalService),
+              appConfigServiceProvider.overrideWithValue(mockAppConfigService),
               localTerminalServiceFactoryProvider.overrideWithValue(() {
                 failingLocal = FailingLocalTerminalService();
                 return failingLocal;

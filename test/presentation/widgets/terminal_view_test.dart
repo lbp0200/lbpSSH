@@ -732,8 +732,9 @@ void main() {
       });
 
       testWidgets('Given two sessions, When active session switches to second, '
-          'Then selection-copy listener rebinds to new session (no leak)',
-          (tester) async {
+          'Then selection-copy listener rebinds to new session (no leak)', (
+        tester,
+      ) async {
         // 拦截剪贴板调用，避免真实平台通道等待
         final clipboardCalls = <String>[];
         tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(

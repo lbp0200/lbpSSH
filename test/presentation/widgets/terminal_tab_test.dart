@@ -30,10 +30,10 @@ class _MockInputService implements TerminalInputService {
 void main() {
   /// 构造一个仅用于 UI 展示的真实 session（name 可被读取/断言）。
   TerminalSession makeSession(String name) => TerminalSession(
-        id: 'id_$name',
-        name: name,
-        inputService: _MockInputService(),
-      );
+    id: 'id_$name',
+    name: name,
+    inputService: _MockInputService(),
+  );
 
   /// Pumps a host containing a single TerminalTab.
   Future<void> pumpTab(

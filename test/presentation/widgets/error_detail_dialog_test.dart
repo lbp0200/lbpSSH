@@ -365,15 +365,12 @@ void main() {
           // 制造"剪贴板写入尚未返回"的异步窗口，模拟用户在窗口期间离开对话框。
           final completer = Completer<void>();
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-              .setMockMethodCallHandler(
-                SystemChannels.platform,
-                (call) async {
-                  if (call.method == 'Clipboard.setData') {
-                    await completer.future;
-                  }
-                  return null;
-                },
-              );
+              .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+                if (call.method == 'Clipboard.setData') {
+                  await completer.future;
+                }
+                return null;
+              });
           addTearDown(() {
             TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
                 .setMockMethodCallHandler(SystemChannels.platform, null);

@@ -798,9 +798,7 @@ void main() {
         );
 
         // 本地存在同 id、更新版本的连接 → 若不跳过会触发 SyncConflictException。
-        when(
-          () => mockRepository.getAllConnections(),
-        ).thenReturn([
+        when(() => mockRepository.getAllConnections()).thenReturn([
           SshConnection(
             id: 'local_1',
             name: 'Local',

@@ -511,7 +511,10 @@ Host app1.example.com
           // 'app1XexampleYcom' would only match if '.' were treated as a regex
           // "any character" — pinning the RegExp.escape fix in _globToRegex.
           expect(
-            SshConfigService.findHostEntry('app1XexampleYcom', filePath: configFile.path),
+            SshConfigService.findHostEntry(
+              'app1XexampleYcom',
+              filePath: configFile.path,
+            ),
             isNull,
           );
 

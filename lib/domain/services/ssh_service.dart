@@ -54,7 +54,10 @@ class SshService implements TerminalInputService {
   /// 解析 ~/.ssh/config 条目（优先使用注入的解析器，默认 [SshConfigService.findHostEntry]）
   SshConfigEntry? _resolveSshConfigEntry(String host, {String? filePath}) {
     final resolver = _sshConfigResolver;
-    return (resolver ?? SshConfigService.findHostEntry)(host, filePath: filePath);
+    return (resolver ?? SshConfigService.findHostEntry)(
+      host,
+      filePath: filePath,
+    );
   }
 
   AppConfigService get _config =>
@@ -660,9 +663,7 @@ class SshService implements TerminalInputService {
           ? () => jumpPassword!
           : null,
       identities: jumpIdentities,
-      keepAliveInterval: Duration(
-        milliseconds: _config.ssh.keepaliveInterval,
-      ),
+      keepAliveInterval: Duration(milliseconds: _config.ssh.keepaliveInterval),
     );
 
     // 立即记录跳板机客户端：其后的 forwardLocal / 目标客户端创建若失败，
@@ -717,9 +718,7 @@ class SshService implements TerminalInputService {
           ? () => connection.password!
           : null,
       identities: targetIdentities,
-      keepAliveInterval: Duration(
-        milliseconds: _config.ssh.keepaliveInterval,
-      ),
+      keepAliveInterval: Duration(milliseconds: _config.ssh.keepaliveInterval),
     );
 
     _outputController.add('跳板机连接建立成功\r\n');

@@ -1684,60 +1684,62 @@ void main() {
       timeout: const Timeout(Duration(seconds: 10)),
     );
 
-    test('Given jump host, When connect called, '
-        'Then target is reached via a single forwardLocal channel (no TCP tunnel)',
-        () async {
-      // Arrange — 计数 socketConnector：跳板机模式应只建立到跳板机的一个 TCP 连接，
-      // 目标主机经 forwardLocal 的 direct-tcpip 通道打通，不再多开一条 localhost 隧道
-      final session = StubSSHSession();
-      final client = StubSSHClient(session: session);
-      final mockConfig = createMockAppConfigService();
-      var socketConnections = 0;
-      final service = SshService(
-        appConfigService: mockConfig,
-        clientFactory:
-            (
-              socket, {
-              required username,
-              onPasswordRequest,
-              identities,
-              keepAliveInterval,
-            }) => client,
-        socketConnector: (host, port, {timeout}) async {
-          socketConnections++;
-          return FakeSSHSocketStub();
-        },
-      );
-
-      // Act
-      await service.connect(
-        makeConnection(
-          password: 'secret',
-          jumpHost: JumpHostConfig(
-            host: '127.0.0.1',
-            username: 'jumpuser',
-            authType: AuthType.password,
-            password: 'jump-pass',
-          ),
-        ),
-      );
-
-      // Assert — 仅一条到跳板机的 TCP 连接；目标走 forwardLocal 通道一次
-      expect(service.state, SshConnectionState.connected);
-      expect(socketConnections, 1);
-      expect(client.forwardLocalCalls, 1);
-
-      service.dispose();
-    }, timeout: const Timeout(Duration(seconds: 10)));
-
     test(
-        'Given jump host + sshConfig auth, When connect called, '
-        'Then no direct TCP connection is opened to the target host',
-        () async {
+      'Given jump host, When connect called, '
+      'Then target is reached via a single forwardLocal channel (no TCP tunnel)',
+      () async {
+        // Arrange — 计数 socketConnector：跳板机模式应只建立到跳板机的一个 TCP 连接，
+        // 目标主机经 forwardLocal 的 direct-tcpip 通道打通，不再多开一条 localhost 隧道
+        final session = StubSSHSession();
+        final client = StubSSHClient(session: session);
+        final mockConfig = createMockAppConfigService();
+        var socketConnections = 0;
+        final service = SshService(
+          appConfigService: mockConfig,
+          clientFactory:
+              (
+                socket, {
+                required username,
+                onPasswordRequest,
+                identities,
+                keepAliveInterval,
+              }) => client,
+          socketConnector: (host, port, {timeout}) async {
+            socketConnections++;
+            return FakeSSHSocketStub();
+          },
+        );
+
+        // Act
+        await service.connect(
+          makeConnection(
+            password: 'secret',
+            jumpHost: JumpHostConfig(
+              host: '127.0.0.1',
+              username: 'jumpuser',
+              authType: AuthType.password,
+              password: 'jump-pass',
+            ),
+          ),
+        );
+
+        // Assert — 仅一条到跳板机的 TCP 连接；目标走 forwardLocal 通道一次
+        expect(service.state, SshConnectionState.connected);
+        expect(socketConnections, 1);
+        expect(client.forwardLocalCalls, 1);
+
+        service.dispose();
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+
+    test('Given jump host + sshConfig auth, When connect called, '
+        'Then no direct TCP connection is opened to the target host', () async {
       // Arrange — 跳板机模式下目标主机通常不可直达，连接由 _connectViaJumpHost 独立完成。
       // sshConfig 分支不应再向目标主机发起一条多余的直接 TCP 连接（Bug #4 同类缺陷：
       // 成功时泄漏、目标不可直达时导致连接失败）。记录直连到目标主机的 socket 次数。
-      const validEd25519Pem = '-----BEGIN OPENSSH PRIVATE KEY-----\n'
+      const validEd25519Pem =
+          '-----BEGIN OPENSSH PRIVATE KEY-----\n'
           'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n'
           'QyNTUxOQAAACBHi8eEIxh8t7jooF/YqpQNQFOV9nJY3OM/Ceg4m52EqQAAAKACAIWxAgCF\n'
           'sQAAAAtzc2gtZWQyNTUxOQAAACBHi8eEIxh8t7jooF/YqpQNQFOV9nJY3OM/Ceg4m52EqQ\n'
@@ -1751,8 +1753,14 @@ void main() {
       var directTargetSockets = 0;
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {required username, onPasswordRequest, identities, keepAliveInterval}) =>
-            client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async {
           if (host == 'target-host') directTargetSockets++;
           return FakeSSHSocketStub();
@@ -1837,53 +1845,58 @@ void main() {
       service.dispose();
     }, timeout: const Timeout(Duration(seconds: 10)));
 
-    test('Given jump host, '
-        'When connect called, '
-        'Then bastion AND target clients receive the configured keepaliveInterval', () async {
-      // Arrange — 记录每次 _createClient 收到的 keepAliveInterval。
-      // 跳板机模式下会创建两个客户端（跳板机 + 目标），两者都必须使用
-      // 用户配置的 keepaliveInterval，而不是 _createClient 里的硬编码默认值。
-      final session = StubSSHSession();
-      final client = StubSSHClient(session: session);
-      final mockConfig = createMockAppConfigService(keepaliveInterval: 60000);
-      final recordedKeepalives = <Duration?>[];
-      final service = SshService(
-        appConfigService: mockConfig,
-        clientFactory: (
-          socket, {
-          required username,
-          onPasswordRequest,
-          identities,
-          keepAliveInterval,
-        }) {
-          recordedKeepalives.add(keepAliveInterval);
-          return client;
-        },
-        socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
-      );
+    test(
+      'Given jump host, '
+      'When connect called, '
+      'Then bastion AND target clients receive the configured keepaliveInterval',
+      () async {
+        // Arrange — 记录每次 _createClient 收到的 keepAliveInterval。
+        // 跳板机模式下会创建两个客户端（跳板机 + 目标），两者都必须使用
+        // 用户配置的 keepaliveInterval，而不是 _createClient 里的硬编码默认值。
+        final session = StubSSHSession();
+        final client = StubSSHClient(session: session);
+        final mockConfig = createMockAppConfigService(keepaliveInterval: 60000);
+        final recordedKeepalives = <Duration?>[];
+        final service = SshService(
+          appConfigService: mockConfig,
+          clientFactory:
+              (
+                socket, {
+                required username,
+                onPasswordRequest,
+                identities,
+                keepAliveInterval,
+              }) {
+                recordedKeepalives.add(keepAliveInterval);
+                return client;
+              },
+          socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
+        );
 
-      // Act
-      await service.connect(
-        makeConnection(
-          password: 'secret',
-          jumpHost: JumpHostConfig(
-            host: '127.0.0.1',
-            username: 'jumpuser',
-            authType: AuthType.password,
-            password: 'jump-pass',
+        // Act
+        await service.connect(
+          makeConnection(
+            password: 'secret',
+            jumpHost: JumpHostConfig(
+              host: '127.0.0.1',
+              username: 'jumpuser',
+              authType: AuthType.password,
+              password: 'jump-pass',
+            ),
           ),
-        ),
-      );
+        );
 
-      // Assert — 两个客户端（跳板机 + 目标）都应收到配置的 60s keepalive。
-      expect(recordedKeepalives, hasLength(2));
-      const expected = Duration(milliseconds: 60000);
-      for (final ka in recordedKeepalives) {
-        expect(ka, expected);
-      }
+        // Assert — 两个客户端（跳板机 + 目标）都应收到配置的 60s keepalive。
+        expect(recordedKeepalives, hasLength(2));
+        const expected = Duration(milliseconds: 60000);
+        for (final ka in recordedKeepalives) {
+          expect(ka, expected);
+        }
 
-      service.dispose();
-    }, timeout: const Timeout(Duration(seconds: 10)));
+        service.dispose();
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
 
     test('Given jump host with missing password, '
         'When connect called, '
@@ -1923,52 +1936,57 @@ void main() {
       service.dispose();
     });
 
-    test('Given jump host, '
-        'When forwardLocal (target tunnel) fails after bastion is established, '
-        'Then connect rethrows AND the already-established bastion client is closed',
-        () async {
-      // Arrange — 共享 stub：跳板机客户端与目标客户端都返回它。
-      // forwardLocal 抛错，模拟「跳板机已连上、但打穿到目标的隧道失败」。
-      final session = StubSSHSession();
-      final client = StubSSHClient(
-        session: session,
-        forwardLocalError: Exception('tunnel failed'),
-      );
-      final mockConfig = createMockAppConfigService();
-      final service = SshService(
-        appConfigService: mockConfig,
-        clientFactory:
-            (
-              socket, {
-              required username,
-              onPasswordRequest,
-              identities,
-              keepAliveInterval,
-            }) => client,
-        socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
-      );
+    test(
+      'Given jump host, '
+      'When forwardLocal (target tunnel) fails after bastion is established, '
+      'Then connect rethrows AND the already-established bastion client is closed',
+      () async {
+        // Arrange — 共享 stub：跳板机客户端与目标客户端都返回它。
+        // forwardLocal 抛错，模拟「跳板机已连上、但打穿到目标的隧道失败」。
+        final session = StubSSHSession();
+        final client = StubSSHClient(
+          session: session,
+          forwardLocalError: Exception('tunnel failed'),
+        );
+        final mockConfig = createMockAppConfigService();
+        final service = SshService(
+          appConfigService: mockConfig,
+          clientFactory:
+              (
+                socket, {
+                required username,
+                onPasswordRequest,
+                identities,
+                keepAliveInterval,
+              }) => client,
+          socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
+        );
 
-      // Act & Assert — 隧道失败应向上抛出，且已建立的跳板机客户端被回收。
-      // 关键回归点：_jumpClient 必须在 forwardLocal 之前赋值，
-      // connect() 的 catch 才能关闭它；否则该连接（及其 TCP socket）泄漏。
-      await expectLater(
-        service.connect(
-          makeConnection(
-            password: 'secret',
-            jumpHost: JumpHostConfig(
-              host: '127.0.0.1',
-              username: 'jumpuser',
-              authType: AuthType.password,
-              password: 'jump-pass',
+        // Act & Assert — 隧道失败应向上抛出，且已建立的跳板机客户端被回收。
+        // 关键回归点：_jumpClient 必须在 forwardLocal 之前赋值，
+        // connect() 的 catch 才能关闭它；否则该连接（及其 TCP socket）泄漏。
+        await expectLater(
+          service.connect(
+            makeConnection(
+              password: 'secret',
+              jumpHost: JumpHostConfig(
+                host: '127.0.0.1',
+                username: 'jumpuser',
+                authType: AuthType.password,
+                password: 'jump-pass',
+              ),
             ),
           ),
-        ),
-        throwsA(predicate<Exception>((e) => e.toString().contains('tunnel failed'))),
-      );
-      expect(client.closeCalls, greaterThan(0));
+          throwsA(
+            predicate<Exception>((e) => e.toString().contains('tunnel failed')),
+          ),
+        );
+        expect(client.closeCalls, greaterThan(0));
 
-      service.dispose();
-    }, timeout: const Timeout(Duration(seconds: 10)));
+        service.dispose();
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -2175,12 +2193,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {
-          required username,
-          onPasswordRequest,
-          identities,
-          keepAliveInterval,
-        }) => client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(makeConnection(password: 'secret'));
@@ -2213,12 +2233,14 @@ void main() {
       final mockConfig = createMockAppConfigService();
       final service = SshService(
         appConfigService: mockConfig,
-        clientFactory: (socket, {
-          required username,
-          onPasswordRequest,
-          identities,
-          keepAliveInterval,
-        }) => client,
+        clientFactory:
+            (
+              socket, {
+              required username,
+              onPasswordRequest,
+              identities,
+              keepAliveInterval,
+            }) => client,
         socketConnector: (host, port, {timeout}) async => FakeSSHSocketStub(),
       );
       await service.connect(

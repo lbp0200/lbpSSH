@@ -79,18 +79,17 @@ void main() {
       },
     );
 
-    testWidgets(
-      'When tapping 默认 (14px), Then onFontSizeChanged receives 14',
-      (WidgetTester tester) async {
-        double? emitted;
-        await pumpPreview(tester, TerminalConfig(), onFont: (v) => emitted = v);
+    testWidgets('When tapping 默认 (14px), Then onFontSizeChanged receives 14', (
+      WidgetTester tester,
+    ) async {
+      double? emitted;
+      await pumpPreview(tester, TerminalConfig(), onFont: (v) => emitted = v);
 
-        await tester.tap(find.text('默认 (14px)'));
-        await tester.pump();
+      await tester.tap(find.text('默认 (14px)'));
+      await tester.pump();
 
-        expect(emitted, 14.0);
-      },
-    );
+      expect(emitted, 14.0);
+    });
 
     testWidgets(
       'Given malformed color hex values, When rendered, Then it does not throw (colors fall back to white)',

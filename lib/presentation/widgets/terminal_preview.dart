@@ -119,7 +119,9 @@ class TerminalPreview extends StatelessWidget {
           child: Text(
             text,
             style: TextStyle(
-              fontFamily: config.fontFamily.isNotEmpty ? config.fontFamily : null,
+              fontFamily: config.fontFamily.isNotEmpty
+                  ? config.fontFamily
+                  : null,
               fontSize: config.fontSize,
               height: config.lineHeight,
               color: color,

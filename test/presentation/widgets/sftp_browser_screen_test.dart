@@ -890,142 +890,146 @@ void main() {
     });
 
     testWidgets(
-        'Given upload canceled, When a progress event arrives after cancel, '
-        'Then no StateError is thrown (progress stream already closed)',
-        (tester) async {
-      final uploadCompleter = Completer<void>();
-      late void Function(TransferProgress) onProgress;
-      when(
-        () => transferService.listCurrentDirectory(),
-      ).thenAnswer((_) async => <FileItem>[]);
-      when(
-        () => transferService.sendFile(
-          localPath: any(named: 'localPath'),
-          remoteFileName: any(named: 'remoteFileName'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).thenAnswer((invocation) {
-        // 捕获真实进度回调；传输挂起，让对话框保持打开
-        onProgress = invocation.namedArguments[#onProgress]!
-            as void Function(TransferProgress);
-        return uploadCompleter.future;
-      });
+      'Given upload canceled, When a progress event arrives after cancel, '
+      'Then no StateError is thrown (progress stream already closed)',
+      (tester) async {
+        final uploadCompleter = Completer<void>();
+        late void Function(TransferProgress) onProgress;
+        when(
+          () => transferService.listCurrentDirectory(),
+        ).thenAnswer((_) async => <FileItem>[]);
+        when(
+          () => transferService.sendFile(
+            localPath: any(named: 'localPath'),
+            remoteFileName: any(named: 'remoteFileName'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((invocation) {
+          // 捕获真实进度回调；传输挂起，让对话框保持打开
+          onProgress =
+              invocation.namedArguments[#onProgress]!
+                  as void Function(TransferProgress);
+          return uploadCompleter.future;
+        });
 
-      final fake = _FakeFilePickerPlatform()
-        ..pickFileResult = _createPlatformFile('/tmp/up.txt');
-      final original = FilePickerPlatform.instance;
-      FilePickerPlatform.instance = fake;
-      addTearDown(() => FilePickerPlatform.instance = original);
+        final fake = _FakeFilePickerPlatform()
+          ..pickFileResult = _createPlatformFile('/tmp/up.txt');
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
 
-      final tab = SftpTab(
-        id: 'tab1',
-        connection: connection,
-        service: transferService,
-        currentPath: '/',
-      );
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
 
-      await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('上传'));
-      await tester.pumpAndSettle();
-      expect(find.text('取消'), findsOneWidget);
+        await tester.tap(find.byTooltip('上传'));
+        await tester.pumpAndSettle();
+        expect(find.text('取消'), findsOneWidget);
 
-      // 点击取消 → onCancel close() 进度流并关闭对话框
-      await tester.tap(find.text('取消'));
-      await tester.pumpAndSettle();
-      expect(find.text('取消'), findsNothing);
+        // 点击取消 → onCancel close() 进度流并关闭对话框
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+        expect(find.text('取消'), findsNothing);
 
-      // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
-      // 修复前：progressController.add() 命中已 close 的流 → StateError（同步抛出，RED）。
-      // 修复后：isClosed 守卫使其 no-op，无异常。
-      onProgress(
-        TransferProgress(
-          fileName: 'up.txt',
-          transferredBytes: 10,
-          totalBytes: 100,
-          percent: 10,
-          bytesPerSecond: 0,
-        ),
-      );
-      await tester.pump();
+        // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
+        // 修复前：progressController.add() 命中已 close 的流 → StateError（同步抛出，RED）。
+        // 修复后：isClosed 守卫使其 no-op，无异常。
+        onProgress(
+          TransferProgress(
+            fileName: 'up.txt',
+            transferredBytes: 10,
+            totalBytes: 100,
+            percent: 10,
+            bytesPerSecond: 0,
+          ),
+        );
+        await tester.pump();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('上传成功'), findsNothing);
+        expect(tester.takeException(), isNull);
+        expect(find.text('上传成功'), findsNothing);
 
-      uploadCompleter.complete();
-      await tester.pumpAndSettle();
-    });
+        uploadCompleter.complete();
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-        'Given download canceled, When a progress event arrives after cancel, '
-        'Then no StateError is thrown (progress stream already closed)',
-        (tester) async {
-      final downloadCompleter = Completer<void>();
-      late void Function(TransferProgress) onProgress;
-      when(() => transferService.listCurrentDirectory()).thenAnswer(
-        (_) async => [
-          FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false),
-        ],
-      );
-      when(
-        () => transferService.downloadFile(
-          any(),
-          any(),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).thenAnswer((invocation) {
-        // 捕获真实进度回调；传输挂起，让对话框保持打开
-        onProgress = invocation.namedArguments[#onProgress]!
-            as void Function(TransferProgress);
-        return downloadCompleter.future;
-      });
+      'Given download canceled, When a progress event arrives after cancel, '
+      'Then no StateError is thrown (progress stream already closed)',
+      (tester) async {
+        final downloadCompleter = Completer<void>();
+        late void Function(TransferProgress) onProgress;
+        when(() => transferService.listCurrentDirectory()).thenAnswer(
+          (_) async => [
+            FileItem(name: 'a.txt', path: '/a.txt', isDirectory: false),
+          ],
+        );
+        when(
+          () => transferService.downloadFile(
+            any(),
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((invocation) {
+          // 捕获真实进度回调；传输挂起，让对话框保持打开
+          onProgress =
+              invocation.namedArguments[#onProgress]!
+                  as void Function(TransferProgress);
+          return downloadCompleter.future;
+        });
 
-      final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
-      final original = FilePickerPlatform.instance;
-      FilePickerPlatform.instance = fake;
-      addTearDown(() => FilePickerPlatform.instance = original);
+        final fake = _FakeFilePickerPlatform()..directoryPath = '/tmp';
+        final original = FilePickerPlatform.instance;
+        FilePickerPlatform.instance = fake;
+        addTearDown(() => FilePickerPlatform.instance = original);
 
-      final tab = SftpTab(
-        id: 'tab1',
-        connection: connection,
-        service: transferService,
-        currentPath: '/',
-      );
+        final tab = SftpTab(
+          id: 'tab1',
+          connection: connection,
+          service: transferService,
+          currentPath: '/',
+        );
 
-      await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestWidget(_MockSftpNotifier(tab)));
+        await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('a.txt'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('下载'));
-      await tester.pumpAndSettle();
-      expect(find.text('取消'), findsOneWidget);
+        await tester.longPress(find.text('a.txt'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下载'));
+        await tester.pumpAndSettle();
+        expect(find.text('取消'), findsOneWidget);
 
-      // 点击取消 → onCancel close() 进度流并关闭对话框
-      await tester.tap(find.text('取消'));
-      await tester.pumpAndSettle();
-      expect(find.text('取消'), findsNothing);
+        // 点击取消 → onCancel close() 进度流并关闭对话框
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+        expect(find.text('取消'), findsNothing);
 
-      // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
-      // 修复前 → StateError（同步抛出，RED）；修复后 isClosed 守卫使其 no-op。
-      onProgress(
-        TransferProgress(
-          fileName: 'a.txt',
-          transferredBytes: 10,
-          totalBytes: 1024,
-          percent: 1,
-          bytesPerSecond: 0,
-        ),
-      );
-      await tester.pump();
+        // 传输仍在进行：取消后到达的 chunk 触发 onProgress。
+        // 修复前 → StateError（同步抛出，RED）；修复后 isClosed 守卫使其 no-op。
+        onProgress(
+          TransferProgress(
+            fileName: 'a.txt',
+            transferredBytes: 10,
+            totalBytes: 1024,
+            percent: 1,
+            bytesPerSecond: 0,
+          ),
+        );
+        await tester.pump();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('下载成功'), findsNothing);
+        expect(tester.takeException(), isNull);
+        expect(find.text('下载成功'), findsNothing);
 
-      downloadCompleter.complete();
-      await tester.pumpAndSettle();
-    });
+        downloadCompleter.complete();
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets('Given download with progress events, When download runs, '
         'Then progress dialog shows transferred bytes', (tester) async {

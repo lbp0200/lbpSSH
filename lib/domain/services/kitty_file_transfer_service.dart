@@ -26,6 +26,7 @@ class KittyFileTransferService extends KittyServiceBase {
         .replaceAll(r'$', r'\$') // $ → \$
         .replaceAll('`', r'\`'); // ` → \`
   }
+
   final KittyFileTransferEncoder _encoder = const KittyFileTransferEncoder();
   String _currentPath;
   SftpClient? _sftpClient;

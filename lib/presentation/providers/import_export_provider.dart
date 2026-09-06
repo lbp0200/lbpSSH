@@ -45,9 +45,7 @@ class ImportExportNotifier extends Notifier<ImportExportStatusData> {
   /// 导出到本地文件
   Future<File?> exportToLocalFile() async {
     // 进入"导出中"：UI 据此禁用按钮/显示进度，防止重复触发。
-    state = const ImportExportStatusData(
-      status: ImportExportStatus.exporting,
-    );
+    state = const ImportExportStatusData(status: ImportExportStatus.exporting);
     try {
       final file = await _service.exportToLocalFile();
       // service 在用户取消"保存位置"选择时返回 null：这不是成功导出，
@@ -70,9 +68,7 @@ class ImportExportNotifier extends Notifier<ImportExportStatusData> {
   /// 从本地文件导入
   Future<List<SshConnection>> importFromLocalFile() async {
     // 进入"导入中"：UI 据此禁用按钮/显示进度，防止重复触发。
-    state = const ImportExportStatusData(
-      status: ImportExportStatus.importing,
-    );
+    state = const ImportExportStatusData(status: ImportExportStatus.importing);
     try {
       final connections = await _service.importFromLocalFile();
       state = const ImportExportStatusData(status: ImportExportStatus.success);
@@ -93,9 +89,7 @@ class ImportExportNotifier extends Notifier<ImportExportStatusData> {
     bool addPrefix = true,
   }) async {
     // 进入"导入中"：保存阶段同样需要禁用按钮，防止重复提交。
-    state = const ImportExportStatusData(
-      status: ImportExportStatus.importing,
-    );
+    state = const ImportExportStatusData(status: ImportExportStatus.importing);
     try {
       await _service.importAndSaveConnections(
         connections,

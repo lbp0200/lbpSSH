@@ -68,59 +68,67 @@ void main() {
       );
       expect(frame, contains(';ft=directory'));
       final b64 = base64Encode(utf8.encode('mydir'));
-      expect(frame, '$esc]5113;ac=file;id=s1;fid=d1;n=$b64;ft=directory$oscEnd');
+      expect(
+        frame,
+        '$esc]5113;ac=file;id=s1;fid=d1;n=$b64;ft=directory$oscEnd',
+      );
     });
 
     test(
-        'createFileMetadata symlink: documents current double-n target encoding', () {
-      // Documents CURRENT behavior for a symbolic link (task #2): the encoder
-      // emits the link name as `n=` and, when linkTarget is set, appends a
-      // SECOND `n=` carrying the target. Note the kitty spec expects the
-      // target in the data phase (`d=`), not a second `n=`; this test pins
-      // the existing frame so any future change to the protocol flow (e.g.
-      // moving the target into end_data) is an explicit, reviewed decision
-      // rather than silent drift.
-      final frame = enc.createFileMetadata(
-        sessionId: 's1',
-        fileId: 'f2',
-        fileName: 'link',
-        fileSize: 0,
-        fileType: FileType.symlink,
-        linkTarget: '/etc/passwd',
-      );
+      'createFileMetadata symlink: documents current double-n target encoding',
+      () {
+        // Documents CURRENT behavior for a symbolic link (task #2): the encoder
+        // emits the link name as `n=` and, when linkTarget is set, appends a
+        // SECOND `n=` carrying the target. Note the kitty spec expects the
+        // target in the data phase (`d=`), not a second `n=`; this test pins
+        // the existing frame so any future change to the protocol flow (e.g.
+        // moving the target into end_data) is an explicit, reviewed decision
+        // rather than silent drift.
+        final frame = enc.createFileMetadata(
+          sessionId: 's1',
+          fileId: 'f2',
+          fileName: 'link',
+          fileSize: 0,
+          fileType: FileType.symlink,
+          linkTarget: '/etc/passwd',
+        );
 
-      expect(frame.startsWith('$esc]5113;ac=file;id=s1;fid=f2;'), isTrue);
-      // Exactly two `n=` fields: the name and the target (a known field).
-      // Count `;n=` only — the base64 alphabet never contains ';', so this
-      // can't false-match inside a payload blob.
-      final nFields = RegExp(r';n=').allMatches(frame).length;
-      expect(nFields, 2);
-      expect(frame, contains(';ft=symlink'));
+        expect(frame.startsWith('$esc]5113;ac=file;id=s1;fid=f2;'), isTrue);
+        // Exactly two `n=` fields: the name and the target (a known field).
+        // Count `;n=` only — the base64 alphabet never contains ';', so this
+        // can't false-match inside a payload blob.
+        final nFields = RegExp(r';n=').allMatches(frame).length;
+        expect(nFields, 2);
+        expect(frame, contains(';ft=symlink'));
 
-      final nameB64 = base64Encode(utf8.encode('link'));
-      final targetB64 = base64Encode(utf8.encode('/etc/passwd'));
-      // Base frame (name + sz), then ft, then the target as a second n=.
-      expect(
-        frame,
-        '$esc]5113;ac=file;id=s1;fid=f2;n=$nameB64;sz=0;ft=symlink;n=$targetB64$oscEnd',
-      );
-    });
+        final nameB64 = base64Encode(utf8.encode('link'));
+        final targetB64 = base64Encode(utf8.encode('/etc/passwd'));
+        // Base frame (name + sz), then ft, then the target as a second n=.
+        expect(
+          frame,
+          '$esc]5113;ac=file;id=s1;fid=f2;n=$nameB64;sz=0;ft=symlink;n=$targetB64$oscEnd',
+        );
+      },
+    );
 
-    test('createDataChunk: payload base64-encodes and round-trips to bytes', () {
-      const payload = [0, 1, 2, 255, 168, 200, 7]; // incl. high/low bytes
-      final frame = enc.createDataChunk(
-        sessionId: 's1',
-        fileId: 'f1',
-        data: payload,
-      );
+    test(
+      'createDataChunk: payload base64-encodes and round-trips to bytes',
+      () {
+        const payload = [0, 1, 2, 255, 168, 200, 7]; // incl. high/low bytes
+        final frame = enc.createDataChunk(
+          sessionId: 's1',
+          fileId: 'f1',
+          data: payload,
+        );
 
-      expect(frame.startsWith('$esc]5113;ac=data;id=s1;fid=f1;d='), isTrue);
-      expect(frame.endsWith(oscEnd), isTrue);
+        expect(frame.startsWith('$esc]5113;ac=data;id=s1;fid=f1;d='), isTrue);
+        expect(frame.endsWith(oscEnd), isTrue);
 
-      // The real round-trip: decode the emitted d= payload back to the bytes.
-      final decoded = base64Decode(dataPayload(frame));
-      expect(decoded, equals(payload));
-    });
+        // The real round-trip: decode the emitted d= payload back to the bytes.
+        final decoded = base64Decode(dataPayload(frame));
+        expect(decoded, equals(payload));
+      },
+    );
 
     test('createEndData: with and without trailing data', () {
       // No trailing data: no d= field at all.
@@ -136,10 +144,7 @@ void main() {
 
     test('createFinishSession / createCancelSession: exact frames', () {
       expect(enc.createFinishSession('s9'), '$esc]5113;ac=finish;id=s9$oscEnd');
-      expect(
-        enc.createCancelSession('s9'),
-        '$esc]5113;ac=cancel;id=s9$oscEnd',
-      );
+      expect(enc.createCancelSession('s9'), '$esc]5113;ac=cancel;id=s9$oscEnd');
     });
 
     test('parseStatusResponse: OK / non-OK / size / no-match', () {
@@ -151,7 +156,9 @@ void main() {
       expect(ok.errorMessage, isNull);
 
       // Non-OK with a message.
-      final err = enc.parseStatusResponse('ac=status;id=s2;st=FAIL:file exists');
+      final err = enc.parseStatusResponse(
+        'ac=status;id=s2;st=FAIL:file exists',
+      );
       expect(err!.sessionId, 's2');
       expect(err.isOk, isFalse);
       expect(err.errorMessage, contains('file exists'));

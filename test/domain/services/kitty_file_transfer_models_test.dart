@@ -170,15 +170,20 @@ void main() {
     test(
       'Given the protocol enums, When enumerated, Then they expose exactly the expected members',
       () {
-        expect(CompressionType.values, [CompressionType.none, CompressionType.zlib]);
-        expect(
-          FileType.values,
-          [FileType.regular, FileType.directory, FileType.symlink, FileType.link],
-        );
-        expect(
-          TransmissionType.values,
-          [TransmissionType.simple, TransmissionType.rsync],
-        );
+        expect(CompressionType.values, [
+          CompressionType.none,
+          CompressionType.zlib,
+        ]);
+        expect(FileType.values, [
+          FileType.regular,
+          FileType.directory,
+          FileType.symlink,
+          FileType.link,
+        ]);
+        expect(TransmissionType.values, [
+          TransmissionType.simple,
+          TransmissionType.rsync,
+        ]);
       },
     );
   });

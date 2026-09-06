@@ -379,8 +379,9 @@ void main() {
         () async {
           // Arrange (Given) - 用一个可手动完成的 Future 制造"进行中"窗口
           final completer = Completer<File?>();
-          when(() => mockService.exportToLocalFile())
-              .thenAnswer((_) => completer.future);
+          when(
+            () => mockService.exportToLocalFile(),
+          ).thenAnswer((_) => completer.future);
 
           // Act (When) - 发起导出但暂不等待完成
           final pending = container
@@ -409,8 +410,9 @@ void main() {
         'Given user cancels save dialog (service returns null), When export completes, Then status is idle not success',
         () async {
           // Arrange (Given) - 用户取消"保存位置"选择时 service 返回 null
-          when(() => mockService.exportToLocalFile())
-              .thenAnswer((_) async => null);
+          when(
+            () => mockService.exportToLocalFile(),
+          ).thenAnswer((_) async => null);
 
           // Act (When)
           final result = await container
@@ -431,8 +433,9 @@ void main() {
         () async {
           // Arrange (Given)
           final completer = Completer<List<SshConnection>>();
-          when(() => mockService.importFromLocalFile())
-              .thenAnswer((_) => completer.future);
+          when(
+            () => mockService.importFromLocalFile(),
+          ).thenAnswer((_) => completer.future);
 
           // Act (When)
           final pending = container

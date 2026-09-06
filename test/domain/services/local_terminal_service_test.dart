@@ -42,48 +42,39 @@ void main() {
     });
 
     group('parseLsofCwd', () {
-      test(
-        'parses lsof -F n output preserving spaces in the path',
-        () {
-          // Regression: a cwd containing spaces must be returned whole, not
-          // truncated to its last whitespace token (the old split().last bug).
-          const out = 'n/Users/John Smith/Projects/my app\n';
-          expect(
-            LocalTerminalService.parseLsofCwd(out),
-            '/Users/John Smith/Projects/my app',
-          );
-        },
-      );
+      test('parses lsof -F n output preserving spaces in the path', () {
+        // Regression: a cwd containing spaces must be returned whole, not
+        // truncated to its last whitespace token (the old split().last bug).
+        const out = 'n/Users/John Smith/Projects/my app\n';
+        expect(
+          LocalTerminalService.parseLsofCwd(out),
+          '/Users/John Smith/Projects/my app',
+        );
+      });
 
-      test(
-        'trims surrounding whitespace on the cwd line',
-        () {
-          const out = '\n  n/private/tmp/foo bar  \n';
-          expect(LocalTerminalService.parseLsofCwd(out), '/private/tmp/foo bar');
-        },
-      );
+      test('trims surrounding whitespace on the cwd line', () {
+        const out = '\n  n/private/tmp/foo bar  \n';
+        expect(LocalTerminalService.parseLsofCwd(out), '/private/tmp/foo bar');
+      });
 
-      test(
-        'returns null when there is no valid cwd line',
-        () {
-          expect(LocalTerminalService.parseLsofCwd(''), isNull);
-          // No line with the "n" name-field prefix followed by an absolute path.
-          expect(
-            LocalTerminalService.parseLsofCwd(
-              'some other output\nwithout a cwd field\n',
-            ),
-            isNull,
-          );
-        },
-      );
+      test('returns null when there is no valid cwd line', () {
+        expect(LocalTerminalService.parseLsofCwd(''), isNull);
+        // No line with the "n" name-field prefix followed by an absolute path.
+        expect(
+          LocalTerminalService.parseLsofCwd(
+            'some other output\nwithout a cwd field\n',
+          ),
+          isNull,
+        );
+      });
 
-      test(
-        'skips non-name lines and returns the cwd path',
-        () {
-          const out = 'noisy header line\nn/home/user/work dir/sub\n';
-          expect(LocalTerminalService.parseLsofCwd(out), '/home/user/work dir/sub');
-        },
-      );
+      test('skips non-name lines and returns the cwd path', () {
+        const out = 'noisy header line\nn/home/user/work dir/sub\n';
+        expect(
+          LocalTerminalService.parseLsofCwd(out),
+          '/home/user/work dir/sub',
+        );
+      });
     });
 
     group('resolvePath', () {

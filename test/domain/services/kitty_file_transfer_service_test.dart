@@ -935,8 +935,7 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
           await service.removeFile(r'/home/user/a`b$c"d.txt');
 
           verify(
-            () =>
-                mockSession.executeCommand(r'rm "/home/user/a\`b\$c\"d.txt"'),
+            () => mockSession.executeCommand(r'rm "/home/user/a\`b\$c\"d.txt"'),
           ).called(1);
         },
       );
@@ -1127,24 +1126,23 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         await expectLater(downloadFuture, throwsA(isA<Exception>()));
       });
 
-      test(
-        'Given session emitting error event, When downloadFile fails, '
-        'Then part file is removed and final path is absent',
-        () async {
-          // Arrange (Given) — 复用 setUp 的 service / tempDir / fileTransferController
-          final localPath = '${tempDir.path}/data.bin';
+      test('Given session emitting error event, When downloadFile fails, '
+          'Then part file is removed and final path is absent', () async {
+        // Arrange (Given) — 复用 setUp 的 service / tempDir / fileTransferController
+        final localPath = '${tempDir.path}/data.bin';
 
-          // Act (When) — 传输中出错；写入的是 .part 临时文件
-          final downloadFuture =
-              service.downloadFile('/remote/data.bin', localPath);
-          fileTransferController.addError(Exception('disk full'));
+        // Act (When) — 传输中出错；写入的是 .part 临时文件
+        final downloadFuture = service.downloadFile(
+          '/remote/data.bin',
+          localPath,
+        );
+        fileTransferController.addError(Exception('disk full'));
 
-          // Assert (Then) — 抛出错误；最终路径与临时 .part 均不残留
-          await expectLater(downloadFuture, throwsA(isA<Exception>()));
-          expect(File(localPath).existsSync(), isFalse);
-          expect(File('$localPath.part').existsSync(), isFalse);
-        },
-      );
+        // Assert (Then) — 抛出错误；最终路径与临时 .part 均不残留
+        await expectLater(downloadFuture, throwsA(isA<Exception>()));
+        expect(File(localPath).existsSync(), isFalse);
+        expect(File('$localPath.part').existsSync(), isFalse);
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -1581,36 +1579,31 @@ drwxr-xr-x  2 user user 4096 2024-02-24 20:08 dir1
         },
       );
 
-      test(
-        'Given an empty file, When sendFileWithMetadata called, '
-        'Then writes metadata and finish but no data chunks',
-        () async {
-          final emptyFile = File('${tempDir.path}/empty.txt');
-          await emptyFile.writeAsBytes(const []);
+      test('Given an empty file, When sendFileWithMetadata called, '
+          'Then writes metadata and finish but no data chunks', () async {
+        final emptyFile = File('${tempDir.path}/empty.txt');
+        await emptyFile.writeAsBytes(const []);
 
-          final service = KittyFileTransferService(
-            session: mockSession,
-            initialPath: '/home/user',
-          );
+        final service = KittyFileTransferService(
+          session: mockSession,
+          initialPath: '/home/user',
+        );
 
-          await service.sendFileWithMetadata(
-            localPath: emptyFile.path,
-            remoteFileName: 'empty.txt',
-            onProgress: _mockProgressCallback(),
-          );
+        await service.sendFileWithMetadata(
+          localPath: emptyFile.path,
+          remoteFileName: 'empty.txt',
+          onProgress: _mockProgressCallback(),
+        );
 
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=file'))),
-          ).called(1);
-          verify(
-            () => mockSession.writeRaw(any(that: contains('ac=finish'))),
-          ).called(1);
-          // 空文件：不产生任何数据块，percent = transferred / fileSize 不会被触发
-          verifyNever(
-            () => mockSession.writeRaw(any(that: contains('ac=data'))),
-          );
-        },
-      );
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=file'))),
+        ).called(1);
+        verify(
+          () => mockSession.writeRaw(any(that: contains('ac=finish'))),
+        ).called(1);
+        // 空文件：不产生任何数据块，percent = transferred / fileSize 不会被触发
+        verifyNever(() => mockSession.writeRaw(any(that: contains('ac=data'))));
+      });
     });
 
     // -------------------------------------------------------------------------

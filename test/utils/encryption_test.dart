@@ -328,24 +328,21 @@ Line 3''';
         expect(result, isEmpty);
       });
 
-      test(
-        'Given ciphertext encrypted with a different key, When decryptField is called, '
-        'Then it throws (does NOT silently return null)',
-        () {
-          // This pins the invariant that protects stored secrets in
-          // ConnectionRepository._loadCache: an undecryptable field must throw so
-          // the caller fails LOUD (Sentry + backup + reset), never silently blank
-          // a password/key/passphrase to null and lose it.
-          const original = 'my password';
-          final encrypted = EncryptionUtil.encryptField(original, key);
-          final wrongKey = EncryptionUtil.randomBytes(32);
+      test('Given ciphertext encrypted with a different key, When decryptField is called, '
+          'Then it throws (does NOT silently return null)', () {
+        // This pins the invariant that protects stored secrets in
+        // ConnectionRepository._loadCache: an undecryptable field must throw so
+        // the caller fails LOUD (Sentry + backup + reset), never silently blank
+        // a password/key/passphrase to null and lose it.
+        const original = 'my password';
+        final encrypted = EncryptionUtil.encryptField(original, key);
+        final wrongKey = EncryptionUtil.randomBytes(32);
 
-          expect(
-            () => EncryptionUtil.decryptField(encrypted, wrongKey),
-            throwsA(isA<Exception>()),
-          );
-        },
-      );
+        expect(
+          () => EncryptionUtil.decryptField(encrypted, wrongKey),
+          throwsA(isA<Exception>()),
+        );
+      });
     });
 
     group('isEncrypted', () {
