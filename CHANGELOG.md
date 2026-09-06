@@ -1,3 +1,5 @@
+- release: bump version to 1.9.9 (9ba17a4)
+- docs: update CHANGELOG (3950579)
 - fix(local-terminal): 会话重启时复位退出去重标记，修复第二次退出状态行被抑制 (f8b9905)
 - fix(tui): 编辑连接保存后保留跳板机/代理/备注等非表单字段 (49ebe5a)
 - fix(terminal): OSC 52 剪贴板读取响应改经出站通道发往远端 pty (b867c4c)
