@@ -88,6 +88,15 @@ dev_dependencies:
   test: any
   file_picker_platform_interface: ^3.0.1
 
+# 锁定 file_picker 系依赖到已验证可用的精确版本，避免 CI/本地解析漂移
+# （新版 file_picker_platform_interface / cross_file / windows_file_picker
+#  变更了 pickFile/pickFiles/onFileLoading/PlatformFile.lengthSync 的 API）。
+dependency_overrides:
+  file_picker: 12.1.1
+  file_picker_platform_interface: 3.1.0
+  windows_file_picker: 1.0.1
+  cross_file: 0.3.5+5
+
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png" # 原图路径（必须是 1024x1024）
   windows:
