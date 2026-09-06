@@ -104,15 +104,18 @@ class TerminalSession {
     };
 
     // 监听剪贴板读取（OSC 52）
-    // 回调需要读取剪贴板内容并通过 terminal.write 写回 OSC 52 响应序列
+    // 远端程序查询客户端剪贴板时，回调读取剪贴板内容并经 inputService.sendInput
+    // 写回 OSC 52 响应序列（出站通道，发往远端 pty）
     terminal.onClipboardRead = (target) async {
       try {
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         final text = data?.text;
         if (text != null) {
           final encoded = base64Encode(utf8.encode(text));
-          // 写回 OSC 52 响应序列
-          terminal.write('\x1b]52;$target;$encoded\x1b\\');
+          // 写回 OSC 52 响应序列：必须经 inputService.sendInput 发往远端 pty（出站通道）。
+          // 注意不能用 terminal.write()——那是入站通道，会把响应喂回本应用自己的模拟器，
+          // 远端程序永远收不到剪贴板内容而卡死。
+          inputService.sendInput('\x1b]52;$target;$encoded\x1b\\');
         }
       } catch (e) {
         // Ignore clipboard errors

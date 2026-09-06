@@ -636,27 +636,30 @@ void main() {
   });
 
   group('TerminalSession Clipboard (OSC 52)', () {
-    test('Given clipboard has text, When onClipboardRead fired, '
-        'Then terminal writes OSC 52 response with base64 content', () async {
+    test(
+        'Given clipboard has text, When onClipboardRead fired, '
+        'Then OSC 52 response is sent OUTBOUND via sendInput to the remote pty',
+        () async {
+      final inputService = _ControlledInputService();
       final session = TerminalSession(
         id: 'clip-test',
         name: 'Clip',
-        inputService: MockTerminalInputService(),
+        inputService: inputService,
       );
 
-      // 捕获写回的内容：kterm 解析 OSC 52 响应后会触发 onClipboardWrite
-      String? writtenData;
+      // 记录是否被误走 inbound 通道（旧 bug：terminal.write 会喂回自身模拟器）
+      bool wroteInbound = false;
       session.terminal.onClipboardWrite = (data, target) {
-        writtenData = data;
+        wroteInbound = true;
       };
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-            if (call.method == 'Clipboard.getData') {
-              return <String, dynamic>{'text': 'hello-clip'};
-            }
-            return null;
-          });
+        if (call.method == 'Clipboard.getData') {
+          return <String, dynamic>{'text': 'hello-clip'};
+        }
+        return null;
+      });
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(SystemChannels.platform, null);
@@ -666,7 +669,14 @@ void main() {
       session.terminal.onClipboardRead?.call('c');
       await Future<void>.delayed(Duration.zero);
 
-      expect(writtenData, 'hello-clip');
+      // 响应必须经出站通道 sendInput 发给远端 pty（远端程序查询剪贴板时的真正回复）
+      final expected =
+          '\x1b]52;c;${base64Encode(utf8.encode('hello-clip'))}\x1b\\';
+      expect(inputService.sentInputs, [expected]);
+
+      // 回归：旧实现用 terminal.write()（inbound），会把响应喂回自身模拟器并触发
+      // onClipboardWrite；修复后不应再发生。
+      expect(wroteInbound, isFalse);
     });
 
     test(
