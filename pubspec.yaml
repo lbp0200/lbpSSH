@@ -88,14 +88,20 @@ dev_dependencies:
   test: any
   file_picker_platform_interface: ^3.0.1
 
-# 锁定 file_picker 系依赖到已验证可用的精确版本，避免 CI/本地解析漂移
-# （新版 file_picker_platform_interface / cross_file / windows_file_picker
-#  变更了 pickFile/pickFiles/onFileLoading/PlatformFile.lengthSync 的 API）。
+# 锁定 file_picker 系依赖到已验证可用的精确版本，避免 CI/本地解析漂移。
+# 根因：pubspec.lock 的 source 是 pub.flutter-io.cn（国内镜像），而 GitHub CI 用
+#   pub.dev，host 不一致导致 CI 的 `flutter pub get` 重新解析全部依赖，把
+#   file_picker 系漂移到新版（android/darwin 1.1.0 引用 DarwinOptions，而旧版
+#   platform_interface 3.1.0 无此类型）→ analyze/compile 失败。
+# dependency_overrides 与 host 无关，任何 `pub get` 都会强制到下列精确版本。
 dependency_overrides:
   file_picker: 12.1.1
   file_picker_platform_interface: 3.1.0
   windows_file_picker: 1.0.1
   cross_file: 0.3.5+5
+  android_file_picker: 1.0.1
+  file_picker_darwin: 1.0.3
+  file_picker_web: 3.0.1
 
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png" # 原图路径（必须是 1024x1024）

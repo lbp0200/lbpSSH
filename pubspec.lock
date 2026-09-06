@@ -18,7 +18,7 @@ packages:
     source: hosted
     version: "12.1.0"
   android_file_picker:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: android_file_picker
       sha256: "665a5a57dfca27f91a715d300e4852a784f9f98e503dcff281bec9afb55767be"
@@ -290,7 +290,7 @@ packages:
     source: hosted
     version: "12.1.1"
   file_picker_darwin:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: file_picker_darwin
       sha256: bdcba9c830f90ecba26020159e6bb90bce862ec58fabf1c41edb9db43e2f0eae
@@ -314,7 +314,7 @@ packages:
     source: hosted
     version: "3.1.0"
   file_picker_web:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: file_picker_web
       sha256: f1af38b3c91fafe0ca97f659b5c6818a057473ef09bb8b722f9f3f5364aa7eed
