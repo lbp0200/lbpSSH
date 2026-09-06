@@ -15,7 +15,7 @@ class AppConstants {
 
   // 应用标识（与 pubspec.yaml 保持一致，避免 ImportExportService 硬编码脱节）
   static const String appName = 'lbpSSH';
-  static const String appVersion = '1.9.7';
+  static const String appVersion = '1.9.8';
 
   // 导入前缀
   static const String importPrefix = '导入_';
