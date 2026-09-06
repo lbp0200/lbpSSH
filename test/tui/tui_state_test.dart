@@ -251,6 +251,61 @@ void main() {
       );
 
       test(
+        'Given editConn with jump host/proxy/notes/key content, When saving via TUI form (only 8 fields edited), Then non-form fields are preserved',
+        () {
+          final createdAt = DateTime(2024);
+          final original = SshConnection(
+            id: 'edit-id',
+            name: 'orig',
+            host: '9.9.9.9',
+            username: 'origuser',
+            authType: AuthType.password,
+            password: 'oldpass',
+            jumpHost: JumpHostConfig(
+              host: 'jump.example.com',
+              username: 'juser',
+              authType: AuthType.key,
+            ),
+            socks5Proxy: Socks5ProxyConfig(host: 'proxy.example.com'),
+            sshConfigHost: 'sshcfg-host',
+            notes: 'my notes',
+            privateKeyContent: 'PRIVATEKEYCONTENT',
+            version: 7,
+            createdAt: createdAt,
+          );
+
+          // TUI 表单只管理 8 个字段：用户改了 name/host/username/password，其余未编辑。
+          final state = TuiState(
+            editConn: original,
+            formValues: {
+              'name': 'edited',
+              'host': '10.0.0.1',
+              'port': '22',
+              'username': 'newuser',
+              'password': 'newpass',
+            },
+          );
+
+          final result = state.buildConnection();
+          expect(result, isNotNull);
+          // 表单字段被更新
+          expect(result!.id, 'edit-id');
+          expect(result.name, 'edited');
+          expect(result.host, '10.0.0.1');
+          expect(result.username, 'newuser');
+          expect(result.password, 'newpass');
+          // 非表单字段必须被保留（回归：旧实现新建 SshConnection 会全部丢失）
+          expect(result.jumpHost?.host, 'jump.example.com');
+          expect(result.socks5Proxy?.host, 'proxy.example.com');
+          expect(result.sshConfigHost, 'sshcfg-host');
+          expect(result.notes, 'my notes');
+          expect(result.privateKeyContent, 'PRIVATEKEYCONTENT');
+          expect(result.version, 7);
+          expect(result.createdAt, createdAt);
+        },
+      );
+
+      test(
         'Given non-default authType, When building, Then preserves authType',
         () {
           final state = TuiState(

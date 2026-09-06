@@ -47,16 +47,39 @@ class TuiState {
     final username = formValue('username');
     if (name.isEmpty || host.isEmpty || username.isEmpty) return null;
     final port = int.tryParse(formValue('port', fallback: '22')) ?? 22;
+    final password = formValue('password');
+    final privateKeyPath = formValue('privateKeyPath');
+    final keyPassphrase = formValue('keyPassphrase');
+
+    // 编辑现有连接：用 copyWith 仅更新 TUI 表单管理的 8 个字段，保留非表单字段
+    // （jumpHost / socks5Proxy / sshConfigHost / notes / privateKeyContent /
+    // version / createdAt）。否则会新建 SshConnection 把这些字段重置为 null/默认值，
+    // 保存后跳板机、SOCKS5 代理、备注等配置全部丢失。
+    final editConn = this.editConn;
+    if (editConn != null) {
+      return editConn.copyWith(
+        name: name,
+        host: host,
+        port: port,
+        username: username,
+        authType: formAuthType,
+        password: password,
+        privateKeyPath: privateKeyPath,
+        keyPassphrase: keyPassphrase,
+      );
+    }
+
+    // 新建连接：默认构造，非表单字段保持 null/默认值。
     return SshConnection(
-      id: editConn?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       host: host,
       port: port,
       username: username,
       authType: formAuthType,
-      password: formValue('password'),
-      privateKeyPath: formValue('privateKeyPath'),
-      keyPassphrase: formValue('keyPassphrase'),
+      password: password,
+      privateKeyPath: privateKeyPath,
+      keyPassphrase: keyPassphrase,
     );
   }
 }
