@@ -298,13 +298,13 @@ packages:
     source: hosted
     version: "1.0.3"
   file_picker_linux:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: file_picker_linux
-      sha256: "93d3f62f97c657053e7b184fe0f5e22347d85067c053640a30b1ac8ad7844e3b"
+      sha256: "5f8e1de3d032b6d0b2e840d30481abe41ead3ab28c9753a0187f3465d6797bf1"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.0"
   file_picker_platform_interface:
     dependency: "direct dev"
     description:

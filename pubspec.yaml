@@ -95,13 +95,15 @@ dev_dependencies:
 #   platform_interface 3.1.0 无此类型）→ analyze/compile 失败。
 # dependency_overrides 与 host 无关，任何 `pub get` 都会强制到下列精确版本。
 dependency_overrides:
+  # 全部锁定到「已验证可编译」版本：file_picker 12.1.1 需要 darwin≥(含 skipEntitlementsChecks) 且 <1.1.0（1.1.0 起引用 DarwinOptions，interface 3.1.0 无此类型）
   file_picker: 12.1.1
   file_picker_platform_interface: 3.1.0
+  android_file_picker: 1.0.1   # <1.1.0（1.1.0 引用 DarwinOptions）
+  file_picker_darwin: 1.0.3    # 含 skipEntitlementsChecks，无 DarwinOptions（CI run 已验证可编译）
+  file_picker_linux: 1.0.0     # macOS 本地 lock 无此包；CI linux 构建会编译它。仅 1.0.0 无 DarwinOptions（1.0.1+ 引用）
+  file_picker_web: 3.0.1       # web 为浏览器实现，不涉及 DarwinOptions/skipEntitlementsChecks
   windows_file_picker: 1.0.1
   cross_file: 0.3.5+5
-  android_file_picker: 1.0.1
-  file_picker_darwin: 1.0.3
-  file_picker_web: 3.0.1
 
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png" # 原图路径（必须是 1024x1024）
